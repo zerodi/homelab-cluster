@@ -1,0 +1,94 @@
+proxmox = {
+  endpoint     = "https://pve.example.com:8006/api2/json"
+  insecure     = true
+  node_name    = "pve01"
+  vm_datastore = "local-lvm"
+  image_datastore = "local"
+}
+
+# Sensitive Terraform inputs should not live here.
+# Use either:
+#   export TF_VAR_proxmox_api_token='terraform@pve!talos=...'
+# or an encrypted SOPS file based on secrets.sops.tfvars.example.
+
+talos = {
+  version      = "v1.12.6"
+  schematic_id = "<SCHEMATIC_ID>"
+}
+
+cluster_name       = "homelab-talos"
+controlplane_vip   = "192.168.10.110"
+# Optional. If null, cluster endpoint is derived from controlplane_vip.
+# cluster_endpoint = "https://192.168.10.110:6443"
+talos_version      = "v1.12.6"
+kubernetes_version = "1.35.0"
+ingress_domain     = "home.arpa"
+cilium_lb_pool_start = "192.168.10.120"
+cilium_lb_pool_stop  = "192.168.10.129"
+
+# Optional.
+# nameservers = ["192.168.10.1", "1.1.1.1"]
+
+argocd_enabled     = true
+argocd_host        = "argocd.home.arpa"
+authentik_enabled  = true
+authentik_host     = "auth.home.arpa"
+forgejo_enabled    = true
+forgejo_host       = "git.home.arpa"
+forgejo_admin_email = "forgejo@home.arpa"
+trust_manager_enabled = true
+populate_enabled   = false
+populate_forgejo_sso_name = "authentik"
+populate_authentik_application_slug = "forgejo"
+populate_gitops_owner = "platform"
+populate_gitops_repo = "gitops"
+
+controlplane_node_defaults = {
+  cpu_cores = 4
+  memory_mb = 8192
+  disk_gb   = 40
+  cidr      = 24
+}
+
+controlplane_nodes = {
+  cp-01 = {
+    vm_id        = 9001
+    ip           = "192.168.10.101"
+    mac_address  = "BC:24:11:00:00:11"
+    hostname     = "cp-01"
+  }
+  cp-02 = {
+    vm_id        = 9002
+    ip           = "192.168.10.102"
+    mac_address  = "BC:24:11:00:00:12"
+    hostname     = "cp-02"
+  }
+  cp-03 = {
+    vm_id        = 9003
+    ip           = "192.168.10.103"
+    mac_address  = "BC:24:11:00:00:13"
+    hostname     = "cp-03"
+  }
+}
+
+worker_node_defaults = {
+  cpu_cores = 4
+  memory_mb = 8192
+  disk_gb   = 80
+  cidr      = 24
+}
+
+worker_nodes = {
+  wk-01 = {
+    vm_id        = 9011
+    ip           = "192.168.10.111"
+    mac_address  = "BC:24:11:00:00:21"
+    hostname     = "wk-01"
+  }
+  wk-02 = {
+    vm_id        = 9012
+    ip           = "192.168.10.112"
+    mac_address  = "BC:24:11:00:00:22"
+    hostname     = "wk-02"
+  }
+}
