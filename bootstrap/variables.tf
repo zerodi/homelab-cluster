@@ -16,15 +16,15 @@ variable "proxmox" {
 variable "talos" {
   description = "Talos image and installation settings shared across bootstrap resources."
   type = object({
-    # Talos release version. Accepts `1.12.6` or `v1.12.6`.
+    # Talos release version. Must include the `v` prefix, for example `v1.12.6`.
     version = string
     # Talos Image Factory schematic ID used to build/download installer artifacts.
     schematic_id = string
   })
 
   validation {
-    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.talos.version))
-    error_message = "talos.version must be a Talos release in the form `1.12.6` or `v1.12.6`."
+    condition     = can(regex("^v[0-9]+\\.[0-9]+\\.[0-9]+$", var.talos.version))
+    error_message = "talos.version must be a Talos release in the form `v1.12.6` with the required `v` prefix."
   }
 }
 
@@ -48,11 +48,6 @@ variable "cluster_endpoint" {
   type        = string
   description = "Kubernetes/Talos cluster endpoint"
   default     = null
-}
-
-variable "talos_version" {
-  description = "Talos config schema/version, for example v1.12.2"
-  type        = string
 }
 
 variable "kubernetes_version" {
@@ -162,9 +157,3 @@ variable "kubeconfig_file_path" {
   default     = "out/kubeconfig"
 }
 
-# Add-ons and apps
-variable "ingress_host" {
-  type        = string
-  description = "Hostname for test ingress"
-  default     = "echo.home.arpa"
-}

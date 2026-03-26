@@ -70,44 +70,6 @@ resource "kubernetes_labels" "trusted_namespace_argocd" {
   depends_on = [helm_release.argocd]
 }
 
-resource "kubernetes_labels" "trusted_namespace_authentik" {
-  count = var.trust_manager_enabled && var.authentik_enabled ? 1 : 0
-
-  api_version = "v1"
-  kind        = "Namespace"
-
-  metadata {
-    name = "authentik"
-  }
-
-  labels = {
-    "trust.home.arpa/enabled" = "true"
-  }
-
-  force = true
-
-  depends_on = [terraform_data.authentik_namespace]
-}
-
-resource "kubernetes_labels" "trusted_namespace_forgejo" {
-  count = var.trust_manager_enabled && var.forgejo_enabled ? 1 : 0
-
-  api_version = "v1"
-  kind        = "Namespace"
-
-  metadata {
-    name = "forgejo"
-  }
-
-  labels = {
-    "trust.home.arpa/enabled" = "true"
-  }
-
-  force = true
-
-  depends_on = [helm_release.forgejo]
-}
-
 resource "kubernetes_manifest" "homelab_trust_bundle" {
   count = var.trust_manager_enabled ? 1 : 0
 
@@ -148,7 +110,5 @@ resource "kubernetes_manifest" "homelab_trust_bundle" {
     kubernetes_labels.trusted_namespace_default,
     kubernetes_labels.trusted_namespace_cert_manager,
     kubernetes_labels.trusted_namespace_argocd,
-    kubernetes_labels.trusted_namespace_authentik,
-    kubernetes_labels.trusted_namespace_forgejo,
   ]
 }

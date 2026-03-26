@@ -44,8 +44,6 @@ cp terraform.tfvars.example terraform.tfvars
 
 ```bash
 export TF_VAR_proxmox_api_token='terraform@pve!talos=...'
-# optional
-export TF_VAR_populate_cluster_bearer_token='...'
 ```
 
 Или через локальный SOPS-файл:
@@ -70,6 +68,8 @@ make apply-cluster
 
 - `out/kubeconfig`
 - `out/talosconfig`
+
+Root entrypoint требует `write_configs_to_files = true`, потому что platform bootstrap использует локальный `out/kubeconfig`.
 
 ### 3. Bootstrap platform operators
 
@@ -312,16 +312,12 @@ kubectl -n forgejo get secret forgejo-admin-secret
 kubectl -n authentik get secret forgejo-oidc
 ```
 
-### 6. Полный runtime apply
+### 6. Отдельный runtime/GitOps запуск
 
-После bootstrap `OpenBao` и записи секретов:
+После bootstrap `OpenBao` и записи секретов runtime-слой больше не поднимается через root entrypoint.
+Используйте отдельный модуль [gitops/](/home/zerodi/code/talos-proxmox-no-ssh/gitops) и его собственный запуск/подключение.
 
-```bash
-make plan-runtime
-make apply-runtime
-```
-
-Если `make plan-runtime` всё ещё падает, сначала проверьте:
+Перед этим проверьте:
 
 - что `ClusterSecretStore openbao` уже создан
 - что `external-secrets` controller запущен
@@ -331,7 +327,6 @@ make apply-runtime
 ## Что пока остаётся bootstrap-исключением
 
 - `Proxmox API token`
-- `populate_cluster_bearer_token`, если он вообще используется
 - `SSH`-доступ к Proxmox node для `proxmox_virtual_environment_file`
 - `Talos machine secrets`, которые генерирует Talos provider
 - `kubeconfig` и `talosconfig`

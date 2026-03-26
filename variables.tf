@@ -8,7 +8,6 @@ variable "proxmox" {
     node_name       = string
     vm_datastore    = string
     image_datastore = string
-
   })
 }
 
@@ -23,15 +22,13 @@ variable "proxmox_api_token" {
 variable "talos" {
   description = "Talos image and installation settings shared across bootstrap resources."
   type = object({
-    # Talos release version. Accepts `v1.12.6`.
-    version = string
-    # Talos Image Factory schematic ID used to build/download installer artifacts.
+    version      = string
     schematic_id = string
   })
 
   validation {
     condition     = can(regex("^v[0-9]+\\.[0-9]+\\.[0-9]+$", var.talos.version))
-    error_message = "talos.version must be a Talos release in the form `v1.12.6`."
+    error_message = "talos.version must be a Talos release in the form `v1.12.6` with the required `v` prefix."
   }
 }
 
@@ -55,11 +52,6 @@ variable "cluster_endpoint" {
   type        = string
   description = "Kubernetes/Talos cluster endpoint"
   default     = null
-}
-
-variable "talos_version" {
-  description = "Talos config schema/version, for example v1.12.2"
-  type        = string
 }
 
 variable "kubernetes_version" {
@@ -153,8 +145,13 @@ variable "worker_nodes" {
 # Generated configs
 variable "write_configs_to_files" {
   type        = bool
-  description = "Write talosconfig and kubeconfig to local files"
+  description = "Write talosconfig and kubeconfig to local files required by the bootstrap-only root entrypoint"
   default     = true
+
+  validation {
+    condition     = var.write_configs_to_files
+    error_message = "bootstrap-only root entrypoint requires write_configs_to_files = true because infrastructure uses the local kubeconfig file."
+  }
 }
 
 variable "talosconfig_file_path" {
@@ -169,22 +166,10 @@ variable "kubeconfig_file_path" {
   default     = "out/kubeconfig"
 }
 
-# Add-ons and apps
-variable "ingress_host" {
-  type        = string
-  description = "Hostname for test ingress"
-  default     = "echo.home.arpa"
-}
-
-variable "ingress_domain" {
-  type        = string
-  description = "Base DNS domain used for application ingresses"
-  default     = "home.arpa"
-}
-
+# Platform bootstrap
 variable "argocd_enabled" {
   type        = bool
-  description = "Deploy Argo CD into the cluster"
+  description = "Deploy Argo CD into the bootstrap platform layer"
   default     = false
 }
 
@@ -194,39 +179,9 @@ variable "argocd_host" {
   default     = "argocd.home.arpa"
 }
 
-variable "authentik_enabled" {
-  type        = bool
-  description = "Deploy Authentik into the cluster"
-  default     = false
-}
-
-variable "authentik_host" {
-  type        = string
-  description = "Ingress hostname for Authentik"
-  default     = "auth.home.arpa"
-}
-
-variable "forgejo_enabled" {
-  type        = bool
-  description = "Deploy Forgejo into the cluster"
-  default     = false
-}
-
-variable "forgejo_host" {
-  type        = string
-  description = "Ingress hostname for Forgejo"
-  default     = "git.home.arpa"
-}
-
-variable "forgejo_admin_email" {
-  type        = string
-  description = "Bootstrap admin email for Forgejo"
-  default     = "forgejo@home.arpa"
-}
-
 variable "trust_manager_enabled" {
   type        = bool
-  description = "Deploy trust-manager and distribute the internal CA bundle into selected namespaces"
+  description = "Deploy trust-manager and distribute the internal CA bundle into bootstrap namespaces"
   default     = true
 }
 
@@ -246,127 +201,7 @@ variable "piraeus_storage_pool_name" {
   default = "pool1"
 }
 
-variable "piraeus_volume_group_name" {
-  type    = string
-  default = "linstor_vg"
-}
-
-variable "piraeus_thin_pool_name" {
-  type    = string
-  default = "thinpool"
-}
-
 variable "piraeus_replica_count" {
   type    = number
   default = 2
-}
-
-variable "populate_enabled" {
-  type        = bool
-  description = "Populate Argo CD bootstrap resources after infrastructure is ready"
-  default     = false
-}
-
-variable "populate_argocd_namespace" {
-  type        = string
-  description = "Namespace where Argo CD is installed for the populate module"
-  default     = "argocd"
-}
-
-variable "populate_project_name" {
-  type        = string
-  description = "Argo CD AppProject name created by the populate module"
-  default     = "platform"
-}
-
-variable "populate_project_description" {
-  type        = string
-  description = "Argo CD AppProject description created by the populate module"
-  default     = "Platform workloads"
-}
-
-variable "populate_repo_base_url" {
-  type        = string
-  description = "Optional base URL for Git repository credentials; defaults to the Forgejo URL output"
-  default     = null
-  nullable    = true
-}
-
-variable "populate_repo_url" {
-  type        = string
-  description = "Optional GitOps repository URL; defaults to <forgejo_url>/platform/gitops.git"
-  default     = null
-  nullable    = true
-}
-
-variable "populate_repo_username" {
-  type        = string
-  description = "Optional repository username; defaults to the Forgejo admin username output"
-  default     = null
-  nullable    = true
-}
-
-variable "populate_repo_password" {
-  type        = string
-  description = "Deprecated. Runtime secrets should come from OpenBao via ESO, not from Terraform variables."
-  default     = null
-  nullable    = true
-  sensitive   = true
-}
-
-variable "populate_cluster_name" {
-  type        = string
-  description = "Optional Argo CD cluster secret name; defaults to cluster_name"
-  default     = null
-  nullable    = true
-}
-
-variable "populate_cluster_server" {
-  type        = string
-  description = "Kubernetes API server URL registered in Argo CD"
-  default     = "https://kubernetes.default.svc"
-}
-
-variable "populate_cluster_bearer_token" {
-  type        = string
-  description = "Optional bearer token for an explicit Argo CD cluster secret. Prefer TF_VAR_populate_cluster_bearer_token or an encrypted SOPS tfvars file."
-  default     = null
-  nullable    = true
-  sensitive   = true
-}
-
-variable "populate_authentik_application_slug" {
-  type        = string
-  description = "Authentik application slug used for the Forgejo OIDC provider"
-  default     = "forgejo"
-}
-
-variable "populate_forgejo_sso_name" {
-  type        = string
-  description = "Forgejo authentication source name for Authentik OIDC"
-  default     = "authentik"
-}
-
-variable "populate_gitops_owner" {
-  type        = string
-  description = "Forgejo owner or organization that will hold the GitOps repository"
-  default     = "platform"
-}
-
-variable "populate_gitops_repo" {
-  type        = string
-  description = "Forgejo repository name used by Argo CD"
-  default     = "gitops"
-}
-
-variable "populate_gitops_repo_description" {
-  type        = string
-  description = "Description for the bootstrap GitOps repository"
-  default     = "Cluster GitOps repository"
-}
-
-variable "populate_gitops_repo_private" {
-  type        = bool
-  description = "Create the bootstrap GitOps repository as private"
-  default     = true
 }

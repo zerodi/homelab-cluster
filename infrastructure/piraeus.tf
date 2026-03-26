@@ -2,21 +2,9 @@ locals {
   piraeus_storage_class_name = "linstor-${var.piraeus_storage_pool_name}-r${var.piraeus_replica_count}"
 }
 
-resource "terraform_data" "piraeus_namespace" {
-  triggers_replace = [
-    var.kubeconfig_path,
-    var.piraeus_namespace,
-  ]
-
-  provisioner "local-exec" {
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-
-    command = <<-EOT
-      set -eu
-      kubectl create namespace "${var.piraeus_namespace}" --dry-run=client -o yaml | kubectl apply -f -
-    EOT
+resource "kubernetes_namespace_v1" "piraeus" {
+  metadata {
+    name = var.piraeus_namespace
   }
 }
 
@@ -36,7 +24,7 @@ resource "kubernetes_labels" "piraeus_namespace_pod_security" {
     "pod-security.kubernetes.io/warn"    = "privileged"
   }
 
-  depends_on = [terraform_data.piraeus_namespace]
+  depends_on = [kubernetes_namespace_v1.piraeus]
 }
 
 resource "helm_release" "piraeus_operator" {
@@ -59,7 +47,7 @@ resource "helm_release" "piraeus_operator" {
   ]
 
   depends_on = [
-    terraform_data.piraeus_namespace,
+    kubernetes_namespace_v1.piraeus,
     kubernetes_labels.piraeus_namespace_pod_security,
   ]
 }
@@ -86,87 +74,86 @@ resource "terraform_data" "piraeus_operator_ready" {
   }
 }
 
-resource "terraform_data" "linstor_satellite_configuration_talos" {
-  triggers_replace = [
-    var.kubeconfig_path,
-    "talos-loader-override",
-  ]
-
-  provisioner "local-exec" {
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
+resource "kubernetes_manifest" "linstor_satellite_configuration_talos" {
+  manifest = {
+    apiVersion = "piraeus.io/v1"
+    kind       = "LinstorSatelliteConfiguration"
+    metadata = {
+      name = "talos-loader-override"
     }
-
-    command = <<-EOT
-      set -eu
-      cat <<'EOF' | kubectl apply -f -
-      apiVersion: piraeus.io/v1
-      kind: LinstorSatelliteConfiguration
-      metadata:
-        name: talos-loader-override
-      spec:
-        podTemplate:
-          spec:
-            initContainers:
-              - name: drbd-shutdown-guard
-                "$patch": delete
-              - name: drbd-module-loader
-                "$patch": delete
-            volumes:
-              - name: run-systemd-system
-                "$patch": delete
-              - name: run-drbd-shutdown-guard
-                "$patch": delete
-              - name: systemd-bus-socket
-                "$patch": delete
-              - name: lib-modules
-                "$patch": delete
-              - name: usr-src
-                "$patch": delete
-              - name: etc-lvm-backup
-                hostPath:
-                  path: /var/etc/lvm/backup
-                  type: DirectoryOrCreate
-              - name: etc-lvm-archive
-                hostPath:
-                  path: /var/etc/lvm/archive
-                  type: DirectoryOrCreate
-      EOF
-    EOT
+    spec = {
+      podTemplate = {
+        spec = {
+          initContainers = [
+            {
+              name     = "drbd-shutdown-guard"
+              "$patch" = "delete"
+            },
+            {
+              name     = "drbd-module-loader"
+              "$patch" = "delete"
+            },
+          ]
+          volumes = [
+            {
+              name     = "run-systemd-system"
+              "$patch" = "delete"
+            },
+            {
+              name     = "run-drbd-shutdown-guard"
+              "$patch" = "delete"
+            },
+            {
+              name     = "systemd-bus-socket"
+              "$patch" = "delete"
+            },
+            {
+              name     = "lib-modules"
+              "$patch" = "delete"
+            },
+            {
+              name     = "usr-src"
+              "$patch" = "delete"
+            },
+            {
+              name = "etc-lvm-backup"
+              hostPath = {
+                path = "/var/etc/lvm/backup"
+                type = "DirectoryOrCreate"
+              }
+            },
+            {
+              name = "etc-lvm-archive"
+              hostPath = {
+                path = "/var/etc/lvm/archive"
+                type = "DirectoryOrCreate"
+              }
+            },
+          ]
+        }
+      }
+    }
   }
 
   depends_on = [terraform_data.piraeus_operator_ready]
 }
 
-resource "terraform_data" "linstor_cluster" {
-  triggers_replace = [
-    var.kubeconfig_path,
-    "linstor",
-  ]
-
-  provisioner "local-exec" {
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
+resource "kubernetes_manifest" "linstor_cluster" {
+  manifest = {
+    apiVersion = "piraeus.io/v1"
+    kind       = "LinstorCluster"
+    metadata = {
+      name = "linstor"
     }
-
-    command = <<-EOT
-      set -eu
-      cat <<'EOF' | kubectl apply -f -
-      apiVersion: piraeus.io/v1
-      kind: LinstorCluster
-      metadata:
-        name: linstor
-      spec: {}
-      EOF
-    EOT
+    spec = {}
   }
 
-  depends_on = [terraform_data.linstor_satellite_configuration_talos]
+  depends_on = [kubernetes_manifest.linstor_satellite_configuration_talos]
 }
 
 resource "terraform_data" "linstor_cluster_ready" {
   triggers_replace = [
-    "linstor",
+    kubernetes_manifest.linstor_cluster.object.metadata.uid,
     var.kubeconfig_path,
     var.piraeus_namespace,
   ]
@@ -183,7 +170,7 @@ resource "terraform_data" "linstor_cluster_ready" {
     EOT
   }
 
-  depends_on = [terraform_data.linstor_cluster]
+  depends_on = [kubernetes_manifest.linstor_cluster]
 }
 
 resource "terraform_data" "linstor_device_pools" {
@@ -270,55 +257,5 @@ resource "kubernetes_storage_class_v1" "piraeus_replicated" {
     "linstor.csi.linbit.com/storagePool" = var.piraeus_storage_pool_name
   }
 
-  depends_on = [terraform_data.linstor_device_pools]
-}
-
-resource "kubernetes_persistent_volume_claim_v1" "piraeus_test" {
-  metadata {
-    name      = "piraeus-test-pvc"
-    namespace = "default"
-  }
-
-  spec {
-    access_modes       = ["ReadWriteOnce"]
-    storage_class_name = kubernetes_storage_class_v1.piraeus_replicated.metadata[0].name
-
-    resources {
-      requests = {
-        storage = "1Gi"
-      }
-    }
-  }
-
   depends_on = [terraform_data.linstor_csi_ready]
-}
-
-resource "kubernetes_pod_v1" "piraeus_test" {
-  metadata {
-    name      = "piraeus-test-pod"
-    namespace = "default"
-  }
-
-  spec {
-    container {
-      name    = "busybox"
-      image   = "busybox:1.36"
-      command = ["sh", "-c", "while true; do date >> /data/out.txt; sleep 10; done"]
-
-      volume_mount {
-        name       = "data"
-        mount_path = "/data"
-      }
-    }
-
-    volume {
-      name = "data"
-
-      persistent_volume_claim {
-        claim_name = kubernetes_persistent_volume_claim_v1.piraeus_test.metadata[0].name
-      }
-    }
-  }
-
-  depends_on = [kubernetes_persistent_volume_claim_v1.piraeus_test]
 }

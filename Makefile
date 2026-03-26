@@ -2,7 +2,6 @@
 	plan-cluster apply-cluster \
 	plan-platform-bootstrap apply-platform-bootstrap \
 	day0-guide \
-	plan-runtime apply-runtime \
 	plan apply \
 	from-scratch destroy-infrastructure destroy-bootstrap destroy
 
@@ -17,8 +16,8 @@ help:
 		'  make plan-platform-bootstrap  - plan bootstrap-операторов и их CRD' \
 		'  make apply-platform-bootstrap - apply bootstrap-операторов и их CRD' \
 		'  make day0-guide               - вывести ручные шаги day-0 для OpenBao' \
-		'  make plan-runtime             - полный tofu plan после day-0 bootstrap' \
-		'  make apply-runtime            - полный tofu apply после day-0 bootstrap' \
+		'  make plan                     - полный tofu plan для bootstrap-only root entrypoint' \
+		'  make apply                    - полный tofu apply для bootstrap-only root entrypoint' \
 		'  make from-scratch             - поднять кластер, platform bootstrap и вывести дальнейшие шаги' \
 		'  make destroy                  - сначала удалить infrastructure, затем bootstrap'
 
@@ -65,19 +64,14 @@ day0-guide:
 		'     - secret/platform/authentik/runtime' \
 		'     - secret/platform/forgejo/admin' \
 		'     - secret/platform/forgejo/oidc' \
-		'  7. Передайте Terraform secrets через TF_VAR_* или secrets.sops.tfvars.' \
-		'  8. Выполните make plan-runtime и make apply-runtime.' \
-		'  9. Полный runbook: docs/day0-bootstrap.md'
+		'  7. Runtime и GitOps bootstrap теперь выполняются через отдельный модуль gitops/.' \
+		'  8. Полный runbook: docs/day0-bootstrap.md'
 
-plan-runtime:
+plan:
 	tofu plan
 
-apply-runtime:
+apply:
 	tofu apply
-
-plan: plan-runtime
-
-apply: apply-runtime
 
 from-scratch:
 	tofu apply -target=module.bootstrap
