@@ -1,0 +1,144 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: forgejo-sso-bootstrap
+  namespace: forgejo
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 6
+  activeDeadlineSeconds: 900
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      serviceAccountName: forgejo-sso-bootstrap
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: bootstrap
+          image: bitnami/kubectl:1.30.5
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          env:
+            - name: FORGEJO_SSO_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: forgejo-sso-config
+                  key: provider_name
+            - name: OIDC_DISCOVERY_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: forgejo-sso-config
+                  key: discovery_url
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: forgejo-oidc
+                  key: client_id
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: forgejo-oidc
+                  key: client_secret
+            - name: SSL_CERT_FILE
+              value: /etc/ssl/certs/homelab-root-ca.crt
+          volumeMounts:
+            - name: homelab-root-ca
+              mountPath: /etc/ssl/certs/homelab-root-ca.crt
+              subPath: ca-bundle.crt
+              readOnly: true
+          command:
+            - /bin/sh
+            - -ceu
+            - |
+              if [ -z "$FORGEJO_SSO_NAME" ] || [ -z "$OIDC_DISCOVERY_URL" ]; then
+                echo 'missing Forgejo SSO configuration'
+                exit 1
+              fi
+
+              for _ in $(seq 1 60); do
+                if kubectl -n forgejo get secret forgejo-oidc >/dev/null 2>&1; then
+                  break
+                fi
+                sleep 5
+              done
+              kubectl -n forgejo get secret forgejo-oidc >/dev/null
+
+              kubectl -n forgejo wait --for=condition=Ready pod -l app.kubernetes.io/instance=forgejo --timeout=10m
+              POD_NAME="$(kubectl -n forgejo get pods -l app.kubernetes.io/instance=forgejo --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')"
+              if [ -z "$POD_NAME" ]; then
+                echo 'forgejo running pod not found'
+                exit 1
+              fi
+
+              kubectl -n forgejo exec -i "$POD_NAME" -- sh -ceu '
+                cat > /tmp/homelab-root-ca.crt
+                chmod 0600 /tmp/homelab-root-ca.crt
+                if command -v update-ca-certificates >/dev/null 2>&1; then
+                  if mkdir -p /usr/local/share/ca-certificates 2>/dev/null &&
+                     cp /tmp/homelab-root-ca.crt /usr/local/share/ca-certificates/homelab-root-ca.crt 2>/dev/null; then
+                    update-ca-certificates >/dev/null 2>&1 || true
+                  fi
+                fi
+              ' < /etc/ssl/certs/homelab-root-ca.crt
+
+              for _ in $(seq 1 30); do
+                if ! kubectl -n forgejo exec "$POD_NAME" -- env OIDC_DISCOVERY_URL="$OIDC_DISCOVERY_URL" sh -ceu '
+                    export SSL_CERT_FILE=/tmp/homelab-root-ca.crt
+                    wget -q -O- "$OIDC_DISCOVERY_URL" >/dev/null
+                  '; then
+                  sleep 10
+                  continue
+                fi
+
+                AUTH_ID="$({ kubectl -n forgejo exec "$POD_NAME" -- sh -ceu 'forgejo admin auth list --vertical-bars || true'; } | awk -F'|' -v name="$FORGEJO_SSO_NAME" '
+                  $0 ~ name {
+                    for (i = 1; i <= NF; i++) {
+                      field = $i
+                      gsub(/^[[:space:]]+|[[:space:]]+$/, "", field)
+                      if (field ~ /^[0-9]+$/) {
+                        print field
+                        exit
+                      }
+                    }
+                  }
+                ')"
+
+                if [ -n "$AUTH_ID" ]; then
+                  if kubectl -n forgejo exec "$POD_NAME" -- env FORGEJO_SSO_NAME="$FORGEJO_SSO_NAME" OIDC_CLIENT_ID="$OIDC_CLIENT_ID" OIDC_CLIENT_SECRET="$OIDC_CLIENT_SECRET" OIDC_DISCOVERY_URL="$OIDC_DISCOVERY_URL" AUTH_ID="$AUTH_ID" sh -ceu '
+                      export SSL_CERT_FILE=/tmp/homelab-root-ca.crt
+                      forgejo admin auth update-oauth --id "$AUTH_ID" --name "$FORGEJO_SSO_NAME" --provider openidConnect --key "$OIDC_CLIENT_ID" --secret "$OIDC_CLIENT_SECRET" --auto-discover-url "$OIDC_DISCOVERY_URL" --scopes openid --scopes email --scopes profile
+                    '; then
+                    exit 0
+                  fi
+                else
+                  if kubectl -n forgejo exec "$POD_NAME" -- env FORGEJO_SSO_NAME="$FORGEJO_SSO_NAME" OIDC_CLIENT_ID="$OIDC_CLIENT_ID" OIDC_CLIENT_SECRET="$OIDC_CLIENT_SECRET" OIDC_DISCOVERY_URL="$OIDC_DISCOVERY_URL" sh -ceu '
+                      export SSL_CERT_FILE=/tmp/homelab-root-ca.crt
+                      forgejo admin auth add-oauth --name "$FORGEJO_SSO_NAME" --provider openidConnect --key "$OIDC_CLIENT_ID" --secret "$OIDC_CLIENT_SECRET" --auto-discover-url "$OIDC_DISCOVERY_URL" --scopes openid --scopes email --scopes profile
+                    '; then
+                    exit 0
+                  fi
+                fi
+
+                sleep 10
+              done
+
+              echo 'timed out waiting for forgejo admin auth bootstrap to succeed'
+              exit 1
+      volumes:
+        - name: homelab-root-ca
+          configMap:
+            name: homelab-root-ca

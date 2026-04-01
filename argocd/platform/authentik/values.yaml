@@ -1,0 +1,51 @@
+authentik:
+  existingSecret:
+    secretName: authentik-runtime
+  host: https://auth.home.arpa
+  error_reporting:
+    enabled: false
+  outposts:
+    authentik_host: https://auth.home.arpa
+    authentik_host_browser: https://auth.home.arpa
+  postgresql:
+    host: authentik-postgresql
+    name: authentik
+    user: authentik
+  redis:
+    host: authentik-redis-master
+server:
+  ingress:
+    enabled: true
+    ingressClassName: cilium
+    annotations:
+      cert-manager.io/cluster-issuer: homelab-ca
+    hosts:
+      - auth.home.arpa
+    tls:
+      - secretName: authentik-tls
+        hosts:
+          - auth.home.arpa
+blueprints:
+  configMaps:
+    - authentik-blueprints
+  secrets:
+    - forgejo-sso-blueprint
+postgresql:
+  enabled: true
+  auth:
+    existingSecret: authentik-runtime
+    secretKeys:
+      userPasswordKey: postgresql-password
+      adminPasswordKey: postgresql-password
+  primary:
+    persistence:
+      enabled: true
+      storageClass: linstor-pool1-r2
+      size: 10Gi
+redis:
+  enabled: true
+  master:
+    persistence:
+      enabled: true
+      storageClass: linstor-pool1-r2
+      size: 5Gi

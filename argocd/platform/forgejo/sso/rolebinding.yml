@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: forgejo-sso-bootstrap
+  namespace: forgejo
+subjects:
+  - kind: ServiceAccount
+    name: forgejo-sso-bootstrap
+    namespace: forgejo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: forgejo-sso-bootstrap

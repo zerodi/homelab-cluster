@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: forgejo-sso-config
+  namespace: forgejo
+data:
+  provider_name: Authentik
+  discovery_url: https://auth.home.arpa/application/o/forgejo/.well-known/openid-configuration

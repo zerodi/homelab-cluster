@@ -2,7 +2,7 @@ locals {
   platform              = "nocloud"
   arch                  = "amd64"
   talos_image_url       = "https://factory.talos.dev/image/${var.talos.schematic_id}/${var.talos.version}/${local.platform}-${local.arch}.raw.xz"
-  talos_image_path      = "${path.root}/out/talos-${var.talos.schematic_id}-${var.talos.version}-${local.platform}-${local.arch}.raw"
+  talos_image_path      = "${path.root}/../out/talos-${var.talos.schematic_id}-${var.talos.version}-${local.platform}-${local.arch}.raw"
   talos_image_file_name = "talos-${var.talos.version}-${local.platform}-${local.arch}.img"
 }
 

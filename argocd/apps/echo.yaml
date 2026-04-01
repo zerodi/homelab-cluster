@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: echo
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: apps
+  source:
+    repoURL: https://git.example.invalid/replace-me/gitops.git
+    targetRevision: main
+    path: apps/echo/resources
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: echo
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

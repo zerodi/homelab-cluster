@@ -1,5 +1,5 @@
 resource "helm_release" "argocd" {
-  count = var.argocd_enabled ? 1 : 0
+  count = local.effective_argocd_enabled && var.crd_backed_resources_enabled ? 1 : 0
 
   name             = "argocd"
   namespace        = "argocd"
@@ -14,7 +14,7 @@ resource "helm_release" "argocd" {
 
   values = [yamlencode({
     global = {
-      domain = var.argocd_host
+      domain = local.effective_argocd_host
     }
     configs = {
       params = {
@@ -34,7 +34,7 @@ resource "helm_release" "argocd" {
         annotations = {
           "cert-manager.io/cluster-issuer" = "homelab-ca"
         }
-        hostname = var.argocd_host
+        hostname = local.effective_argocd_host
         tls      = true
       }
     }
@@ -44,17 +44,17 @@ resource "helm_release" "argocd" {
 }
 
 resource "terraform_data" "argocd_ready" {
-  count = var.argocd_enabled ? 1 : 0
+  count = local.effective_argocd_enabled && var.crd_backed_resources_enabled ? 1 : 0
 
   triggers_replace = [
     helm_release.argocd[0].id,
-    var.kubeconfig_path,
-    var.argocd_host,
+    local.effective_kubeconfig_path,
+    local.effective_argocd_host,
   ]
 
   provisioner "local-exec" {
     environment = {
-      KUBECONFIG = var.kubeconfig_path
+      KUBECONFIG = local.effective_kubeconfig_path
     }
 
     command = <<-EOT

@@ -32,7 +32,10 @@ resource "helm_release" "openbao" {
     }
   })]
 
-  depends_on = [terraform_data.linstor_csi_ready, kubernetes_storage_class_v1.piraeus_replicated]
+  depends_on = [
+    terraform_data.linstor_csi_ready,
+    kubernetes_storage_class_v1.piraeus_replicated,
+  ]
 }
 
 resource "helm_release" "external_secrets" {
@@ -70,39 +73,4 @@ resource "kubernetes_cluster_role_binding_v1" "external_secrets_openbao_auth_del
   }
 
   depends_on = [helm_release.external_secrets]
-}
-
-resource "kubernetes_manifest" "openbao_cluster_secret_store" {
-  manifest = {
-    apiVersion = "external-secrets.io/v1"
-    kind       = "ClusterSecretStore"
-    metadata = {
-      name = "openbao"
-    }
-    spec = {
-      provider = {
-        vault = {
-          server  = "http://openbao.openbao.svc.cluster.local:8200"
-          path    = "secret"
-          version = "v2"
-          auth = {
-            kubernetes = {
-              mountPath = "kubernetes"
-              role      = "external-secrets"
-              serviceAccountRef = {
-                name      = "external-secrets"
-                namespace = "external-secrets"
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  depends_on = [
-    helm_release.openbao,
-    helm_release.external_secrets,
-    kubernetes_cluster_role_binding_v1.external_secrets_openbao_auth_delegator,
-  ]
 }

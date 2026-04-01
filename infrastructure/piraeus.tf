@@ -1,10 +1,10 @@
 locals {
-  piraeus_storage_class_name = "linstor-${var.piraeus_storage_pool_name}-r${var.piraeus_replica_count}"
+  piraeus_storage_class_name = "linstor-${local.effective_piraeus_storage_pool_name}-r${local.effective_piraeus_replica_count}"
 }
 
 resource "kubernetes_namespace_v1" "piraeus" {
   metadata {
-    name = var.piraeus_namespace
+    name = local.effective_piraeus_namespace
   }
 }
 
@@ -13,7 +13,7 @@ resource "kubernetes_labels" "piraeus_namespace_pod_security" {
   kind        = "Namespace"
 
   metadata {
-    name = var.piraeus_namespace
+    name = local.effective_piraeus_namespace
   }
 
   force = true
@@ -29,7 +29,7 @@ resource "kubernetes_labels" "piraeus_namespace_pod_security" {
 
 resource "helm_release" "piraeus_operator" {
   name             = "piraeus-operator"
-  namespace        = var.piraeus_namespace
+  namespace        = local.effective_piraeus_namespace
   create_namespace = false
 
   repository = "oci://ghcr.io/piraeusdatastore/piraeus-operator"
@@ -55,19 +55,19 @@ resource "helm_release" "piraeus_operator" {
 resource "terraform_data" "piraeus_operator_ready" {
   triggers_replace = [
     helm_release.piraeus_operator.id,
-    var.kubeconfig_path,
-    var.piraeus_namespace,
+    local.effective_kubeconfig_path,
+    local.effective_piraeus_namespace,
   ]
 
   provisioner "local-exec" {
     environment = {
-      KUBECONFIG = var.kubeconfig_path
+      KUBECONFIG = local.effective_kubeconfig_path
     }
 
     command = <<-EOT
       set -eu
-      kubectl wait pod --timeout=15m --for=condition=Ready -n "${var.piraeus_namespace}" -l app.kubernetes.io/component=piraeus-operator
-      until kubectl -n "${var.piraeus_namespace}" get endpoints piraeus-operator-webhook-service -o jsonpath='{.subsets[0].addresses[0].ip}' 2>/dev/null | grep -q .; do
+      kubectl wait pod --timeout=15m --for=condition=Ready -n "${local.effective_piraeus_namespace}" -l app.kubernetes.io/component=piraeus-operator
+      until kubectl -n "${local.effective_piraeus_namespace}" get endpoints piraeus-operator-webhook-service -o jsonpath='{.subsets[0].addresses[0].ip}' 2>/dev/null | grep -q .; do
         sleep 5
       done
     EOT
@@ -75,6 +75,8 @@ resource "terraform_data" "piraeus_operator_ready" {
 }
 
 resource "kubernetes_manifest" "linstor_satellite_configuration_talos" {
+  count = var.crd_backed_resources_enabled ? 1 : 0
+
   manifest = {
     apiVersion = "piraeus.io/v1"
     kind       = "LinstorSatelliteConfiguration"
@@ -139,6 +141,8 @@ resource "kubernetes_manifest" "linstor_satellite_configuration_talos" {
 }
 
 resource "kubernetes_manifest" "linstor_cluster" {
+  count = var.crd_backed_resources_enabled ? 1 : 0
+
   manifest = {
     apiVersion = "piraeus.io/v1"
     kind       = "LinstorCluster"
@@ -152,93 +156,66 @@ resource "kubernetes_manifest" "linstor_cluster" {
 }
 
 resource "terraform_data" "linstor_cluster_ready" {
+  count = var.crd_backed_resources_enabled ? 1 : 0
+
   triggers_replace = [
-    kubernetes_manifest.linstor_cluster.object.metadata.uid,
-    var.kubeconfig_path,
-    var.piraeus_namespace,
+    kubernetes_manifest.linstor_cluster[0].object.metadata.uid,
+    local.effective_kubeconfig_path,
+    local.effective_piraeus_namespace,
   ]
 
   provisioner "local-exec" {
     environment = {
-      KUBECONFIG = var.kubeconfig_path
+      KUBECONFIG = local.effective_kubeconfig_path
     }
 
     command = <<-EOT
       set -eu
-      kubectl wait pod --timeout=15m --for=condition=Ready -n "${var.piraeus_namespace}" -l app.kubernetes.io/name=piraeus-datastore
-      kubectl wait --timeout=15m -n "${var.piraeus_namespace}" --for=condition=Available linstorcluster/linstor
+      kubectl wait pod --timeout=15m --for=condition=Ready -n "${local.effective_piraeus_namespace}" -l app.kubernetes.io/name=piraeus-datastore
+      kubectl wait --timeout=15m -n "${local.effective_piraeus_namespace}" --for=condition=Available linstorcluster/linstor
     EOT
   }
 
   depends_on = [kubernetes_manifest.linstor_cluster]
 }
 
-resource "terraform_data" "linstor_device_pools" {
+resource "terraform_data" "linstor_csi_ready" {
+  count = var.crd_backed_resources_enabled ? 1 : 0
+
   triggers_replace = [
-    terraform_data.linstor_cluster_ready.id,
-    var.kubeconfig_path,
-    join(",", var.piraeus_storage_nodes),
-    var.piraeus_storage_device,
-    var.piraeus_storage_pool_name,
+    terraform_data.linstor_cluster_ready[0].id,
+    local.effective_kubeconfig_path,
+    local.effective_piraeus_namespace,
+    local.effective_piraeus_storage_pool_name,
   ]
+
+  lifecycle {
+    precondition {
+      condition     = length(local.effective_piraeus_storage_nodes) > 0
+      error_message = "Piraeus bootstrap requires at least one storage node. Set piraeus_storage_nodes explicitly or run infrastructure after the root bootstrap state is present."
+    }
+  }
 
   provisioner "local-exec" {
     environment = {
-      KUBECONFIG = var.kubeconfig_path
+      KUBECONFIG = local.effective_kubeconfig_path
     }
 
     command = <<-EOT
       set -eu
-      if [ -z "${join(" ", var.piraeus_storage_nodes)}" ]; then
-        exit 0
-      fi
+      kubectl wait pod --timeout=15m --for=condition=Ready -n "${local.effective_piraeus_namespace}" -l app.kubernetes.io/component=linstor-controller
+      kubectl wait pod --timeout=15m --for=condition=Ready -n "${local.effective_piraeus_namespace}" -l app.kubernetes.io/component=linstor-csi-controller
+      kubectl wait pod --timeout=15m --for=condition=Ready -n "${local.effective_piraeus_namespace}" -l app.kubernetes.io/component=linstor-csi-node
 
-      for node in ${join(" ", var.piraeus_storage_nodes)}; do
-        until kubectl linstor storage-pool list --node "$node" 2>&1 | grep -q "$node;DfltDisklessStorPool"; do
-          sleep 3
+      for node in ${join(" ", local.effective_piraeus_storage_nodes)}; do
+        until kubectl linstor storage-pool list --node "$node" --storage-pool "${local.effective_piraeus_storage_pool_name}" 2>/dev/null | grep -q "${local.effective_piraeus_storage_pool_name}"; do
+          sleep 5
         done
-
-        if ! kubectl linstor storage-pool list --node "$node" --storage-pool "${var.piraeus_storage_pool_name}" | grep -q "${var.piraeus_storage_pool_name}"; then
-          kubectl linstor physical-storage create-device-pool \
-            --pool-name "${var.piraeus_storage_pool_name}" \
-            --storage-pool "${var.piraeus_storage_pool_name}" \
-            lvm \
-            "$node" \
-            "${var.piraeus_storage_device}"
-        fi
       done
     EOT
   }
 
   depends_on = [terraform_data.linstor_cluster_ready]
-}
-
-resource "terraform_data" "linstor_csi_ready" {
-  triggers_replace = [
-    terraform_data.linstor_device_pools.id,
-    var.kubeconfig_path,
-    var.piraeus_namespace,
-    var.piraeus_storage_pool_name,
-  ]
-
-  provisioner "local-exec" {
-    environment = {
-      KUBECONFIG = var.kubeconfig_path
-    }
-
-    command = <<-EOT
-      set -eu
-      kubectl wait pod --timeout=15m --for=condition=Ready -n "${var.piraeus_namespace}" -l app.kubernetes.io/component=linstor-controller
-      kubectl wait pod --timeout=15m --for=condition=Ready -n "${var.piraeus_namespace}" -l app.kubernetes.io/component=linstor-csi-controller
-      kubectl wait pod --timeout=15m --for=condition=Ready -n "${var.piraeus_namespace}" -l app.kubernetes.io/component=linstor-csi-node
-
-      until kubectl linstor storage-pool list 2>/dev/null | grep -q "${var.piraeus_storage_pool_name}"; do
-        sleep 5
-      done
-    EOT
-  }
-
-  depends_on = [terraform_data.linstor_device_pools]
 }
 
 resource "kubernetes_storage_class_v1" "piraeus_replicated" {
@@ -253,8 +230,8 @@ resource "kubernetes_storage_class_v1" "piraeus_replicated" {
 
   parameters = {
     "csi.storage.k8s.io/fstype"          = "xfs"
-    "linstor.csi.linbit.com/autoPlace"   = tostring(var.piraeus_replica_count)
-    "linstor.csi.linbit.com/storagePool" = var.piraeus_storage_pool_name
+    "linstor.csi.linbit.com/autoPlace"   = tostring(local.effective_piraeus_replica_count)
+    "linstor.csi.linbit.com/storagePool" = local.effective_piraeus_storage_pool_name
   }
 
   depends_on = [terraform_data.linstor_csi_ready]

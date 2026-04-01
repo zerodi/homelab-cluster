@@ -11,13 +11,13 @@
 
 Текущий проект разделён так:
 
-- root entrypoint: bootstrap-only
-- `bootstrap/`: Proxmox VM, Talos image, Talos machine config, cluster bootstrap, локальные `kubeconfig` и `talosconfig`
-- `infrastructure/`: минимальный platform bootstrap внутри Kubernetes
-- `gitops/`: отдельный runtime/GitOps модуль, не подключён к root entrypoint
+- root: только `terraform.tfvars`, `terraform.tfvars.example`, `secrets.sops.tfvars.example` и общая документация
+- `bootstrap/`: самостоятельный Terraform/OpenTofu entrypoint для Proxmox VM, Talos image, Talos machine config, cluster bootstrap, локальных `kubeconfig` и `talosconfig`
+- `infrastructure/`: отдельный Terraform/OpenTofu entrypoint для минимального platform bootstrap внутри Kubernetes
+- `argocd/`: отдельный runtime/GitOps scaffold, не подключённый к Terraform entrypoint
 
-Runtime не должен возвращаться в root `main.tf`.
-`authentik`, `forgejo`, `echo` и app-level GitOps bootstrap живут вне bootstrap-only entrypoint.
+Runtime не должен возвращаться ни в `bootstrap/`, ни в `infrastructure/`.
+`authentik`, `forgejo`, `echo` и app-level GitOps bootstrap живут вне Terraform bootstrap entrypoint.
 
 ## Ownership Rules
 
@@ -40,7 +40,7 @@ Runtime не должен возвращаться в root `main.tf`.
 - `argocd`
 - bootstrap CRD / issuer / storage / secret-store readiness
 
-`gitops/` владеет только runtime-слоем:
+`argocd/` владеет только runtime-слоем:
 
 - `echo`
 - `authentik`
@@ -57,7 +57,7 @@ Runtime не должен возвращаться в root `main.tf`.
 2. предпочитать чистый bootstrap path:
    - `make apply-cluster`
    - `make apply-platform-bootstrap`
-   - затем отдельный запуск `gitops/`, если задача относится к runtime
+   - затем отдельный запуск `argocd/`, если задача относится к runtime
 3. не проектировать решение вокруг already-existing runtime resources
 
 Если задача действительно про миграцию существующего state, это должно быть явно зафиксировано в ответе и в изменениях.
@@ -66,7 +66,7 @@ Runtime не должен возвращаться в root `main.tf`.
 
 Не делать без явного запроса:
 
-- не подключать `gitops/` обратно в текущий root entrypoint
+- не подключать `argocd/` обратно в Terraform bootstrap entrypoint
 - не возвращать runtime-ресурсы в `infrastructure/`
 - не добавлять app-level manifests в `default` namespace как часть bootstrap baseline
 - не хранить runtime secrets в `terraform.tfvars`, `outputs`, `values.yaml` или repo
@@ -80,9 +80,9 @@ Runtime не должен возвращаться в root `main.tf`.
 - `OpenBao` — source of truth для runtime secrets
 - `External Secrets Operator` — доставка runtime secrets в Kubernetes
 - `SOPS/age` — только для day-0 bootstrap секретов Terraform
-- root outputs не должны публиковать runtime secrets
+- root `tfvars` и examples не должны становиться source of truth для runtime secrets
 
-Новые runtime secrets нельзя добавлять в root `variables.tf`, `terraform.tfvars.example` или root `outputs.tf`.
+Новые runtime secrets нельзя добавлять в root `terraform.tfvars.example`, `secrets.sops.tfvars.example` или runtime manifests.
 
 ## Change Strategy
 
@@ -90,7 +90,7 @@ Runtime не должен возвращаться в root `main.tf`.
 
 - если изменение касается VM, Talos, bootstrap networking, `out/` артефактов: это `bootstrap/`
 - если изменение нужно для доведения кластера до `ArgoCD + OpenBao + ESO + Storage ready`: это `infrastructure/`
-- если изменение касается приложений или app-level manifests: это `gitops/`
+- если изменение касается приложений или app-level manifests: это `argocd/`
 
 Если изменение пересекает границу слоёв, агент должен сначала объяснить причину такой границы и минимизировать связность.
 
@@ -100,9 +100,9 @@ Runtime не должен возвращаться в root `main.tf`.
 
 - `tofu fmt`
 - `tofu validate`
-- `tofu plan`, если изменение затрагивает root bootstrap path
+- `tofu plan`, если изменение затрагивает bootstrap path
 
-Если меняется только `gitops/`, проверять нужно отдельно в его own entrypoint/контексте.
+Если меняется только `argocd/`, проверять нужно отдельно в его own entrypoint/контексте.
 
 Если локально нет `tofu` или доступного кластера, агент должен прямо сказать, что проверка не выполнена.
 
@@ -110,7 +110,7 @@ Runtime не должен возвращаться в root `main.tf`.
 
 При аудите и review в первую очередь ищите:
 
-- утечку runtime обратно в bootstrap-only root
+- утечку runtime обратно в `bootstrap/` или `infrastructure/`
 - зависимость bootstrap от уже существующего state
 - хранение секретов не по модели `OpenBao/ESO/SOPS`
 - `terraform_data + local-exec`, который создаёт long-lived runtime objects

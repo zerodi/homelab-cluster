@@ -12,6 +12,14 @@ variable "proxmox" {
   })
 }
 
+variable "proxmox_api_token" {
+  type        = string
+  description = "Sensitive Proxmox API token. Prefer TF_VAR_proxmox_api_token or an encrypted SOPS tfvars file over terraform.tfvars."
+  default     = null
+  nullable    = true
+  sensitive   = true
+}
+
 
 variable "talos" {
   description = "Talos image and installation settings shared across bootstrap resources."
@@ -138,22 +146,64 @@ variable "worker_nodes" {
   }))
 }
 
-# Generated configs
 variable "write_configs_to_files" {
   type        = bool
-  description = "Write talosconfig and kubeconfig to local files"
+  description = "Write talosconfig and kubeconfig to local files required by the bootstrap entrypoint"
   default     = true
+
+  validation {
+    condition     = var.write_configs_to_files
+    error_message = "bootstrap entrypoint requires write_configs_to_files = true because infrastructure uses the local kubeconfig file."
+  }
 }
 
 variable "talosconfig_file_path" {
   type        = string
   description = "Path to write talosconfig"
-  default     = "out/talosconfig"
+  default     = "../out/talosconfig"
 }
 
 variable "kubeconfig_file_path" {
   type        = string
   description = "Path to write kubeconfig"
-  default     = "out/kubeconfig"
+  default     = "../out/kubeconfig"
 }
 
+variable "argocd_enabled" {
+  type        = bool
+  description = "Deploy Argo CD into the bootstrap platform layer"
+  default     = false
+}
+
+variable "argocd_host" {
+  type        = string
+  description = "Ingress hostname for Argo CD"
+  default     = "argocd.home.arpa"
+}
+
+variable "trust_manager_enabled" {
+  type        = bool
+  description = "Deploy trust-manager and distribute the internal CA bundle into bootstrap namespaces"
+  default     = true
+}
+
+variable "piraeus_namespace" {
+  type    = string
+  default = "piraeus-datastore"
+}
+
+variable "piraeus_storage_device" {
+  type        = string
+  description = "Raw block device for LINSTOR storage pool, e.g. /dev/sdb"
+  default     = "/dev/sdb"
+}
+
+variable "piraeus_storage_pool_name" {
+  type    = string
+  default = "pool1"
+}
+
+variable "piraeus_replica_count" {
+  type    = number
+  default = 2
+}

@@ -1,0 +1,48 @@
+valkey-cluster:
+  enabled: false
+valkey:
+  enabled: false
+postgresql:
+  enabled: false
+postgresql-ha:
+  enabled: false
+persistence:
+  enabled: true
+  storageClass: linstor-pool1-r2
+  size: 10Gi
+gitea:
+  admin:
+    existingSecret: forgejo-admin-secret
+    email: forgejo@home.arpa
+  config:
+    database:
+      DB_TYPE: sqlite3
+    session:
+      PROVIDER: memory
+    cache:
+      ADAPTER: memory
+    queue:
+      TYPE: level
+    server:
+      ROOT_URL: https://git.home.arpa/
+service:
+  http:
+    type: ClusterIP
+    port: 3000
+  ssh:
+    type: ClusterIP
+    port: 22
+ingress:
+  enabled: true
+  ingressClassName: cilium
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  hosts:
+    - host: git.home.arpa
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: forgejo-tls
+      hosts:
+        - git.home.arpa

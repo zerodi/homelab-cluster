@@ -38,6 +38,11 @@ cp terraform.tfvars.example terraform.tfvars
 # заполните terraform.tfvars только несекретными значениями
 ```
 
+`make init` теперь инициализирует оба entrypoint:
+
+- `bootstrap/`
+- `infrastructure/`
+
 Секреты Terraform передавайте отдельно.
 
 Через переменные окружения:
@@ -69,7 +74,8 @@ make apply-cluster
 - `out/kubeconfig`
 - `out/talosconfig`
 
-Root entrypoint требует `write_configs_to_files = true`, потому что platform bootstrap использует локальный `out/kubeconfig`.
+`bootstrap/` требует `write_configs_to_files = true`, потому что platform bootstrap использует локальный `out/kubeconfig`.
+Platform bootstrap выполняется из отдельного entrypoint `infrastructure/`, который читает не-секретные входы из `bootstrap/terraform.tfstate`.
 
 ### 3. Bootstrap platform operators
 
@@ -77,6 +83,8 @@ Root entrypoint требует `write_configs_to_files = true`, потому ч�
 make plan-platform-bootstrap
 make apply-platform-bootstrap
 ```
+
+`make plan-platform-bootstrap` строит план только для первой стадии platform bootstrap, где ещё нет CRD-зависимых manifests.
 
 Эта фаза поднимает:
 
@@ -86,15 +94,18 @@ make apply-platform-bootstrap
 - `trust-manager`
 - `piraeus-operator`
 
+Во время `make apply-platform-bootstrap` сначала поэтапно ставятся CRD-delivering releases и CRD-backed manifests, затем LINSTOR device pools создаются отдельным helper-скриптом вне Terraform graph, и только после этого выполняется финальный `infrastructure` apply.
+
+Для обратного teardown используйте `make destroy-infrastructure` перед `make destroy-bootstrap`. Этот helper сначала удаляет CRD-backed manifests при живых CRD, а если какие-то CRD уже отсутствуют, вычищает только соответствующие адреса из `infrastructure` state и завершает `tofu destroy -refresh=false`.
+
+Первая стадия запускается с отключёнными `crd_backed_resources`, чтобы `tofu plan/apply` не пытался резолвить `ClusterIssuer`, `Certificate`, `Bundle` и `Linstor*` до появления их CRD в API discovery.
+
 ### 4. Ручной bootstrap OpenBao
 
 Нужно вручную:
 
 1. Инициализировать и разлочить `OpenBao`
-2. Включить `KV v2` на пути `secret/`
-3. Включить Kubernetes auth
-4. Создать policy для `ESO`
-5. Создать role `external-secrets`
+2. Получить `BAO_TOKEN` с правами на конфигурацию `auth/policy/role`
 
 Для напоминания можно использовать:
 
@@ -102,7 +113,22 @@ make apply-platform-bootstrap
 make day0-guide
 ```
 
-Ниже практический сценарий.
+После `init + unseal` можно автоматизировать post-init настройку:
+
+```bash
+export BAO_TOKEN='...'
+make openbao-day0
+```
+
+Этот helper:
+
+- включает `KV v2` на `secret/`
+- включает `auth/kubernetes`
+- настраивает `auth/kubernetes/config`
+- создаёт policy `external-secrets`
+- создаёт role `external-secrets`
+
+Ниже остаётся практический сценарий и расшифровка действий helper-скрипта.
 
 #### 4.1. Подключение к OpenBao
 
@@ -304,6 +330,25 @@ bao kv get secret/platform/forgejo/admin
 bao kv get secret/platform/forgejo/oidc
 ```
 
+### 6. GitOps bootstrap
+
+После записи runtime secrets:
+
+1. замените placeholder `repoURL` и `sourceRepos` в `argocd/`
+2. замените домены `*.home.arpa`, если они отличаются от целевых
+3. примените root application
+
+```bash
+make apply-gitops-bootstrap
+```
+
+Этот helper:
+
+- проверяет readiness `argocd`
+- валидирует отсутствие `https://git.example.invalid/replace-me/gitops.git`
+- применяет `argocd/bootstrap/root-application.yaml`
+- ждёт `Application/root` в состояниях `Synced` и `Healthy`
+
 После этого можно проверить, что ESO начал синхронизацию:
 
 ```bash
@@ -314,12 +359,12 @@ kubectl -n authentik get secret forgejo-oidc
 
 ### 6. Отдельный runtime/GitOps запуск
 
-После bootstrap `OpenBao` и записи секретов runtime-слой больше не поднимается через root entrypoint.
-Используйте отдельный модуль [gitops/](/home/zerodi/code/talos-proxmox-no-ssh/gitops) и его собственный запуск/подключение.
+После bootstrap `OpenBao` и записи секретов runtime-слой больше не поднимается через Terraform bootstrap entrypoint.
+Используйте manifests из [argocd/](/home/zerodi/code/talos-proxmox-no-ssh/argocd) и их отдельный bootstrap/apply.
 
 Перед этим проверьте:
 
-- что `ClusterSecretStore openbao` уже создан
+- что bootstrap из `argocd/` уже применён и `ClusterSecretStore openbao` создан
 - что `external-secrets` controller запущен
 - что OpenBao unsealed
 - что пути `secret/platform/...` реально существуют

@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: echo-tls
+  namespace: echo
+spec:
+  secretName: echo-tls
+  dnsNames:
+    - echo.home.arpa
+  issuerRef:
+    name: homelab-ca
+    kind: ClusterIssuer

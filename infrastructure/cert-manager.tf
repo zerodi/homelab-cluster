@@ -25,6 +25,8 @@ resource "helm_release" "cert_manager" {
 }
 
 resource "kubernetes_manifest" "homelab_root_ca" {
+  count = var.crd_backed_resources_enabled ? 1 : 0
+
   manifest = {
     apiVersion = "cert-manager.io/v1"
     kind       = "Certificate"
@@ -57,6 +59,8 @@ resource "kubernetes_manifest" "homelab_root_ca" {
 }
 
 resource "kubernetes_manifest" "homelab_ca_clusterissuer" {
+  count = var.crd_backed_resources_enabled ? 1 : 0
+
   manifest = {
     apiVersion = "cert-manager.io/v1"
     kind       = "ClusterIssuer"
@@ -75,6 +79,8 @@ resource "kubernetes_manifest" "homelab_ca_clusterissuer" {
 
 # see https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1.ClusterIssuer
 resource "kubernetes_manifest" "selfsigned_clusterissuer" {
+  count = var.crd_backed_resources_enabled ? 1 : 0
+
   manifest = {
     apiVersion = "cert-manager.io/v1"
     kind       = "ClusterIssuer"

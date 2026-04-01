@@ -1,5 +1,5 @@
 resource "helm_release" "trust_manager" {
-  count = var.trust_manager_enabled ? 1 : 0
+  count = local.effective_trust_manager_enabled ? 1 : 0
 
   name             = "trust-manager"
   namespace        = "cert-manager"
@@ -15,25 +15,8 @@ resource "helm_release" "trust_manager" {
   depends_on = [helm_release.cert_manager]
 }
 
-resource "kubernetes_labels" "trusted_namespace_default" {
-  count = var.trust_manager_enabled ? 1 : 0
-
-  api_version = "v1"
-  kind        = "Namespace"
-
-  metadata {
-    name = "default"
-  }
-
-  labels = {
-    "trust.home.arpa/enabled" = "true"
-  }
-
-  force = true
-}
-
 resource "kubernetes_labels" "trusted_namespace_cert_manager" {
-  count = var.trust_manager_enabled ? 1 : 0
+  count = local.effective_trust_manager_enabled ? 1 : 0
 
   api_version = "v1"
   kind        = "Namespace"
@@ -52,7 +35,7 @@ resource "kubernetes_labels" "trusted_namespace_cert_manager" {
 }
 
 resource "kubernetes_labels" "trusted_namespace_argocd" {
-  count = var.trust_manager_enabled && var.argocd_enabled ? 1 : 0
+  count = local.effective_trust_manager_enabled && local.effective_argocd_enabled ? 1 : 0
 
   api_version = "v1"
   kind        = "Namespace"
@@ -71,7 +54,7 @@ resource "kubernetes_labels" "trusted_namespace_argocd" {
 }
 
 resource "kubernetes_manifest" "homelab_trust_bundle" {
-  count = var.trust_manager_enabled ? 1 : 0
+  count = local.effective_trust_manager_enabled && var.crd_backed_resources_enabled ? 1 : 0
 
   manifest = {
     apiVersion = "trust.cert-manager.io/v1alpha1"
@@ -107,7 +90,6 @@ resource "kubernetes_manifest" "homelab_trust_bundle" {
   depends_on = [
     helm_release.trust_manager,
     kubernetes_manifest.homelab_root_ca,
-    kubernetes_labels.trusted_namespace_default,
     kubernetes_labels.trusted_namespace_cert_manager,
     kubernetes_labels.trusted_namespace_argocd,
   ]

@@ -1,0 +1,18 @@
+services:
+  git-ssh:
+    build:
+      context: ./server
+    container_name: argocd-test-git-ssh
+    ports:
+      - "2222:2222"
+    environment:
+      GIT_USER: git
+      GIT_HOME: /home/git
+      GIT_REPO_PATH: /home/git/repos/gitops.git
+      SSH_PORT: "2222"
+    volumes:
+      - ./repo-data:/home/git/repos:ro
+      - ./keys/authorized_keys:/config/authorized_keys:ro
+      - ./keys/ssh_host_ed25519_key:/config/ssh_host_ed25519_key:ro
+      - ./keys/ssh_host_rsa_key:/config/ssh_host_rsa_key:ro
+    restart: unless-stopped
