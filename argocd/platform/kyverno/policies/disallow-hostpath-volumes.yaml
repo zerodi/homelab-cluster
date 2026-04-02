@@ -1,0 +1,48 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-hostpath-volumes
+  annotations:
+    policies.kyverno.io/title: Disallow hostPath volumes
+    policies.kyverno.io/category: Baseline
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Запрещает hostPath volumes вне явно исключённых namespace'ов.
+spec:
+  background: true
+  validationFailureAction: Enforce
+  rules:
+    - name: check-hostpath
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - argocd
+                - authentik
+                - cert-manager
+                - external-secrets
+                - forgejo
+                - gateway
+                - kube-system
+                - kyverno
+                - observability
+                - openbao
+                - piraeus-datastore
+                - trust-manager
+                - velero
+      validate:
+        message: "hostPath volumes are not allowed outside excluded namespaces."
+        foreach:
+          - list: "request.object.spec.volumes || `[]`"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.hostPath.path || '' }}"
+                    operator: NotEquals
+                    value: ""

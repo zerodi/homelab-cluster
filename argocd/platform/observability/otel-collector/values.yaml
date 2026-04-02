@@ -124,6 +124,36 @@ config:
                 target_label: k8s_app
               - source_labels: [__meta_kubernetes_pod_label_name]
                 target_label: workload
+          - job_name: velero
+            scrape_interval: 30s
+            metrics_path: /metrics
+            static_configs:
+              - targets:
+                  - velero.velero.svc.cluster.local:8085
+          - job_name: kyverno-admission-controller
+            scrape_interval: 30s
+            metrics_path: /metrics
+            static_configs:
+              - targets:
+                  - kyverno-svc-metrics.kyverno.svc.cluster.local:8000
+          - job_name: kyverno-background-controller
+            scrape_interval: 30s
+            metrics_path: /metrics
+            static_configs:
+              - targets:
+                  - kyverno-background-controller-metrics.kyverno.svc.cluster.local:8000
+          - job_name: kyverno-cleanup-controller
+            scrape_interval: 30s
+            metrics_path: /metrics
+            static_configs:
+              - targets:
+                  - kyverno-cleanup-controller-metrics.kyverno.svc.cluster.local:8000
+          - job_name: kyverno-reports-controller
+            scrape_interval: 30s
+            metrics_path: /metrics
+            static_configs:
+              - targets:
+                  - kyverno-reports-controller-metrics.kyverno.svc.cluster.local:8000
   processors:
     memory_limiter:
       check_interval: 5s

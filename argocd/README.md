@@ -5,7 +5,7 @@
 Структура:
 
 - `bootstrap/`: root `Application` и базовые `AppProject`
-- `platform/`: prereqs, runtime и bootstrap для `authentik`, `forgejo` и observability
+- `platform/`: prereqs, runtime и bootstrap для `authentik`, `forgejo`, observability, `velero` и `kyverno`
 - `apps/`: demo `echo`
 
 В `platform/` теперь также лежат отдельные runtime data services:
@@ -20,13 +20,22 @@
 - `grafana`
 - `otel-collector`
 - `hubble`
+- `velero`
+- `kyverno`
+- `kyverno-policies`
 
 Observability baseline сейчас такой:
 
 - `OTel Collector` принимает OTLP и одновременно скрапит собственные метрики, `VictoriaMetrics`, `Loki` и `Tempo`
 - `OTel Collector` также скрапит `hubble-metrics` из `kube-system`
+- `OTel Collector` также скрапит базовые metrics endpoints у `Velero` и `Kyverno`
 - `Grafana` получает заранее provisioned datasources, dashboards и базовые alert rules
 - `Tempo` работает через `tempo-distributed`, а datasource и collector идут через `tempo-gateway`
+
+Backup/policy baseline теперь такой:
+
+- `Velero` даёт declarative backup/restore foundation с S3-compatible `BackupStorageLocation` и примерными `Schedule`
+- `Kyverno` даёт audit-first baseline policies для app workloads, не затрагивая platform/system namespaces на первом шаге
 
 И runtime network foundation:
 

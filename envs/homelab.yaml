@@ -63,6 +63,17 @@ platform:
       application_slug: forgejo
       forgejo_root_url: https://git.home.arpa
       discovery_url: https://auth.home.arpa/application/o/forgejo/.well-known/openid-configuration
+  velero:
+    namespace: velero
+    credentials_secret_name: velero-credentials
+    chart_version: 12.0.0
+    bucket: homelab-velero
+    prefix: clusters/homelab-talos
+    region: us-east-1
+    s3_url: https://minio.home.arpa
+  kyverno:
+    namespace: kyverno
+    chart_version: 3.7.1
   observability:
     namespace: observability
     grafana:

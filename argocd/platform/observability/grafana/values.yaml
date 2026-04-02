@@ -117,7 +117,7 @@ dashboards:
               "targets": [
                 {
                   "editorMode": "code",
-                  "expr": "max by (job) (up{job=~\"otel-collector-self|victoria-metrics|loki|tempo-distributor|tempo-query-frontend\"})",
+                  "expr": "max by (job) (up{job=~\"otel-collector-self|victoria-metrics|loki|tempo-distributor|tempo-query-frontend|velero|kyverno-admission-controller|kyverno-background-controller|kyverno-cleanup-controller|kyverno-reports-controller\"})",
                   "range": true,
                   "refId": "A"
                 }
@@ -648,6 +648,166 @@ dashboards:
           "version": 1,
           "weekStart": ""
         }
+    velero-kyverno:
+      json: |
+        {
+          "annotations": {"list": []},
+          "editable": false,
+          "fiscalYearStartMonth": 0,
+          "graphTooltip": 0,
+          "id": null,
+          "links": [],
+          "panels": [
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+              "id": 1,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "max by (job) (up{job=~\"velero|kyverno-admission-controller|kyverno-background-controller|kyverno-cleanup-controller|kyverno-reports-controller\"})",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Velero And Kyverno Targets Up",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+              "id": 2,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (schedule) (velero_backup_attempt_total)",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Velero Backup Attempts",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+              "id": 3,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (policy_name, rule_name, result) (increase(kyverno_policy_results_total[15m]))",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Kyverno Policy Results",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+              "id": 4,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum(rate(kyverno_admission_requests_total[5m]))",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Kyverno Admission Requests",
+              "type": "timeseries"
+            }
+          ],
+          "refresh": "30s",
+          "schemaVersion": 39,
+          "style": "dark",
+          "tags": ["observability", "velero", "kyverno"],
+          "templating": {"list": []},
+          "time": {"from": "now-6h", "to": "now"},
+          "timepicker": {},
+          "timezone": "browser",
+          "title": "Velero Kyverno",
+          "uid": "velero-kyverno",
+          "version": 1,
+          "weekStart": ""
+        }
 
 alerting:
   rules.yaml:
@@ -672,7 +832,7 @@ alerting:
                     type: prometheus
                     uid: victoriametrics
                   editorMode: code
-                  expr: min by (job) (max_over_time(up{job=~"otel-collector-self|victoria-metrics|loki|tempo-distributor|tempo-query-frontend|hubble-metrics"}[5m]))
+                  expr: min by (job) (max_over_time(up{job=~"otel-collector-self|victoria-metrics|loki|tempo-distributor|tempo-query-frontend|hubble-metrics|velero|kyverno-admission-controller|kyverno-background-controller|kyverno-cleanup-controller|kyverno-reports-controller"}[5m]))
                   instant: true
                   intervalMs: 1000
                   maxDataPoints: 43200
@@ -878,3 +1038,113 @@ alerting:
               summary: Cilium agent or operator metrics are missing from scrape targets.
             labels:
               severity: warning
+          - uid: velero-backup-failures
+            title: Velero Backup Failures
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 900
+                  to: 0
+                datasourceUid: victoriametrics
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: victoriametrics
+                  editorMode: code
+                  expr: sum(rate(velero_backup_failure_total[15m])) + sum(rate(velero_backup_partial_failure_total[15m]))
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  range: false
+                  refId: A
+              - refId: C
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: C
+                  type: classic_conditions
+            noDataState: NoData
+            execErrState: Alerting
+            for: 15m
+            annotations:
+              summary: Velero reports failed or partially failed backups.
+            labels:
+              severity: warning
+          - uid: kyverno-policy-violations
+            title: Kyverno Policy Violations
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 900
+                  to: 0
+                datasourceUid: victoriametrics
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: victoriametrics
+                  editorMode: code
+                  expr: sum(increase(kyverno_policy_results_total{result=~"fail|warn|error"}[15m]))
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  range: false
+                  refId: A
+              - refId: C
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: C
+                  type: classic_conditions
+            noDataState: NoData
+            execErrState: Alerting
+            for: 15m
+            annotations:
+              summary: Kyverno observed new policy violations in the last 15 minutes.
+            labels:
+              severity: info

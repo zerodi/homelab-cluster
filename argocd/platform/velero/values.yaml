@@ -1,0 +1,103 @@
+fullnameOverride: velero
+
+image:
+  repository: docker.io/velero/velero
+  tag: v1.18.0
+
+initContainers:
+  - name: velero-plugin-for-aws
+    image: docker.io/velero/velero-plugin-for-aws:v1.13.1
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+      - name: plugins
+        mountPath: /target
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+metrics:
+  enabled: true
+
+credentials:
+  useSecret: true
+  existingSecret: velero-credentials
+
+configuration:
+  backupStorageLocation:
+    - name: default
+      provider: aws
+      bucket: homelab-velero
+      default: true
+      prefix: clusters/homelab-talos
+      credential:
+        name: velero-credentials
+        key: cloud
+      config:
+        region: us-east-1
+        s3ForcePathStyle: "true"
+        s3Url: https://minio.home.arpa
+  volumeSnapshotLocation: []
+  uploaderType: kopia
+  backupSyncPeriod: 1m
+  defaultBackupStorageLocation: default
+  defaultBackupTTL: 168h
+  defaultItemOperationTimeout: 4h
+  storeValidationFrequency: 1m
+  garbageCollectionFrequency: 1h
+
+backupsEnabled: true
+snapshotsEnabled: false
+deployNodeAgent: true
+
+nodeAgent:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+schedules:
+  cluster-daily:
+    disabled: false
+    schedule: "0 3 * * *"
+    template:
+      ttl: 336h
+      storageLocation: default
+      snapshotVolumes: false
+      includedNamespaces:
+        - argocd
+        - authentik
+        - echo
+        - forgejo
+        - gateway
+        - kyverno
+        - observability
+  platform-hourly:
+    disabled: false
+    schedule: "15 * * * *"
+    template:
+      ttl: 72h
+      storageLocation: default
+      snapshotVolumes: false
+      includedNamespaces:
+        - argocd
+        - authentik
+        - forgejo
+        - observability

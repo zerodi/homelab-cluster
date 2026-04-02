@@ -20,6 +20,8 @@ Runtime secrets по-прежнему живут в `OpenBao`, а day-0 Terrafor
 - ingress hostnames для `argocd`, `authentik`, `forgejo`, `echo`, `grafana`, `hubble`
 - storage naming для `Piraeus` и LINSTOR
 - runtime naming contracts вроде namespace, secret names, `root_url`, `discovery_url`
+- non-secret backup storage coordinates для `Velero`
+- chart version pins для `Kyverno` и `Velero`
 
 ## Mapping
 

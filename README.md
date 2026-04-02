@@ -57,6 +57,7 @@ Root больше не является Terraform/OpenTofu entrypoint.
 
 - `bootstrap/`: root `Application` и базовые `AppProject`
 - `platform/`: `authentik`, `forgejo`, observability stack и связанные prereqs/bootstrap manifests
+- `platform/`: также включает `velero` и `kyverno` как runtime platform services
 - `apps/`: demo `echo`
 
 Runtime stateful services для приложений тоже живут здесь:
@@ -64,7 +65,10 @@ Runtime stateful services для приложений тоже живут зде
 - `authentik` использует отдельные runtime `Application` для PostgreSQL и Redis
 - `forgejo` использует отдельные runtime `Application` для PostgreSQL и Valkey
 - observability stack состоит из `VictoriaMetrics`, `Loki`, `Tempo`, `Grafana` и `OpenTelemetry Collector`
+- backup/restore baseline обеспечивается `Velero`
+- policy guardrails baseline обеспечивается `Kyverno`
 - observability stack сразу приезжает с self-scrape через `OTel Collector`, Hubble metrics scrape, provisioned dashboards и базовыми Grafana alert rules
+- observability stack также скрапит базовые metrics endpoints у `Velero` и `Kyverno`
 - `gateway` используется как shared runtime Gateway API foundation
 - `authentik`, `echo`, `forgejo` и `grafana` используют собственные namespaced `Gateway` и `HTTPRoute`
 - `hubble` публикуется через отдельный `HTTPRoute` на shared `internal` gateway
@@ -124,6 +128,8 @@ Mapping non-secret naming contract между Terraform и `argocd/` описа�
 План cutover Forgejo на runtime PostgreSQL и Valkey описан в [docs/forgejo-postgresql-migration.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/forgejo-postgresql-migration.md).
 Day-1 operator actions и границы автоматизации описаны в [docs/day1-operations.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/day1-operations.md).
 Текущий day-0 secret contract для runtime приложений и observability описан в [docs/day0-bootstrap.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/day0-bootstrap.md).
+Backup/restore runbook описан в [docs/backup-restore.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/backup-restore.md).
+Kyverno policy rollout описан в [docs/kyverno-policies.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/kyverno-policies.md).
 
 Ключевые группы переменных в root `terraform.tfvars`:
 

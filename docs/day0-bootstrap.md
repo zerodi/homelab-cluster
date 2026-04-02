@@ -32,7 +32,7 @@ Day-1 operator actions после bootstrap вынесены в [docs/day1-opera
 4. runtime credentials для приложений:
    `platform/authentik/runtime`, `platform/authentik/postgresql`, `platform/authentik/redis`,
    `platform/forgejo/admin`, `platform/forgejo/oidc`, `platform/forgejo/postgresql`, `platform/forgejo/valkey`,
-   `platform/observability/grafana`
+   `platform/observability/grafana`, `platform/velero/s3`
 
 ## Порядок шагов
 
@@ -329,6 +329,9 @@ bao policy read external-secrets
 - `secret/platform/observability/grafana`
   - `username`
   - `password`
+- `secret/platform/velero/s3`
+  - `access_key_id`
+  - `secret_access_key`
 
 Практические команды:
 
@@ -375,6 +378,12 @@ bao kv put secret/platform/observability/grafana \
   password='REPLACE_WITH_LONG_RANDOM_VALUE'
 ```
 
+```bash
+bao kv put secret/platform/velero/s3 \
+  access_key_id='REPLACE_WITH_ACCESS_KEY_ID' \
+  secret_access_key='REPLACE_WITH_SECRET_ACCESS_KEY'
+```
+
 Проверка:
 
 ```bash
@@ -386,6 +395,7 @@ bao kv get secret/platform/forgejo/postgresql
 bao kv get secret/platform/forgejo/valkey
 bao kv get secret/platform/forgejo/oidc
 bao kv get secret/platform/observability/grafana
+bao kv get secret/platform/velero/s3
 ```
 
 ### 6. GitOps bootstrap

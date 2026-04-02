@@ -4,6 +4,11 @@ resources:
   - authentik-prereqs.yaml
   - gateway.yaml
   - hubble.yaml
+  - velero-prereqs.yaml
+  - velero.yaml
+  - kyverno-prereqs.yaml
+  - kyverno.yaml
+  - kyverno-policies.yaml
   - authentik-postgresql.yaml
   - authentik-redis.yaml
   - authentik.yaml

@@ -39,6 +39,8 @@
   - если требуется пересоздание pool или замена block device, это operator procedure, а не blind bootstrap helper
 - runtime GitOps changes для приложений
   - они живут в `argocd/` и их rollout должен быть осознанным операторским действием
+- ad hoc backup/restore и restore rehearsal через `Velero`
+  - они относятся к day-1 operator actions и описаны отдельно
 
 ## Preconditions by helper
 
@@ -82,9 +84,17 @@ fish argocd/scripts/post-argocd-check.fish
 - проверить `Application` health в Argo CD
 - проверить готовность `ExternalSecret` и materialized `Secret`
 - проверить runtime endpoints для `authentik`, `forgejo`, `echo`, `grafana`, `hubble`
+- проверить `Velero` и наличие `BackupStorageLocation default`
+- проверить `Kyverno` policy reports после rollout
 - открыть `grafana.home.arpa` и убедиться, что появились dashboards `Observability Overview`, `OpenTelemetry Collector` и `Cilium Hubble`
-- проверить в Grafana Alerting, что загружены правила `Observability Target Down`, `OTel Exporter Failures` и `Hubble Drops High`
+- открыть `grafana.home.arpa` и убедиться, что появился dashboard `Velero Kyverno`
+- проверить в Grafana Alerting, что загружены правила `Observability Target Down`, `OTel Exporter Failures`, `Hubble Drops High`, `Velero Backup Failures` и `Kyverno Policy Violations`
 - проверить storage class и PVC binding для stateful workloads
+
+Дополнительные runbook:
+
+- [docs/backup-restore.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/backup-restore.md)
+- [docs/kyverno-policies.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/kyverno-policies.md)
 
 Для reference runtime baseline можно смотреть на [argocd/apps/echo/resources/deployment.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/apps/echo/resources/deployment.yaml) и [argocd/apps/echo/resources/networkpolicy.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/apps/echo/resources/networkpolicy.yaml).
 

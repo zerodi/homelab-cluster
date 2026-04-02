@@ -87,6 +87,11 @@ run_check "authentik-redis application exists" "kubectl -n argocd get applicatio
 run_check "forgejo-postgresql application exists" "kubectl -n argocd get application forgejo-postgresql >/dev/null"; or set failed 1
 run_check "forgejo-valkey application exists" "kubectl -n argocd get application forgejo-valkey >/dev/null"; or set failed 1
 run_check "observability-prereqs application exists" "kubectl -n argocd get application observability-prereqs >/dev/null"; or set failed 1
+run_check "velero-prereqs application exists" "kubectl -n argocd get application velero-prereqs >/dev/null"; or set failed 1
+run_check "velero application exists" "kubectl -n argocd get application velero >/dev/null"; or set failed 1
+run_check "kyverno-prereqs application exists" "kubectl -n argocd get application kyverno-prereqs >/dev/null"; or set failed 1
+run_check "kyverno application exists" "kubectl -n argocd get application kyverno >/dev/null"; or set failed 1
+run_check "kyverno-policies application exists" "kubectl -n argocd get application kyverno-policies >/dev/null"; or set failed 1
 run_check "victoria-metrics application exists" "kubectl -n argocd get application victoria-metrics >/dev/null"; or set failed 1
 run_check "loki application exists" "kubectl -n argocd get application loki >/dev/null"; or set failed 1
 run_check "tempo application exists" "kubectl -n argocd get application tempo >/dev/null"; or set failed 1
@@ -106,6 +111,16 @@ run_check "forgejo-valkey application synced" "application_synced forgejo-valkey
 run_check "forgejo-valkey application healthy" "application_healthy forgejo-valkey"; or set failed 1
 run_check "observability-prereqs application synced" "application_synced observability-prereqs"; or set failed 1
 run_check "observability-prereqs application healthy" "application_healthy observability-prereqs"; or set failed 1
+run_check "velero-prereqs application synced" "application_synced velero-prereqs"; or set failed 1
+run_check "velero-prereqs application healthy" "application_healthy velero-prereqs"; or set failed 1
+run_check "velero application synced" "application_synced velero"; or set failed 1
+run_check "velero application healthy" "application_healthy velero"; or set failed 1
+run_check "kyverno-prereqs application synced" "application_synced kyverno-prereqs"; or set failed 1
+run_check "kyverno-prereqs application healthy" "application_healthy kyverno-prereqs"; or set failed 1
+run_check "kyverno application synced" "application_synced kyverno"; or set failed 1
+run_check "kyverno application healthy" "application_healthy kyverno"; or set failed 1
+run_check "kyverno-policies application synced" "application_synced kyverno-policies"; or set failed 1
+run_check "kyverno-policies application healthy" "application_healthy kyverno-policies"; or set failed 1
 run_check "victoria-metrics application synced" "application_synced victoria-metrics"; or set failed 1
 run_check "victoria-metrics application healthy" "application_healthy victoria-metrics"; or set failed 1
 run_check "loki application synced" "application_synced loki"; or set failed 1
@@ -136,6 +151,8 @@ run_check "forgejo namespace exists" "kubectl get namespace forgejo >/dev/null";
 run_check "gateway namespace exists" "kubectl get namespace gateway >/dev/null"; or set failed 1
 run_check "kube-system namespace exists" "kubectl get namespace kube-system >/dev/null"; or set failed 1
 run_check "observability namespace exists" "kubectl get namespace observability >/dev/null"; or set failed 1
+run_check "velero namespace exists" "kubectl get namespace velero >/dev/null"; or set failed 1
+run_check "kyverno namespace exists" "kubectl get namespace kyverno >/dev/null"; or set failed 1
 
 run_check "authentik runtime secret exists" "kubectl -n authentik get secret authentik-runtime >/dev/null"; or set failed 1
 run_check "authentik tls secret exists" "kubectl -n authentik get secret authentik-tls >/dev/null"; or set failed 1
@@ -161,6 +178,21 @@ run_check "grafana gateway exists" "kubectl -n observability get gateway grafana
 run_check "grafana route exists" "kubectl -n observability get httproute grafana >/dev/null"; or set failed 1
 run_check "grafana redirect route exists" "kubectl -n observability get httproute grafana-http-redirect >/dev/null"; or set failed 1
 run_check "observability pods ready" "kubectl -n observability wait --for=condition=Ready pod --all --timeout=240s >/dev/null"; or set failed 1
+run_check "velero credentials secret exists" "kubectl -n velero get secret velero-credentials >/dev/null"; or set failed 1
+run_check "velero backup storage location exists" "kubectl -n velero get backupstoragelocation default >/dev/null"; or set failed 1
+run_check "velero schedules exist" "kubectl -n velero get schedules >/dev/null"; or set failed 1
+run_check "velero deployment ready" "kubectl -n velero rollout status deployment/velero --timeout=240s >/dev/null"; or set failed 1
+run_check "velero node-agent ready" "kubectl -n velero rollout status daemonset/node-agent --timeout=240s >/dev/null"; or set failed 1
+run_check "kyverno admission controller ready" "kubectl -n kyverno rollout status deployment/kyverno-admission-controller --timeout=240s >/dev/null"; or set failed 1
+run_check "kyverno background controller ready" "kubectl -n kyverno rollout status deployment/kyverno-background-controller --timeout=240s >/dev/null"; or set failed 1
+run_check "kyverno cleanup controller ready" "kubectl -n kyverno rollout status deployment/kyverno-cleanup-controller --timeout=240s >/dev/null"; or set failed 1
+run_check "kyverno reports controller ready" "kubectl -n kyverno rollout status deployment/kyverno-reports-controller --timeout=240s >/dev/null"; or set failed 1
+run_check "kyverno cluster policies listable" "kubectl get cpol >/dev/null"; or set failed 1
+run_check "kyverno disallow-latest policy exists" "kubectl get cpol disallow-latest-tag >/dev/null"; or set failed 1
+run_check "kyverno resource policy exists" "kubectl get cpol require-resource-requests-and-limits >/dev/null"; or set failed 1
+run_check "kyverno security policy exists" "kubectl get cpol require-basic-security-context >/dev/null"; or set failed 1
+run_check "kyverno privileged policy exists" "kubectl get cpol disallow-privileged-containers >/dev/null"; or set failed 1
+run_check "kyverno hostpath policy exists" "kubectl get cpol disallow-hostpath-volumes >/dev/null"; or set failed 1
 
 run_check "ingresses listable" "kubectl get ingress -A >/dev/null"; or set failed 1
 run_check "gatewayclasses listable" "kubectl get gatewayclass >/dev/null"; or set failed 1

@@ -1,0 +1,85 @@
+fullnameOverride: kyverno
+
+grafana:
+  enabled: false
+
+reportsServer:
+  enabled: false
+
+openreports:
+  enabled: false
+  installCrds: false
+
+config:
+  excludeGroups:
+    - system:nodes
+  resourceFiltersExcludeNamespaces:
+    - argocd
+    - authentik
+    - cert-manager
+    - external-secrets
+    - forgejo
+    - gateway
+    - kube-system
+    - kyverno
+    - observability
+    - openbao
+    - piraeus-datastore
+    - trust-manager
+    - velero
+
+admissionController:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  serviceMonitor:
+    enabled: false
+  networkPolicy:
+    enabled: false
+
+backgroundController:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  serviceMonitor:
+    enabled: false
+  networkPolicy:
+    enabled: false
+
+cleanupController:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  serviceMonitor:
+    enabled: false
+  networkPolicy:
+    enabled: false
+
+reportsController:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  serviceMonitor:
+    enabled: false
+  networkPolicy:
+    enabled: false
