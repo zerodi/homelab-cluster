@@ -1,0 +1,11 @@
+version: "3"
+
+vars:
+  KUBECONFIG_PATH:
+    sh: cd bootstrap && realpath "$(tofu output -raw kubeconfig_path)"
+
+tasks:
+  apply-bootstrap:
+    desc: Apply the Argo CD root Application after bootstrap preflight checks
+    cmds:
+      - ./argocd/scripts/apply-bootstrap.sh --kubeconfig "{{.KUBECONFIG_PATH}}"

@@ -8,11 +8,21 @@ spec:
   sourceRepos:
     - https://git.example.invalid/replace-me/gitops.git
   destinations:
-    - namespace: "*"
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+    - namespace: echo
       server: https://kubernetes.default.svc
   clusterResourceWhitelist:
-    - group: "*"
-      kind: "*"
+    - group: ""
+      kind: Namespace
   namespaceResourceWhitelist:
-    - group: "*"
-      kind: "*"
+    - group: argoproj.io
+      kind: Application
+    - group: apps
+      kind: Deployment
+    - group: cert-manager.io
+      kind: Certificate
+    - group: ""
+      kind: Service
+    - group: networking.k8s.io
+      kind: Ingress

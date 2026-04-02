@@ -16,12 +16,48 @@ resource "helm_release" "cert_manager" {
   timeout = 900
   wait    = true
 
-  set = [
-    {
-      name  = "crds.enabled"
-      value = "true"
+  values = [yamlencode({
+    crds = {
+      enabled = true
     }
-  ]
+    extraArgs = [
+      "--enable-gateway-api",
+    ]
+    resources = {
+      limits = {
+        cpu    = "100m"
+        memory = "128Mi"
+      }
+      requests = {
+        cpu    = "10m"
+        memory = "64Mi"
+      }
+    }
+    webhook = {
+      resources = {
+        limits = {
+          cpu    = "100m"
+          memory = "64Mi"
+        }
+        requests = {
+          cpu    = "10m"
+          memory = "32Mi"
+        }
+      }
+    }
+    cainjector = {
+      resources = {
+        limits = {
+          cpu    = "100m"
+          memory = "128Mi"
+        }
+        requests = {
+          cpu    = "10m"
+          memory = "64Mi"
+        }
+      }
+    }
+  })]
 }
 
 resource "kubernetes_manifest" "homelab_root_ca" {

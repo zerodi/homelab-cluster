@@ -1,0 +1,28 @@
+fullnameOverride: authentik-redis
+architecture: standalone
+auth:
+  enabled: true
+  existingSecret: authentik-redis-auth
+  existingSecretPasswordKey: password
+master:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  persistence:
+    enabled: true
+    storageClass: linstor-pool1-r2
+    size: 5Gi
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+  containerSecurityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: false

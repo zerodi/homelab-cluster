@@ -3,5 +3,8 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - admin-external-secret.yaml
+  - postgresql-auth-external-secret.yaml
+  - valkey-auth-external-secret.yaml
+  - runtime-config-external-secret.yaml
   - oidc-external-secret.yaml
-  - forgejo-sso-configmap.yaml
+  - forgejo-sso-configmap.yml

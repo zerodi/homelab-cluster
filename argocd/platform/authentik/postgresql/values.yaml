@@ -1,0 +1,30 @@
+fullnameOverride: authentik-postgresql
+auth:
+  enablePostgresUser: false
+  username: authentik
+  database: authentik
+  existingSecret: authentik-postgresql-auth
+  secretKeys:
+    userPasswordKey: password
+primary:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  persistence:
+    enabled: true
+    storageClass: linstor-pool1-r2
+    size: 10Gi
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+  containerSecurityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true

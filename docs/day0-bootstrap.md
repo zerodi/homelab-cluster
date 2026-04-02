@@ -2,6 +2,8 @@
 
 Этот документ описывает только сценарий развёртывания кластера и platform-layer с нуля.
 
+Day-1 operator actions после bootstrap вынесены в [docs/day1-operations.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/day1-operations.md).
+
 ## Что нужно заранее
 
 ### Доступ к Proxmox
@@ -27,18 +29,21 @@
 1. `age`-ключ для `SOPS`, если вы используете SOPS для day-0 артефактов
 2. bootstrap-доступ к `OpenBao`
 3. план хранения `unseal keys` и recovery material вне repo и вне Terraform state
+4. runtime credentials для приложений:
+   `platform/authentik/runtime`, `platform/authentik/postgresql`, `platform/authentik/redis`,
+   `platform/forgejo/admin`, `platform/forgejo/oidc`, `platform/forgejo/postgresql`, `platform/forgejo/valkey`
 
 ## Порядок шагов
 
 ### 1. Инициализация репозитория
 
 ```bash
-make init
+task init
 cp terraform.tfvars.example terraform.tfvars
 # заполните terraform.tfvars только несекретными значениями
 ```
 
-`make init` теперь инициализирует оба entrypoint:
+`task init` теперь инициализирует оба entrypoint:
 
 - `bootstrap/`
 - `infrastructure/`
@@ -65,8 +70,8 @@ sops -d secrets.sops.tfvars > secrets.auto.tfvars
 ### 2. Bootstrap кластера
 
 ```bash
-make plan-cluster
-make apply-cluster
+task bootstrap:plan-cluster
+task bootstrap:apply-cluster
 ```
 
 После этого должны появиться:
@@ -74,17 +79,23 @@ make apply-cluster
 - `out/kubeconfig`
 - `out/talosconfig`
 
+Проверка:
+
+```bash
+task bootstrap:health
+```
+
 `bootstrap/` требует `write_configs_to_files = true`, потому что platform bootstrap использует локальный `out/kubeconfig`.
 Platform bootstrap выполняется из отдельного entrypoint `infrastructure/`, который читает не-секретные входы из `bootstrap/terraform.tfstate`.
 
 ### 3. Bootstrap platform operators
 
 ```bash
-make plan-platform-bootstrap
-make apply-platform-bootstrap
+task infra:plan-bootstrap
+task infra:apply-bootstrap
 ```
 
-`make plan-platform-bootstrap` строит план только для первой стадии platform bootstrap, где ещё нет CRD-зависимых manifests.
+`task infra:plan-bootstrap` строит план только для первой стадии platform bootstrap, где ещё нет CRD-зависимых manifests.
 
 Эта фаза поднимает:
 
@@ -94,9 +105,15 @@ make apply-platform-bootstrap
 - `trust-manager`
 - `piraeus-operator`
 
-Во время `make apply-platform-bootstrap` сначала поэтапно ставятся CRD-delivering releases и CRD-backed manifests, затем LINSTOR device pools создаются отдельным helper-скриптом вне Terraform graph, и только после этого выполняется финальный `infrastructure` apply.
+Проверка:
 
-Для обратного teardown используйте `make destroy-infrastructure` перед `make destroy-bootstrap`. Этот helper сначала удаляет CRD-backed manifests при живых CRD, а если какие-то CRD уже отсутствуют, вычищает только соответствующие адреса из `infrastructure` state и завершает `tofu destroy -refresh=false`.
+```bash
+task infra:health
+```
+
+Во время `task infra:apply-bootstrap` сначала поэтапно ставятся CRD-delivering releases и CRD-backed manifests, затем LINSTOR device pools создаются отдельным helper-скриптом вне Terraform graph, и только после этого выполняется финальный `infrastructure` apply.
+
+Для обратного teardown используйте `task infra:destroy` перед `task bootstrap:destroy`. Этот helper сначала удаляет CRD-backed manifests при живых CRD, а если какие-то CRD уже отсутствуют, вычищает только соответствующие адреса из `infrastructure` state и завершает `tofu destroy -refresh=false`.
 
 Первая стадия запускается с отключёнными `crd_backed_resources`, чтобы `tofu plan/apply` не пытался резолвить `ClusterIssuer`, `Certificate`, `Bundle` и `Linstor*` до появления их CRD в API discovery.
 
@@ -110,14 +127,14 @@ make apply-platform-bootstrap
 Для напоминания можно использовать:
 
 ```bash
-make day0-guide
+task ops:day0-guide
 ```
 
 После `init + unseal` можно автоматизировать post-init настройку:
 
 ```bash
 export BAO_TOKEN='...'
-make openbao-day0
+task ops:openbao-day0
 ```
 
 Этот helper:
@@ -294,9 +311,16 @@ bao policy read external-secrets
 
 - `secret/platform/authentik/runtime`
   - `secret_key`
-  - `postgresql_password`
+- `secret/platform/authentik/postgresql`
+  - `password`
+- `secret/platform/authentik/redis`
+  - `password`
 - `secret/platform/forgejo/admin`
   - `username`
+  - `password`
+- `secret/platform/forgejo/postgresql`
+  - `password`
+- `secret/platform/forgejo/valkey`
   - `password`
 - `secret/platform/forgejo/oidc`
   - `client_id`
@@ -306,13 +330,32 @@ bao policy read external-secrets
 
 ```bash
 bao kv put secret/platform/authentik/runtime \
-  secret_key='REPLACE_WITH_LONG_RANDOM_VALUE' \
-  postgresql_password='REPLACE_WITH_LONG_RANDOM_VALUE'
+  secret_key='REPLACE_WITH_LONG_RANDOM_VALUE'
+```
+
+```bash
+bao kv put secret/platform/authentik/postgresql \
+  password='REPLACE_WITH_LONG_RANDOM_VALUE'
+```
+
+```bash
+bao kv put secret/platform/authentik/redis \
+  password='REPLACE_WITH_LONG_RANDOM_VALUE'
 ```
 
 ```bash
 bao kv put secret/platform/forgejo/admin \
   username='forgejo' \
+  password='REPLACE_WITH_LONG_RANDOM_VALUE'
+```
+
+```bash
+bao kv put secret/platform/forgejo/postgresql \
+  password='REPLACE_WITH_LONG_RANDOM_VALUE'
+```
+
+```bash
+bao kv put secret/platform/forgejo/valkey \
   password='REPLACE_WITH_LONG_RANDOM_VALUE'
 ```
 
@@ -326,7 +369,11 @@ bao kv put secret/platform/forgejo/oidc \
 
 ```bash
 bao kv get secret/platform/authentik/runtime
+bao kv get secret/platform/authentik/postgresql
+bao kv get secret/platform/authentik/redis
 bao kv get secret/platform/forgejo/admin
+bao kv get secret/platform/forgejo/postgresql
+bao kv get secret/platform/forgejo/valkey
 bao kv get secret/platform/forgejo/oidc
 ```
 
@@ -334,12 +381,14 @@ bao kv get secret/platform/forgejo/oidc
 
 После записи runtime secrets:
 
-1. замените placeholder `repoURL` и `sourceRepos` в `argocd/`
-2. замените домены `*.home.arpa`, если они отличаются от целевых
-3. примените root application
+1. сначала обновите [envs/homelab.yaml](/home/zerodi/code/talos-proxmox-no-ssh/envs/homelab.yaml)
+2. замените placeholder `repoURL` и `sourceRepos` в `argocd/`
+3. замените домены `*.home.arpa`, если они отличаются от целевых
+4. сверьтесь с [docs/environment-contract.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/environment-contract.md), чтобы обновить все затронутые manifests
+5. примените root application
 
 ```bash
-make apply-gitops-bootstrap
+task gitops:apply-bootstrap
 ```
 
 Этот helper:

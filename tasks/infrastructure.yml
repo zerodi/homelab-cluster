@@ -1,0 +1,111 @@
+version: "3"
+
+vars:
+  KUBECONFIG_PATH:
+    sh: cd bootstrap && realpath "$(tofu output -raw kubeconfig_path)"
+  PIRAEUS_NAMESPACE:
+    sh: tofu -chdir=bootstrap output -raw piraeus_namespace
+  PIRAEUS_POOL_NAME:
+    sh: tofu -chdir=bootstrap output -raw piraeus_storage_pool_name
+  PIRAEUS_DEVICE:
+    sh: tofu -chdir=bootstrap output -raw piraeus_storage_device
+  PIRAEUS_NODES:
+    sh: tofu -chdir=bootstrap output -raw piraeus_storage_nodes_csv
+
+tasks:
+  init:
+    desc: Initialize the infrastructure OpenTofu entrypoint
+    cmds:
+      - tofu -chdir=infrastructure init {{.CLI_ARGS}}
+
+  plan-bootstrap:
+    desc: Plan the first infrastructure bootstrap stage without CRD-backed manifests
+    cmds:
+      - |
+        tofu -chdir=infrastructure plan \
+          -var=crd_backed_resources_enabled=false \
+          -target=helm_release.cert_manager \
+          -target=helm_release.external_secrets \
+          -target=helm_release.trust_manager \
+          -target=kubernetes_namespace_v1.piraeus \
+          -target=kubernetes_labels.piraeus_namespace_pod_security \
+          -target=helm_release.piraeus_operator
+
+  wait-crds:
+    desc: Wait for platform CRDs to register in API discovery
+    cmds:
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=10m crd/clusterissuers.cert-manager.io
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=10m crd/certificates.cert-manager.io
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=10m crd/bundles.trust.cert-manager.io
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=10m crd/linstorsatelliteconfigurations.piraeus.io
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=10m crd/linstorclusters.piraeus.io
+
+  bootstrap-piraeus-storage:
+    desc: Create LINSTOR device pools outside the Terraform graph
+    cmds:
+      - |
+        ./infrastructure/scripts/bootstrap-linstor-storage.sh \
+          --kubeconfig "{{.KUBECONFIG_PATH}}" \
+          --namespace "{{.PIRAEUS_NAMESPACE}}" \
+          --pool-name "{{.PIRAEUS_POOL_NAME}}" \
+          --device "{{.PIRAEUS_DEVICE}}" \
+          --nodes "{{.PIRAEUS_NODES}}"
+
+  apply-bootstrap:
+    desc: Apply infrastructure in stages, including CRD readiness and LINSTOR storage bootstrap
+    cmds:
+      - |
+        tofu -chdir=infrastructure apply \
+          -var=crd_backed_resources_enabled=false \
+          -target=helm_release.cert_manager \
+          -target=helm_release.external_secrets \
+          -target=helm_release.trust_manager \
+          -target=kubernetes_namespace_v1.piraeus \
+          -target=kubernetes_labels.piraeus_namespace_pod_security \
+          -target=helm_release.piraeus_operator
+      - task infra:wait-crds
+      - |
+        tofu -chdir=infrastructure apply \
+          -target=kubernetes_manifest.selfsigned_clusterissuer \
+          -target=kubernetes_manifest.homelab_root_ca \
+          -target=kubernetes_manifest.homelab_ca_clusterissuer \
+          -target=kubernetes_cluster_role_binding_v1.external_secrets_openbao_auth_delegator
+      - |
+        tofu -chdir=infrastructure apply \
+          -target=helm_release.piraeus_operator \
+          -target=terraform_data.piraeus_operator_ready \
+          -target=kubernetes_manifest.linstor_satellite_configuration_talos \
+          -target=kubernetes_manifest.linstor_cluster \
+          -target=terraform_data.linstor_cluster_ready
+      - task infra:bootstrap-piraeus-storage
+      - tofu -chdir=infrastructure apply
+
+  destroy:
+    desc: Run staged infrastructure destroy with CRD-backed cleanup
+    cmds:
+      - ./infrastructure/scripts/destroy-platform-bootstrap.sh
+
+  health:
+    desc: Run local platform bootstrap checks after infrastructure apply
+    cmds:
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=5m crd/clusterissuers.cert-manager.io
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=5m crd/certificates.cert-manager.io
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=5m crd/externalsecrets.external-secrets.io
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=5m crd/secretstores.external-secrets.io
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=5m crd/bundles.trust.cert-manager.io
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=5m crd/linstorclusters.piraeus.io
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Ready pod --all -n cert-manager --timeout=10m
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Ready pod --all -n external-secrets --timeout=10m
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Ready pod --all -n piraeus-datastore --timeout=10m
+      - |
+        if KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl get namespace trust-manager >/dev/null 2>&1; then
+          KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Ready pod --all -n trust-manager --timeout=10m
+        fi
+      - |
+        if KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl get namespace argocd >/dev/null 2>&1; then
+          KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Ready pod --all -n argocd --timeout=10m
+        fi
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl get namespace cert-manager openbao external-secrets piraeus-datastore
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl get clusterissuer
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl get linstorcluster -A
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl -n openbao get pods

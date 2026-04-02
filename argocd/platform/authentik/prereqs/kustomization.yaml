@@ -3,8 +3,10 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - authentik-blueprints-configmap.yaml
+  - postgresql-auth-external-secret.yaml
+  - redis-auth-external-secret.yaml
   - runtime-external-secret.yaml
   - forgejo-oidc-external-secret.yaml
   - forgejo-sso-configmap.yaml
-  - forgejo-sso-blueprint-template-configmap.yaml
+  - forgejo-sso-blueprint-template-configmap.yml
   - forgejo-sso-blueprint-external-secret.yaml

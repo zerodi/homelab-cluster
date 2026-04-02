@@ -19,6 +19,7 @@ Root больше не является Terraform/OpenTofu entrypoint.
 
 - [terraform.tfvars.example](/home/zerodi/code/talos-proxmox-no-ssh/terraform.tfvars.example)
 - [secrets.sops.tfvars.example](/home/zerodi/code/talos-proxmox-no-ssh/secrets.sops.tfvars.example)
+- [envs/homelab.yaml](/home/zerodi/code/talos-proxmox-no-ssh/envs/homelab.yaml) как единый non-secret environment contract
 - локальный [terraform.tfvars](/home/zerodi/code/talos-proxmox-no-ssh/terraform.tfvars)
 - локальные `out/` артефакты и `.envrc`
 - документация и вспомогательные команды
@@ -57,6 +58,13 @@ Root больше не является Terraform/OpenTofu entrypoint.
 - `bootstrap/`: root `Application` и базовые `AppProject`
 - `platform/`: `authentik`, `forgejo` и связанные prereqs/bootstrap manifests
 - `apps/`: demo `echo`
+
+Runtime stateful services для приложений тоже живут здесь:
+
+- `authentik` использует отдельные runtime `Application` для PostgreSQL и Redis
+- `forgejo` использует отдельные runtime `Application` для PostgreSQL и Valkey
+- `gateway` используется как runtime Gateway API foundation alongside existing Ingress objects
+- оба приложения получают credentials только через `OpenBao` + `External Secrets`
 
 Важно: это scaffold. По умолчанию там intentionally invalid `repoURL`, который нужно заменить перед использованием. Детали: [argocd/README.md](/home/zerodi/code/talos-proxmox-no-ssh/argocd/README.md)
 
@@ -105,6 +113,13 @@ Root больше не является Terraform/OpenTofu entrypoint.
 
 - [terraform.tfvars.example](/home/zerodi/code/talos-proxmox-no-ssh/terraform.tfvars.example)
 - [secrets.sops.tfvars.example](/home/zerodi/code/talos-proxmox-no-ssh/secrets.sops.tfvars.example)
+- [envs/homelab.yaml](/home/zerodi/code/talos-proxmox-no-ssh/envs/homelab.yaml)
+- [docs/prerequisites.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/prerequisites.md)
+
+Mapping non-secret naming contract между Terraform и `argocd/` описан в [docs/environment-contract.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/environment-contract.md).
+План cutover Forgejo на runtime PostgreSQL и Valkey описан в [docs/forgejo-postgresql-migration.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/forgejo-postgresql-migration.md).
+Day-1 operator actions и границы автоматизации описаны в [docs/day1-operations.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/day1-operations.md).
+Текущий day-0 secret contract для runtime приложений описан в [docs/day0-bootstrap.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/day0-bootstrap.md).
 
 Ключевые группы переменных в root `terraform.tfvars`:
 
@@ -138,12 +153,12 @@ Greenfield bootstrap состоит из четырёх фаз.
 ### 1. Инициализация
 
 ```bash
-make init
+task init
 cp terraform.tfvars.example terraform.tfvars
 # заполните terraform.tfvars только несекретными значениями
 ```
 
-`make init` инициализирует оба entrypoint:
+`task init` инициализирует оба entrypoint:
 
 - `bootstrap/`
 - `infrastructure/`
@@ -167,8 +182,8 @@ sops -d secrets.sops.tfvars > secrets.auto.tfvars
 ### 2. Bootstrap кластера
 
 ```bash
-make plan-cluster
-make apply-cluster
+task bootstrap:plan-cluster
+task bootstrap:apply-cluster
 ```
 
 Эквивалент напрямую:
@@ -183,16 +198,22 @@ tofu -chdir=bootstrap apply -var-file=../terraform.tfvars
 - [`out/kubeconfig`](/home/zerodi/code/talos-proxmox-no-ssh/out/kubeconfig)
 - [`out/talosconfig`](/home/zerodi/code/talos-proxmox-no-ssh/out/talosconfig)
 
+Проверка после cluster bootstrap:
+
+```bash
+task bootstrap:health
+```
+
 ### 3. Platform bootstrap
 
 ```bash
-make plan-platform-bootstrap
-make apply-platform-bootstrap
+task infra:plan-bootstrap
+task infra:apply-bootstrap
 ```
 
 `infrastructure/` ожидает, что `bootstrap/terraform.tfstate` и `out/kubeconfig` уже существуют после cluster bootstrap.
 
-`make plan-platform-bootstrap` теперь строит план только для первой стадии platform bootstrap, то есть для ресурсов, которые не требуют уже установленных CRD.
+`task infra:plan-bootstrap` теперь строит план только для первой стадии platform bootstrap, то есть для ресурсов, которые не требуют уже установленных CRD.
 
 Эта фаза запускается из отдельного entrypoint `infrastructure/` и поднимает:
 
@@ -203,13 +224,19 @@ make apply-platform-bootstrap
 - `piraeus-operator`
 - `argocd`, если `argocd_enabled = true`
 
-`make apply-platform-bootstrap` теперь выполняет staged bootstrap:
+`task infra:apply-bootstrap` теперь выполняет staged bootstrap:
 
 1. устанавливает CRD-delivering releases (`cert-manager`, `external-secrets`, `trust-manager`, `piraeus-operator`) без CRD-backed manifests в graph
-2. дожидается регистрации CRD в API discovery через `make wait-platform-crds`
+2. дожидается регистрации CRD в API discovery через `task infra:wait-crds`
 3. применяет cert-manager и piraeus manifests только после появления CRD
 4. вызывает отдельный helper для `kubectl linstor physical-storage create-device-pool`
 5. завершает финальный `tofu -chdir=infrastructure apply`
+
+Проверка после platform bootstrap:
+
+```bash
+task infra:health
+```
 
 ### 4. Day-0 OpenBao bootstrap и GitOps
 
@@ -224,39 +251,59 @@ make apply-platform-bootstrap
 Подсказка:
 
 ```bash
-make day0-guide
+task ops:day0-guide
 ```
 
 После `OpenBao init/unseal` можно автоматизировать post-init настройку и GitOps bootstrap:
 
 ```bash
 export BAO_TOKEN='...'
-make openbao-day0
-make apply-gitops-bootstrap
+task ops:openbao-day0
+task gitops:apply-bootstrap
 ```
 
-`make openbao-day0` не выполняет `bao operator init` и не хранит recovery material. Он только:
+`task ops:openbao-day0` не выполняет `bao operator init` и не хранит recovery material. Он только:
 
 - включает `KV v2` на `secret/`
 - включает и настраивает `auth/kubernetes`
 - создаёт policy и role для `external-secrets`
 
-`make apply-gitops-bootstrap` проверяет readiness `argocd`, валидирует отсутствие placeholder `repoURL` в `argocd/` и применяет root `Application`.
+`task gitops:apply-bootstrap` проверяет readiness `argocd`, валидирует отсутствие placeholder `repoURL` в `argocd/` и применяет root `Application`.
 
 ## Полезные команды
 
 ```bash
-make init
-make fmt
-make validate
-make plan-cluster
-make apply-cluster
-make plan-platform-bootstrap
-make apply-platform-bootstrap
-make from-scratch
+task --list
+task init
+task check:tofu-fmt
+task check:validate
+task bootstrap:plan-cluster
+task bootstrap:apply-cluster
+task infra:plan-bootstrap
+task infra:apply-bootstrap
+task from-scratch
 ```
 
-`make from-scratch` выполняет:
+Локальные quality checks для репозитория также описаны в [`/.pre-commit-config.yaml`](/home/zerodi/code/talos-proxmox-no-ssh/.pre-commit-config.yaml).
+Если у вас установлен `pre-commit`, можно запускать тот же baseline, что и в CI:
+
+```bash
+pre-commit run --all-files
+```
+
+Локальный operator toolchain и минимальный bootstrap workflow описаны в [docs/prerequisites.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/prerequisites.md).
+
+`task from-scratch` выполняет:
+
+`Makefile` остаётся только как compatibility wrapper и считается deprecated. Основной локальный entrypoint теперь `task`.
+
+Для CI и локальной валидации используется один и тот же `task`-baseline. Если entrypoint ещё не инициализирован, сначала выполните:
+
+```bash
+task bootstrap:init -- -backend=false
+task infra:init -- -backend=false
+task check:validate
+```
 
 - bootstrap кластера через `bootstrap/`
 - platform bootstrap через `infrastructure/`
@@ -265,11 +312,11 @@ make from-scratch
 Для teardown используйте:
 
 ```bash
-make destroy-infrastructure
-make destroy-bootstrap
+task infra:destroy
+task bootstrap:destroy
 ```
 
-`make destroy-infrastructure` теперь выполняет staged destroy: сначала удаляет CRD-backed manifests, пока CRD ещё доступны, затем дочищает state для уже пропавших CRD и завершает общий `tofu destroy -refresh=false`. Это нужно, чтобы teardown не падал на `Bundle`, `ClusterIssuer`, `Certificate` или `Linstor*`, если соответствующий оператор или его CRD уже были удалены.
+`task infra:destroy` теперь выполняет staged destroy: сначала удаляет CRD-backed manifests, пока CRD ещё доступны, затем дочищает state для уже пропавших CRD и завершает общий `tofu destroy -refresh=false`. Это нужно, чтобы teardown не падал на `Bundle`, `ClusterIssuer`, `Certificate` или `Linstor*`, если соответствующий оператор или его CRD уже были удалены.
 
 ## Документация
 

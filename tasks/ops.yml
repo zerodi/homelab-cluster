@@ -1,0 +1,32 @@
+version: "3"
+
+vars:
+  KUBECONFIG_PATH:
+    sh: cd bootstrap && realpath "$(tofu output -raw kubeconfig_path)"
+
+tasks:
+  day0-guide:
+    desc: Print the manual OpenBao day-0 bootstrap checklist
+    cmds:
+      - |
+        printf '%s\n' \
+          'Day-0 bootstrap OpenBao:' \
+          '  1. Инициализируйте и разлочьте OpenBao.' \
+          '  2. Экспортируйте BAO_TOKEN и запустите task ops:openbao-day0.' \
+          '  3. Запишите runtime secrets:' \
+          '     - secret/platform/authentik/runtime' \
+          '     - secret/platform/forgejo/admin' \
+          '     - secret/platform/forgejo/oidc' \
+          '  4. Обновите repoURL/sourceRepos и домены в argocd/.' \
+          '  5. Запустите task gitops:apply-bootstrap.' \
+          '  6. Полный runbook: docs/day0-bootstrap.md'
+
+  day1-guide:
+    desc: Print the day-1 operations runbook location
+    cmds:
+      - "printf '%s\\n' 'Day-1 operations runbook: docs/day1-operations.md'"
+
+  openbao-day0:
+    desc: Run the OpenBao post-init day-0 helper for External Secrets
+    cmds:
+      - ./infrastructure/scripts/openbao-day0.sh --kubeconfig "{{.KUBECONFIG_PATH}}"

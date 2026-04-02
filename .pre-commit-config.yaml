@@ -1,0 +1,51 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: local
+    hooks:
+      - id: tofu-fmt-check
+        name: task check:tofu-fmt
+        entry: task check:tofu-fmt
+        language: system
+        pass_filenames: false
+
+      - id: tofu-validate-bootstrap
+        name: task check:tofu-validate-bootstrap
+        entry: task check:tofu-validate-bootstrap
+        language: system
+        pass_filenames: false
+
+      - id: tofu-validate-infrastructure
+        name: task check:tofu-validate-infrastructure
+        entry: task check:tofu-validate-infrastructure
+        language: system
+        pass_filenames: false
+
+      - id: yamllint
+        name: task check:yamllint
+        entry: task check:yamllint
+        language: system
+        pass_filenames: false
+
+      - id: shellcheck
+        name: task check:shellcheck
+        entry: task check:shellcheck
+        language: system
+        pass_filenames: false
+
+      - id: kustomize-build-bootstrap
+        name: task check:kustomize-bootstrap
+        entry: task check:kustomize-bootstrap
+        language: system
+        pass_filenames: false
+
+      - id: kustomize-build-platform
+        name: task check:kustomize-platform
+        entry: task check:kustomize-platform
+        language: system
+        pass_filenames: false

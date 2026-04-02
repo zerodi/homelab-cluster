@@ -1,0 +1,138 @@
+version: "3"
+
+includes:
+  bootstrap:
+    taskfile: ./tasks/bootstrap.yml
+    dir: .
+  infra:
+    taskfile: ./tasks/infrastructure.yml
+    dir: .
+  gitops:
+    taskfile: ./tasks/gitops.yml
+    dir: .
+  ops:
+    taskfile: ./tasks/ops.yml
+    dir: .
+  check:
+    taskfile: ./tasks/checks.yml
+    dir: .
+
+tasks:
+  default:
+    desc: Show available task commands
+    cmds:
+      - task --list
+
+  help:
+    desc: Show available task commands
+    cmds:
+      - task --list
+
+  init:
+    desc: Initialize bootstrap and infrastructure entrypoints
+    cmds:
+      - task bootstrap:init
+      - task infra:init
+
+  fmt:
+    desc: Run OpenTofu formatting recursively
+    cmds:
+      - task check:tofu-fmt
+
+  validate:
+    desc: Run the local validation baseline
+    cmds:
+      - task check:validate
+
+  plan:
+    desc: Alias for bootstrap:plan-cluster
+    cmds:
+      - task bootstrap:plan-cluster
+
+  apply:
+    desc: Alias for bootstrap:apply-cluster
+    cmds:
+      - task bootstrap:apply-cluster
+
+  plan-cluster:
+    desc: Alias for bootstrap:plan-cluster
+    cmds:
+      - task bootstrap:plan-cluster
+
+  apply-cluster:
+    desc: Alias for bootstrap:apply-cluster
+    cmds:
+      - task bootstrap:apply-cluster
+
+  plan-platform-bootstrap:
+    desc: Alias for infra:plan-bootstrap
+    cmds:
+      - task infra:plan-bootstrap
+
+  apply-platform-bootstrap:
+    desc: Alias for infra:apply-bootstrap
+    cmds:
+      - task infra:apply-bootstrap
+
+  wait-platform-crds:
+    desc: Alias for infra:wait-crds
+    cmds:
+      - task infra:wait-crds
+
+  health-cluster:
+    desc: Alias for bootstrap:health
+    cmds:
+      - task bootstrap:health
+
+  health-platform-bootstrap:
+    desc: Alias for infra:health
+    cmds:
+      - task infra:health
+
+  bootstrap-piraeus-storage:
+    desc: Alias for infra:bootstrap-piraeus-storage
+    cmds:
+      - task infra:bootstrap-piraeus-storage
+
+  day0-guide:
+    desc: Alias for ops:day0-guide
+    cmds:
+      - task ops:day0-guide
+
+  day1-guide:
+    desc: Alias for ops:day1-guide
+    cmds:
+      - task ops:day1-guide
+
+  openbao-day0:
+    desc: Alias for ops:openbao-day0
+    cmds:
+      - task ops:openbao-day0
+
+  apply-gitops-bootstrap:
+    desc: Alias for gitops:apply-bootstrap
+    cmds:
+      - task gitops:apply-bootstrap
+
+  from-scratch:
+    desc: Run greenfield cluster bootstrap, platform bootstrap, then print day-0 guide
+    cmds:
+      - task bootstrap:apply-cluster
+      - task infra:apply-bootstrap
+      - task ops:day0-guide
+
+  destroy-infrastructure:
+    desc: Alias for infra:destroy
+    cmds:
+      - task infra:destroy
+
+  destroy-bootstrap:
+    desc: Alias for bootstrap:destroy
+    cmds:
+      - task bootstrap:destroy
+
+  destroy:
+    desc: Destroy infrastructure, then bootstrap
+    cmds:
+      - task infra:destroy
+      - task bootstrap:destroy

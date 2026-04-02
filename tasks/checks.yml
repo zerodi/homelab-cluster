@@ -1,0 +1,58 @@
+version: "3"
+
+tasks:
+  tofu-fmt:
+    desc: Run tofu fmt -check recursively
+    cmds:
+      - tofu fmt -check -recursive
+
+  tofu-validate-bootstrap:
+    desc: Run tofu validate for bootstrap/
+    cmds:
+      - tofu -chdir=bootstrap validate
+
+  tofu-validate-infrastructure:
+    desc: Run tofu validate for infrastructure/
+    cmds:
+      - tofu -chdir=infrastructure validate
+
+  yamllint:
+    desc: Run yamllint across the repository
+    cmds:
+      - yamllint .
+
+  shellcheck:
+    desc: Run shellcheck for repository helper scripts
+    cmds:
+      - shellcheck infrastructure/scripts/*.sh argocd/scripts/*.sh
+
+  kustomize-bootstrap:
+    desc: Build argocd/bootstrap with kustomize or kubectl fallback
+    cmds:
+      - |
+        if command -v kustomize >/dev/null 2>&1; then
+          kustomize build argocd/bootstrap
+        else
+          kubectl kustomize argocd/bootstrap
+        fi
+
+  kustomize-platform:
+    desc: Build argocd/platform with kustomize or kubectl fallback
+    cmds:
+      - |
+        if command -v kustomize >/dev/null 2>&1; then
+          kustomize build argocd/platform
+        else
+          kubectl kustomize argocd/platform
+        fi
+
+  validate:
+    desc: Run the local validation baseline used by CI and pre-commit
+    cmds:
+      - task check:tofu-fmt
+      - task check:tofu-validate-bootstrap
+      - task check:tofu-validate-infrastructure
+      - task check:yamllint
+      - task check:shellcheck
+      - task check:kustomize-bootstrap
+      - task check:kustomize-platform

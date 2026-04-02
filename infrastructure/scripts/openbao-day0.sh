@@ -6,6 +6,13 @@ log() {
   printf '[openbao-day0] %s\n' "$*"
 }
 
+require_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Required command not found: $1" >&2
+    exit 1
+  fi
+}
+
 usage() {
   cat <<'EOF'
 Usage:
@@ -94,8 +101,15 @@ if [[ -z "${BAO_TOKEN:-}" ]]; then
   exit 1
 fi
 
+require_cmd bao
+require_cmd kubectl
+require_cmd base64
+
 export KUBECONFIG="$kubeconfig"
 export BAO_ADDR="$bao_addr"
+
+log "Checking service account ${eso_namespace}/${eso_service_account}"
+kubectl -n "$eso_namespace" get serviceaccount "$eso_service_account" >/dev/null
 
 log "Checking OpenBao status at $BAO_ADDR"
 status_output="$(bao status -format=json 2>&1 || bao status 2>&1)"

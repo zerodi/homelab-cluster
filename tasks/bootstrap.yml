@@ -1,0 +1,47 @@
+version: "3"
+
+vars:
+  TALOSCONFIG_PATH:
+    sh: cd bootstrap && realpath "$(tofu output -raw talosconfig_path)"
+  KUBECONFIG_PATH:
+    sh: cd bootstrap && realpath "$(tofu output -raw kubeconfig_path)"
+  CONTROLPLANE_IPS:
+    sh: tofu -chdir=bootstrap output -raw controlplane_ips_csv
+  WORKER_IPS:
+    sh: tofu -chdir=bootstrap output -raw worker_ips_csv
+  BOOTSTRAP_CONTROLPLANE_IP:
+    sh: echo "{{.CONTROLPLANE_IPS}}" | cut -d, -f1
+
+tasks:
+  init:
+    desc: Initialize the bootstrap OpenTofu entrypoint
+    cmds:
+      - tofu -chdir=bootstrap init {{.CLI_ARGS}}
+
+  plan-cluster:
+    desc: Plan the bootstrap OpenTofu entrypoint
+    aliases:
+      - plan
+    cmds:
+      - tofu -chdir=bootstrap plan -var-file=../terraform.tfvars
+
+  apply-cluster:
+    desc: Apply the bootstrap OpenTofu entrypoint
+    aliases:
+      - apply
+    cmds:
+      - tofu -chdir=bootstrap apply -var-file=../terraform.tfvars
+
+  destroy:
+    desc: Destroy the bootstrap entrypoint without refresh
+    cmds:
+      - tofu -chdir=bootstrap destroy -var-file=../terraform.tfvars -refresh=false
+
+  health:
+    desc: Run local cluster bootstrap health checks using talosctl and kubectl
+    cmds:
+      - test -f "{{.TALOSCONFIG_PATH}}"
+      - test -f "{{.KUBECONFIG_PATH}}"
+      - TALOSCONFIG="{{.TALOSCONFIG_PATH}}" talosctl -e "{{.BOOTSTRAP_CONTROLPLANE_IP}}" -n "{{.BOOTSTRAP_CONTROLPLANE_IP}}" health --control-plane-nodes "{{.CONTROLPLANE_IPS}}" --worker-nodes "{{.WORKER_IPS}}"
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Ready node --all --timeout=10m
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl get nodes -o wide

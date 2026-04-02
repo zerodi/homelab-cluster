@@ -6,6 +6,13 @@ log() {
   printf '[bootstrap-linstor-storage] %s\n' "$*"
 }
 
+require_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Required command not found: $1" >&2
+    exit 1
+  fi
+}
+
 usage() {
   cat <<'EOF'
 Usage:
@@ -69,7 +76,14 @@ if [[ ! -f "$kubeconfig" ]]; then
   exit 1
 fi
 
+require_cmd kubectl
+
 export KUBECONFIG="$kubeconfig"
+
+if ! kubectl linstor --help >/dev/null 2>&1; then
+  echo "kubectl linstor plugin is required for storage bootstrap." >&2
+  exit 1
+fi
 
 log "Waiting for Piraeus datastore pods in namespace $namespace"
 kubectl wait pod --timeout=15m --for=condition=Ready -n "$namespace" -l app.kubernetes.io/name=piraeus-datastore

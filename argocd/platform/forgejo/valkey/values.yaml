@@ -1,0 +1,39 @@
+fullnameOverride: forgejo-valkey
+
+architecture: standalone
+
+auth:
+  enabled: true
+  existingSecret: forgejo-valkey-auth
+  existingSecretPasswordKey: valkey-password
+
+primary:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  persistence:
+    enabled: true
+    storageClass: linstor-pool1-r2
+    size: 5Gi
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+  containerSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+
+metrics:
+  enabled: false

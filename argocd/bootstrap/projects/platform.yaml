@@ -9,12 +9,21 @@ spec:
     - https://git.example.invalid/replace-me/gitops.git
     - https://charts.goauthentik.io
     - code.forgejo.org/forgejo-helm
+    - registry-1.docker.io/bitnamicharts
   destinations:
-    - namespace: "*"
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+    - namespace: authentik
+      server: https://kubernetes.default.svc
+    - namespace: forgejo
+      server: https://kubernetes.default.svc
+    - namespace: gateway
       server: https://kubernetes.default.svc
   clusterResourceWhitelist:
-    - group: "*"
-      kind: "*"
+    - group: ""
+      kind: Namespace
+    - group: gateway.networking.k8s.io
+      kind: GatewayClass
   namespaceResourceWhitelist:
     - group: "*"
       kind: "*"

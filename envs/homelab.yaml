@@ -1,0 +1,68 @@
+cluster:
+  name: homelab-talos
+  base_domain: home.arpa
+
+gitops:
+  repo_url: https://git.example.invalid/replace-me/gitops.git
+  revision: main
+
+hosts:
+  argocd: argocd.home.arpa
+  authentik: auth.home.arpa
+  forgejo: git.home.arpa
+  echo: echo.home.arpa
+
+storage:
+  piraeus:
+    namespace: piraeus-datastore
+    pool_name: pool1
+    replica_count: 2
+    storage_class: linstor-pool1-r2
+
+platform:
+  gateway:
+    namespace: gateway
+    gateway_class_name: cilium
+    internal_gateway_name: internal
+    external_gateway_name: external
+  authentik:
+    namespace: authentik
+    runtime_secret_name: authentik-runtime
+    postgresql_auth_secret_name: authentik-postgresql-auth
+    redis_auth_secret_name: authentik-redis-auth
+    postgresql:
+      host: authentik-postgresql.authentik.svc.cluster.local
+      database: authentik
+      user: authentik
+      chart_version: 16.7.15
+    redis:
+      host: authentik-redis-master.authentik.svc.cluster.local
+      chart_version: 21.2.13
+  forgejo:
+    namespace: forgejo
+    admin_secret_name: forgejo-admin-secret
+    postgresql_auth_secret_name: forgejo-postgresql-auth
+    valkey_auth_secret_name: forgejo-valkey-auth
+    runtime_config_secret_name: forgejo-runtime-config
+    oidc_secret_name: forgejo-oidc
+    admin_email: forgejo@home.arpa
+    root_url: https://git.home.arpa/
+    postgresql:
+      host: forgejo-postgresql.forgejo.svc.cluster.local:5432
+      database: forgejo
+      user: forgejo
+      chart_version: 16.7.15
+    valkey:
+      host: forgejo-valkey-primary.forgejo.svc.cluster.local:6379
+      chart_version: 2.4.7
+    sso:
+      provider_name: Authentik
+      authentik_host: https://auth.home.arpa
+      application_slug: forgejo
+      forgejo_root_url: https://git.home.arpa
+      discovery_url: https://auth.home.arpa/application/o/forgejo/.well-known/openid-configuration
+
+apps:
+  echo:
+    namespace: echo
+    host: echo.home.arpa

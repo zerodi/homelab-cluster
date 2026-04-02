@@ -80,6 +80,21 @@ end
 
 run_check "platform application exists" "kubectl -n argocd get application platform >/dev/null"; or set failed 1
 run_check "apps application exists" "kubectl -n argocd get application apps >/dev/null"; or set failed 1
+run_check "gateway application exists" "kubectl -n argocd get application gateway >/dev/null"; or set failed 1
+run_check "authentik-postgresql application exists" "kubectl -n argocd get application authentik-postgresql >/dev/null"; or set failed 1
+run_check "authentik-redis application exists" "kubectl -n argocd get application authentik-redis >/dev/null"; or set failed 1
+run_check "forgejo-postgresql application exists" "kubectl -n argocd get application forgejo-postgresql >/dev/null"; or set failed 1
+run_check "forgejo-valkey application exists" "kubectl -n argocd get application forgejo-valkey >/dev/null"; or set failed 1
+run_check "gateway application synced" "application_synced gateway"; or set failed 1
+run_check "gateway application healthy" "application_healthy gateway"; or set failed 1
+run_check "authentik-postgresql application synced" "application_synced authentik-postgresql"; or set failed 1
+run_check "authentik-postgresql application healthy" "application_healthy authentik-postgresql"; or set failed 1
+run_check "authentik-redis application synced" "application_synced authentik-redis"; or set failed 1
+run_check "authentik-redis application healthy" "application_healthy authentik-redis"; or set failed 1
+run_check "forgejo-postgresql application synced" "application_synced forgejo-postgresql"; or set failed 1
+run_check "forgejo-postgresql application healthy" "application_healthy forgejo-postgresql"; or set failed 1
+run_check "forgejo-valkey application synced" "application_synced forgejo-valkey"; or set failed 1
+run_check "forgejo-valkey application healthy" "application_healthy forgejo-valkey"; or set failed 1
 
 if kubectl get clustersecretstore openbao >/dev/null 2>&1
     run_check "openbao ClusterSecretStore ready" "clustersecretstore_ready openbao"; or set failed 1
@@ -97,12 +112,22 @@ end
 
 run_check "authentik namespace exists" "kubectl get namespace authentik >/dev/null"; or set failed 1
 run_check "forgejo namespace exists" "kubectl get namespace forgejo >/dev/null"; or set failed 1
+run_check "gateway namespace exists" "kubectl get namespace gateway >/dev/null"; or set failed 1
 
 run_check "authentik runtime secret exists" "kubectl -n authentik get secret authentik-runtime >/dev/null"; or set failed 1
+run_check "authentik postgresql auth secret exists" "kubectl -n authentik get secret authentik-postgresql-auth >/dev/null"; or set failed 1
+run_check "authentik redis auth secret exists" "kubectl -n authentik get secret authentik-redis-auth >/dev/null"; or set failed 1
+run_check "authentik pods ready" "kubectl -n authentik wait --for=condition=Ready pod --all --timeout=180s >/dev/null"; or set failed 1
 run_check "forgejo admin secret exists" "kubectl -n forgejo get secret forgejo-admin-secret >/dev/null"; or set failed 1
+run_check "forgejo postgresql auth secret exists" "kubectl -n forgejo get secret forgejo-postgresql-auth >/dev/null"; or set failed 1
+run_check "forgejo valkey auth secret exists" "kubectl -n forgejo get secret forgejo-valkey-auth >/dev/null"; or set failed 1
+run_check "forgejo runtime config secret exists" "kubectl -n forgejo get secret forgejo-runtime-config >/dev/null"; or set failed 1
 run_check "forgejo oidc secret exists" "kubectl -n forgejo get secret forgejo-oidc >/dev/null"; or set failed 1
+run_check "forgejo pods ready" "kubectl -n forgejo wait --for=condition=Ready pod --all --timeout=180s >/dev/null"; or set failed 1
 
 run_check "ingresses listable" "kubectl get ingress -A >/dev/null"; or set failed 1
+run_check "gatewayclasses listable" "kubectl get gatewayclass >/dev/null"; or set failed 1
+run_check "gateways listable" "kubectl get gateway -A >/dev/null"; or set failed 1
 
 info "Applications:"
 kubectl -n argocd get applications || true
@@ -115,6 +140,12 @@ kubectl get externalsecret -A || true
 
 info "Ingresses:"
 kubectl get ingress -A || true
+
+info "GatewayClasses:"
+kubectl get gatewayclass || true
+
+info "Gateways:"
+kubectl get gateway -A || true
 
 if test $failed -ne 0
     fail "post-deploy checks completed with errors"

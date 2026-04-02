@@ -21,6 +21,16 @@ output "worker_hostnames" {
   description = "Worker hostnames exported for the separate infrastructure entrypoint."
 }
 
+output "controlplane_ips_csv" {
+  value       = join(",", [for name in sort(keys(var.controlplane_nodes)) : var.controlplane_nodes[name].ip])
+  description = "Comma-separated control plane IPs used by local health helpers."
+}
+
+output "worker_ips_csv" {
+  value       = join(",", [for name in sort(keys(var.worker_nodes)) : var.worker_nodes[name].ip])
+  description = "Comma-separated worker IPs used by local health helpers."
+}
+
 output "platform_bootstrap" {
   value = {
     kubeconfig_path           = var.write_configs_to_files ? abspath(local_sensitive_file.kubeconfig.filename) : null

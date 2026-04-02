@@ -17,7 +17,11 @@ resource "helm_release" "argocd" {
       domain = local.effective_argocd_host
     }
     configs = {
+      cm = {
+        "application.resourceTrackingMethod" = "annotation+label"
+      }
       params = {
+        "controller.diff.server.side"                    = "true"
         "server.insecure"                                = "true"
         "server.repo.server.plaintext"                   = "true"
         "server.dex.server.plaintext"                    = "true"
@@ -27,7 +31,49 @@ resource "helm_release" "argocd" {
         "dexserver.disable.tls"                          = "true"
       }
     }
+    controller = {
+      resources = {
+        requests = {
+          cpu    = "100m"
+          memory = "700Mi"
+        }
+        limits = {
+          memory = "4Gi"
+        }
+      }
+    }
+    dex = {
+      resources = {
+        requests = {
+          cpu    = "10m"
+          memory = "32Mi"
+        }
+        limits = {
+          memory = "128Mi"
+        }
+      }
+    }
+    redis = {
+      resources = {
+        requests = {
+          cpu    = "100m"
+          memory = "64Mi"
+        }
+        limits = {
+          memory = "1Gi"
+        }
+      }
+    }
     server = {
+      resources = {
+        requests = {
+          cpu    = "50m"
+          memory = "64Mi"
+        }
+        limits = {
+          memory = "1Gi"
+        }
+      }
       ingress = {
         enabled          = true
         ingressClassName = "cilium"
@@ -37,6 +83,34 @@ resource "helm_release" "argocd" {
         hostname = local.effective_argocd_host
         tls      = true
       }
+    }
+    repoServer = {
+      resources = {
+        requests = {
+          cpu    = "100m"
+          memory = "256Mi"
+        }
+        limits = {
+          memory = "2Gi"
+        }
+      }
+      containerSecurityContext = {
+        readOnlyRootFilesystem = true
+      }
+    }
+    applicationSet = {
+      resources = {
+        requests = {
+          cpu    = "50m"
+          memory = "64Mi"
+        }
+        limits = {
+          memory = "1Gi"
+        }
+      }
+    }
+    notifications = {
+      enabled = false
     }
   })]
 

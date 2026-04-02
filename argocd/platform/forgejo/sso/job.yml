@@ -104,18 +104,27 @@ spec:
                   continue
                 fi
 
-                AUTH_ID="$({ kubectl -n forgejo exec "$POD_NAME" -- sh -ceu 'forgejo admin auth list --vertical-bars || true'; } | awk -F'|' -v name="$FORGEJO_SSO_NAME" '
-                  $0 ~ name {
-                    for (i = 1; i <= NF; i++) {
-                      field = $i
-                      gsub(/^[[:space:]]+|[[:space:]]+$/, "", field)
-                      if (field ~ /^[0-9]+$/) {
-                        print field
-                        exit
-                      }
-                    }
-                  }
-                ')"
+                AUTH_ID="$(
+                  {
+                    kubectl -n forgejo exec "$POD_NAME" -- sh -ceu 'forgejo admin auth list --vertical-bars || true'
+                  } | while IFS= read -r line; do
+                    case "$line" in
+                      *"$FORGEJO_SSO_NAME"*)
+                        auth_id="${line#|}"
+                        auth_id="${auth_id%%|*}"
+                        auth_id="$(printf '%s' "$auth_id" | tr -d '[:space:]')"
+                        case "$auth_id" in
+                          ''|*[!0-9]*)
+                            ;;
+                          *)
+                            printf '%s\n' "$auth_id"
+                            break
+                            ;;
+                        esac
+                        ;;
+                    esac
+                  done
+                )"
 
                 if [ -n "$AUTH_ID" ]; then
                   if kubectl -n forgejo exec "$POD_NAME" -- env FORGEJO_SSO_NAME="$FORGEJO_SSO_NAME" OIDC_CLIENT_ID="$OIDC_CLIENT_ID" OIDC_CLIENT_SECRET="$OIDC_CLIENT_SECRET" OIDC_DISCOVERY_URL="$OIDC_DISCOVERY_URL" AUTH_ID="$AUTH_ID" sh -ceu '

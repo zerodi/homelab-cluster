@@ -10,21 +10,52 @@ persistence:
   enabled: true
   storageClass: linstor-pool1-r2
   size: 10Gi
+podSecurityContext:
+  fsGroup: 1000
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsGroup: 1000
+  runAsNonRoot: true
+  runAsUser: 1000
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
 gitea:
+  additionalConfigSources:
+    - secret:
+        secretName: forgejo-runtime-config
   admin:
     existingSecret: forgejo-admin-secret
     email: forgejo@home.arpa
   config:
-    database:
-      DB_TYPE: sqlite3
-    session:
-      PROVIDER: memory
-    cache:
-      ADAPTER: memory
-    queue:
-      TYPE: level
     server:
       ROOT_URL: https://git.home.arpa/
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 10
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 3
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 30
 service:
   http:
     type: ClusterIP

@@ -2,6 +2,13 @@
 
 set -euo pipefail
 
+require_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Required command not found: $1" >&2
+    exit 1
+  fi
+}
+
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo_root=$(cd -- "$script_dir/../.." && pwd)
 infra_dir="$repo_root/infrastructure"
@@ -97,6 +104,8 @@ destroy_crd_backed_resources() {
 }
 
 main() {
+  require_cmd tofu
+
   if prime_kubeconfig; then
     prune_missing_crd_targets
   fi
