@@ -1,0 +1,16 @@
+server:
+  fullnameOverride: victoria-metrics
+  retentionPeriod: 30d
+  scrape:
+    enabled: false
+  persistentVolume:
+    enabled: true
+    storageClassName: linstor-pool1-r2
+    size: 20Gi
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi

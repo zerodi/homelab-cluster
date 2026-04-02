@@ -7,7 +7,7 @@
 - root: только `terraform.tfvars`, examples и документация
 - `bootstrap/`: самостоятельный Terraform/OpenTofu entrypoint для Talos image, VM lifecycle, machine config, control plane bootstrap, локальных `kubeconfig` и `talosconfig`, базового Cilium bootstrap
 - `infrastructure/`: отдельный Terraform/OpenTofu entrypoint для bootstrap-операторов и storage/bootstrap readiness внутри Kubernetes
-- `argocd/`: runtime/GitOps scaffold для `authentik`, `forgejo`, `echo`, `ClusterSecretStore openbao` и app-of-apps bootstrap
+- `argocd/`: runtime/GitOps scaffold для `authentik`, `forgejo`, `echo`, observability stack, `ClusterSecretStore openbao` и app-of-apps bootstrap
 
 Root больше не является Terraform/OpenTofu entrypoint.
 
@@ -56,15 +56,19 @@ Root больше не является Terraform/OpenTofu entrypoint.
 `argocd/` содержит runtime/GitOps manifests:
 
 - `bootstrap/`: root `Application` и базовые `AppProject`
-- `platform/`: `authentik`, `forgejo` и связанные prereqs/bootstrap manifests
+- `platform/`: `authentik`, `forgejo`, observability stack и связанные prereqs/bootstrap manifests
 - `apps/`: demo `echo`
 
 Runtime stateful services для приложений тоже живут здесь:
 
 - `authentik` использует отдельные runtime `Application` для PostgreSQL и Redis
 - `forgejo` использует отдельные runtime `Application` для PostgreSQL и Valkey
-- `gateway` используется как runtime Gateway API foundation alongside existing Ingress objects
-- оба приложения получают credentials только через `OpenBao` + `External Secrets`
+- observability stack состоит из `VictoriaMetrics`, `Loki`, `Tempo`, `Grafana` и `OpenTelemetry Collector`
+- observability stack сразу приезжает с self-scrape через `OTel Collector`, Hubble metrics scrape, provisioned dashboards и базовыми Grafana alert rules
+- `gateway` используется как shared runtime Gateway API foundation
+- `authentik`, `echo`, `forgejo` и `grafana` используют собственные namespaced `Gateway` и `HTTPRoute`
+- `hubble` публикуется через отдельный `HTTPRoute` на shared `internal` gateway
+- runtime workloads с credentials получают их только через `OpenBao` + `External Secrets`
 
 Важно: это scaffold. По умолчанию там intentionally invalid `repoURL`, который нужно заменить перед использованием. Детали: [argocd/README.md](/home/zerodi/code/talos-proxmox-no-ssh/argocd/README.md)
 
@@ -119,7 +123,7 @@ Runtime stateful services для приложений тоже живут зде
 Mapping non-secret naming contract между Terraform и `argocd/` описан в [docs/environment-contract.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/environment-contract.md).
 План cutover Forgejo на runtime PostgreSQL и Valkey описан в [docs/forgejo-postgresql-migration.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/forgejo-postgresql-migration.md).
 Day-1 operator actions и границы автоматизации описаны в [docs/day1-operations.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/day1-operations.md).
-Текущий day-0 secret contract для runtime приложений описан в [docs/day0-bootstrap.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/day0-bootstrap.md).
+Текущий day-0 secret contract для runtime приложений и observability описан в [docs/day0-bootstrap.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/day0-bootstrap.md).
 
 Ключевые группы переменных в root `terraform.tfvars`:
 

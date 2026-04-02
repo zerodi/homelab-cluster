@@ -1,0 +1,111 @@
+fullnameOverride: tempo
+
+reportingEnabled: false
+multitenancyEnabled: false
+
+tempo:
+  structuredConfig:
+    usage_report:
+      reporting_enabled: false
+
+gateway:
+  enabled: true
+  replicas: 1
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+distributor:
+  replicas: 1
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+ingester:
+  replicas: 1
+  podDisruptionBudget:
+    enabled: false
+  persistence:
+    enabled: true
+    storageClass: linstor-pool1-r2
+    size: 20Gi
+  config:
+    replication_factor: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+querier:
+  replicas: 1
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+queryFrontend:
+  replicas: 1
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+compactor:
+  replicas: 1
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+metricsGenerator:
+  enabled: false
+
+memcached:
+  enabled: false
+
+traces:
+  otlp:
+    grpc:
+      enabled: true
+      port: 4317
+    http:
+      enabled: true
+      port: 4318
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /var/tempo/traces
+    wal:
+      path: /var/tempo/wal

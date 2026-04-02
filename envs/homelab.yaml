@@ -11,6 +11,8 @@ hosts:
   authentik: auth.home.arpa
   forgejo: git.home.arpa
   echo: echo.home.arpa
+  grafana: grafana.home.arpa
+  hubble: hubble.home.arpa
 
 storage:
   piraeus:
@@ -61,6 +63,21 @@ platform:
       application_slug: forgejo
       forgejo_root_url: https://git.home.arpa
       discovery_url: https://auth.home.arpa/application/o/forgejo/.well-known/openid-configuration
+  observability:
+    namespace: observability
+    grafana:
+      admin_secret_name: grafana-admin-secret
+      root_url: https://grafana.home.arpa/
+      chart_version: 11.3.6
+    victoriametrics:
+      chart_version: 0.33.0
+      retention: 30d
+    loki:
+      chart_version: 9.3.6
+    tempo:
+      chart_version: 2.9.0
+    otel_collector:
+      chart_version: 0.147.1
 
 apps:
   echo:

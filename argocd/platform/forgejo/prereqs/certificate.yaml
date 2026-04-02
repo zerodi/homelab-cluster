@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: forgejo-tls
+  namespace: forgejo
+spec:
+  secretName: forgejo-tls
+  dnsNames:
+    - git.home.arpa
+  issuerRef:
+    name: homelab-ca
+    kind: ClusterIssuer

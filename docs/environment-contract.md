@@ -17,7 +17,7 @@ Runtime secrets по-прежнему живут в `OpenBao`, а day-0 Terrafor
 
 - `cluster.name` и `cluster.base_domain`
 - `gitops.repo_url` и `gitops.revision`
-- ingress hostnames для `argocd`, `authentik`, `forgejo`, `echo`
+- ingress hostnames для `argocd`, `authentik`, `forgejo`, `echo`, `grafana`, `hubble`
 - storage naming для `Piraeus` и LINSTOR
 - runtime naming contracts вроде namespace, secret names, `root_url`, `discovery_url`
 
@@ -45,6 +45,13 @@ Runtime secrets по-прежнему живут в `OpenBao`, а day-0 Terrafor
 - [argocd/platform/forgejo-valkey.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/forgejo-valkey.yaml)
 - [argocd/platform/forgejo-prereqs.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/forgejo-prereqs.yaml)
 - [argocd/platform/forgejo.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/forgejo.yaml)
+- [argocd/platform/observability-prereqs.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/observability-prereqs.yaml)
+- [argocd/platform/victoria-metrics.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/victoria-metrics.yaml)
+- [argocd/platform/loki.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/loki.yaml)
+- [argocd/platform/tempo.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/tempo.yaml)
+- [argocd/platform/otel-collector.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/otel-collector.yaml)
+- [argocd/platform/grafana.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/grafana.yaml)
+- [argocd/platform/hubble.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/hubble.yaml)
 - [argocd/apps/echo.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/apps/echo.yaml)
 
 `gitops.revision`
@@ -52,18 +59,38 @@ Runtime secrets по-прежнему живут в `OpenBao`, а day-0 Terrafor
 
 `hosts.authentik`
 - [argocd/platform/authentik/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/authentik/values.yaml)
+- [argocd/platform/authentik/prereqs/certificate.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/authentik/prereqs/certificate.yaml)
+- [argocd/platform/authentik/prereqs/gateway.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/authentik/prereqs/gateway.yaml)
+- [argocd/platform/authentik/prereqs/httproute.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/authentik/prereqs/httproute.yaml)
+- [argocd/platform/authentik/prereqs/redirect-httproute.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/authentik/prereqs/redirect-httproute.yaml)
 - [argocd/platform/authentik/prereqs/forgejo-sso-configmap.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/authentik/prereqs/forgejo-sso-configmap.yaml)
 - [argocd/platform/authentik/prereqs/forgejo-sso-blueprint-template-configmap.yml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/authentik/prereqs/forgejo-sso-blueprint-template-configmap.yml)
 
 `hosts.forgejo`
 - [argocd/platform/forgejo/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/forgejo/values.yaml)
+- [argocd/platform/forgejo/prereqs/certificate.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/forgejo/prereqs/certificate.yaml)
+- [argocd/platform/forgejo/prereqs/gateway.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/forgejo/prereqs/gateway.yaml)
+- [argocd/platform/forgejo/prereqs/httproute.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/forgejo/prereqs/httproute.yaml)
+- [argocd/platform/forgejo/prereqs/redirect-httproute.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/forgejo/prereqs/redirect-httproute.yaml)
 - [argocd/platform/forgejo/prereqs/forgejo-sso-configmap.yml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/forgejo/prereqs/forgejo-sso-configmap.yml)
 - [argocd/platform/authentik/prereqs/forgejo-sso-configmap.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/authentik/prereqs/forgejo-sso-configmap.yaml)
 - [argocd/platform/authentik/prereqs/forgejo-sso-blueprint-template-configmap.yml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/authentik/prereqs/forgejo-sso-blueprint-template-configmap.yml)
 
 `hosts.echo`
 - [argocd/apps/echo/resources/certificate.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/apps/echo/resources/certificate.yaml)
-- [argocd/apps/echo/resources/ingress.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/apps/echo/resources/ingress.yaml)
+- [argocd/apps/echo/resources/gateway.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/apps/echo/resources/gateway.yaml)
+- [argocd/apps/echo/resources/httproute.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/apps/echo/resources/httproute.yaml)
+- [argocd/apps/echo/resources/redirect-httproute.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/apps/echo/resources/redirect-httproute.yaml)
+
+`hosts.grafana`
+- [argocd/platform/observability/prereqs/certificate.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/observability/prereqs/certificate.yaml)
+- [argocd/platform/observability/prereqs/gateway.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/observability/prereqs/gateway.yaml)
+- [argocd/platform/observability/prereqs/httproute.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/observability/prereqs/httproute.yaml)
+- [argocd/platform/observability/prereqs/redirect-httproute.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/observability/prereqs/redirect-httproute.yaml)
+
+`hosts.hubble`
+- [argocd/platform/hubble/httproute.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/hubble/httproute.yaml)
+- [argocd/platform/hubble.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/hubble.yaml)
 
 `storage.piraeus.namespace`
 - [bootstrap/variables.tf](/home/zerodi/code/talos-proxmox-no-ssh/bootstrap/variables.tf)
@@ -153,6 +180,21 @@ Runtime secrets по-прежнему живут в `OpenBao`, а day-0 Terrafor
 `platform.forgejo.sso.discovery_url`
 - [argocd/platform/authentik/prereqs/forgejo-sso-configmap.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/authentik/prereqs/forgejo-sso-configmap.yaml)
 - [argocd/platform/forgejo/prereqs/forgejo-sso-configmap.yml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/forgejo/prereqs/forgejo-sso-configmap.yml)
+
+`platform.observability.*`
+- [envs/homelab.yaml](/home/zerodi/code/talos-proxmox-no-ssh/envs/homelab.yaml)
+- [argocd/platform/observability-prereqs.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/observability-prereqs.yaml)
+- [argocd/platform/victoria-metrics.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/victoria-metrics.yaml)
+- [argocd/platform/loki.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/loki.yaml)
+- [argocd/platform/tempo.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/tempo.yaml)
+- [argocd/platform/otel-collector.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/otel-collector.yaml)
+- [argocd/platform/grafana.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/grafana.yaml)
+- [argocd/platform/observability/prereqs/grafana-admin-external-secret.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/observability/prereqs/grafana-admin-external-secret.yaml)
+- [argocd/platform/observability/victoria-metrics/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/observability/victoria-metrics/values.yaml)
+- [argocd/platform/observability/loki/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/observability/loki/values.yaml)
+- [argocd/platform/observability/tempo/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/observability/tempo/values.yaml)
+- [argocd/platform/observability/otel-collector/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/observability/otel-collector/values.yaml)
+- [argocd/platform/observability/grafana/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/observability/grafana/values.yaml)
 
 ## Operator workflow
 

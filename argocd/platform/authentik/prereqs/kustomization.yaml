@@ -3,6 +3,10 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - authentik-blueprints-configmap.yaml
+  - certificate.yaml
+  - gateway.yaml
+  - redirect-httproute.yaml
+  - httproute.yaml
   - postgresql-auth-external-secret.yaml
   - redis-auth-external-secret.yaml
   - runtime-external-secret.yaml

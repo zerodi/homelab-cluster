@@ -31,7 +31,8 @@ Day-1 operator actions после bootstrap вынесены в [docs/day1-opera
 3. план хранения `unseal keys` и recovery material вне repo и вне Terraform state
 4. runtime credentials для приложений:
    `platform/authentik/runtime`, `platform/authentik/postgresql`, `platform/authentik/redis`,
-   `platform/forgejo/admin`, `platform/forgejo/oidc`, `platform/forgejo/postgresql`, `platform/forgejo/valkey`
+   `platform/forgejo/admin`, `platform/forgejo/oidc`, `platform/forgejo/postgresql`, `platform/forgejo/valkey`,
+   `platform/observability/grafana`
 
 ## Порядок шагов
 
@@ -325,6 +326,9 @@ bao policy read external-secrets
 - `secret/platform/forgejo/oidc`
   - `client_id`
   - `client_secret`
+- `secret/platform/observability/grafana`
+  - `username`
+  - `password`
 
 Практические команды:
 
@@ -365,6 +369,12 @@ bao kv put secret/platform/forgejo/oidc \
   client_secret='REPLACE_WITH_CLIENT_SECRET'
 ```
 
+```bash
+bao kv put secret/platform/observability/grafana \
+  username='admin' \
+  password='REPLACE_WITH_LONG_RANDOM_VALUE'
+```
+
 Проверка:
 
 ```bash
@@ -375,6 +385,7 @@ bao kv get secret/platform/forgejo/admin
 bao kv get secret/platform/forgejo/postgresql
 bao kv get secret/platform/forgejo/valkey
 bao kv get secret/platform/forgejo/oidc
+bao kv get secret/platform/observability/grafana
 ```
 
 ### 6. GitOps bootstrap

@@ -5,7 +5,7 @@
 Структура:
 
 - `bootstrap/`: root `Application` и базовые `AppProject`
-- `platform/`: prereqs, runtime и bootstrap для `authentik` и `forgejo`
+- `platform/`: prereqs, runtime и bootstrap для `authentik`, `forgejo` и observability
 - `apps/`: demo `echo`
 
 В `platform/` теперь также лежат отдельные runtime data services:
@@ -14,6 +14,19 @@
 - `authentik-redis`
 - `forgejo-postgresql`
 - `forgejo-valkey`
+- `victoria-metrics`
+- `loki`
+- `tempo`
+- `grafana`
+- `otel-collector`
+- `hubble`
+
+Observability baseline сейчас такой:
+
+- `OTel Collector` принимает OTLP и одновременно скрапит собственные метрики, `VictoriaMetrics`, `Loki` и `Tempo`
+- `OTel Collector` также скрапит `hubble-metrics` из `kube-system`
+- `Grafana` получает заранее provisioned datasources, dashboards и базовые alert rules
+- `Tempo` работает через `tempo-distributed`, а datasource и collector идут через `tempo-gateway`
 
 И runtime network foundation:
 
@@ -21,10 +34,18 @@
 
 Они считаются частью runtime/GitOps слоя и не должны возвращаться в `infrastructure/`.
 
-Текущий baseline остаётся смешанным:
+Текущий baseline такой:
 
-- `Ingress` продолжает обслуживать `authentik`, `forgejo`, `echo`
-- Gateway API добавлен как foundation для будущего `HTTPRoute`-migration path
+- `authentik`, `echo`, `forgejo` и `grafana` уже переведены на namespaced `Gateway` + `HTTPRoute`
+- `hubble` опубликован через shared `internal` gateway как cluster-observability endpoint
+- shared `gateway` application даёт только общий HTTP foundation и `GatewayClass`
+- Gateway API теперь является реальным runtime path, а не только foundation
+
+Текущая policy-модель такая:
+
+- shared gateways в `platform/gateway` не владеют app-specific TLS secret или hostname routing
+- app-owned routing и TLS termination живут в namespace самого приложения
+- для `authentik`, `echo`, `forgejo` и `grafana` это выражено через namespaced `Gateway` + `HTTPRoute`
 
 `echo` теперь служит reference manifest для минимального runtime baseline:
 
@@ -32,6 +53,8 @@
 - `livenessProbe` / `readinessProbe`
 - pod-level `seccompProfile`
 - минимальный `NetworkPolicy`
+- namespaced `Gateway`
+- `HTTPRoute` c HTTP -> HTTPS redirect
 
 По умолчанию каркас использует намеренно невалидный `repoURL`:
 

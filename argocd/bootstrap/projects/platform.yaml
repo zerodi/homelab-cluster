@@ -10,6 +10,9 @@ spec:
     - https://charts.goauthentik.io
     - code.forgejo.org/forgejo-helm
     - registry-1.docker.io/bitnamicharts
+    - https://victoriametrics.github.io/helm-charts
+    - https://grafana-community.github.io/helm-charts
+    - https://open-telemetry.github.io/opentelemetry-helm-charts
   destinations:
     - namespace: argocd
       server: https://kubernetes.default.svc
@@ -18,6 +21,10 @@ spec:
     - namespace: forgejo
       server: https://kubernetes.default.svc
     - namespace: gateway
+      server: https://kubernetes.default.svc
+    - namespace: kube-system
+      server: https://kubernetes.default.svc
+    - namespace: observability
       server: https://kubernetes.default.svc
   clusterResourceWhitelist:
     - group: ""

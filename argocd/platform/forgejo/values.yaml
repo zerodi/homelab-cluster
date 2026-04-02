@@ -64,16 +64,4 @@ service:
     type: ClusterIP
     port: 22
 ingress:
-  enabled: true
-  ingressClassName: cilium
-  annotations:
-    cert-manager.io/cluster-issuer: homelab-ca
-  hosts:
-    - host: git.home.arpa
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: forgejo-tls
-      hosts:
-        - git.home.arpa
+  enabled: false

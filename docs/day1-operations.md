@@ -81,7 +81,9 @@ fish argocd/scripts/post-argocd-check.fish
 
 - проверить `Application` health в Argo CD
 - проверить готовность `ExternalSecret` и materialized `Secret`
-- проверить ingress endpoints для `authentik`, `forgejo`, `echo`
+- проверить runtime endpoints для `authentik`, `forgejo`, `echo`, `grafana`, `hubble`
+- открыть `grafana.home.arpa` и убедиться, что появились dashboards `Observability Overview`, `OpenTelemetry Collector` и `Cilium Hubble`
+- проверить в Grafana Alerting, что загружены правила `Observability Target Down`, `OTel Exporter Failures` и `Hubble Drops High`
 - проверить storage class и PVC binding для stateful workloads
 
 Для reference runtime baseline можно смотреть на [argocd/apps/echo/resources/deployment.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/apps/echo/resources/deployment.yaml) и [argocd/apps/echo/resources/networkpolicy.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/apps/echo/resources/networkpolicy.yaml).

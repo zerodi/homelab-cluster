@@ -62,16 +62,7 @@ server:
       path: /-/health/live/
       port: http
   ingress:
-    enabled: true
-    ingressClassName: cilium
-    annotations:
-      cert-manager.io/cluster-issuer: homelab-ca
-    hosts:
-      - auth.home.arpa
-    tls:
-      - secretName: authentik-tls
-        hosts:
-          - auth.home.arpa
+    enabled: false
 blueprints:
   configMaps:
     - authentik-blueprints

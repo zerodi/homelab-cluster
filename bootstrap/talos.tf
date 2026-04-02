@@ -190,6 +190,10 @@ data "helm_template" "cilium" {
       name  = "envoy.enabled"
       value = "true"
     },
+    {
+      name  = "gatewayAPI.enabled"
+      value = "true"
+    },
     # Hubble    
     {
       name  = "hubble.enabled"
@@ -200,8 +204,52 @@ data "helm_template" "cilium" {
       value = "true"
     },
     {
+      name  = "hubble.relay.rollOutPods"
+      value = "true"
+    },
+    {
       name  = "hubble.ui.enabled"
       value = "true"
+    },
+    {
+      name  = "hubble.ui.rollOutPods"
+      value = "true"
+    },
+    {
+      name  = "prometheus.enabled"
+      value = "true"
+    },
+    {
+      name  = "operator.prometheus.enabled"
+      value = "true"
+    },
+    {
+      name  = "hubble.metrics.enableOpenMetrics"
+      value = "true"
+    },
+    {
+      name  = "hubble.metrics.enabled[0]"
+      value = "dns:query;ignoreAAAA"
+    },
+    {
+      name  = "hubble.metrics.enabled[1]"
+      value = "drop"
+    },
+    {
+      name  = "hubble.metrics.enabled[2]"
+      value = "tcp"
+    },
+    {
+      name  = "hubble.metrics.enabled[3]"
+      value = "flow"
+    },
+    {
+      name  = "hubble.metrics.enabled[4]"
+      value = "icmp"
+    },
+    {
+      name  = "hubble.metrics.enabled[5]"
+      value = "http"
     },
     # Cilium L2 / LB IPAM platform decision
     {
@@ -235,6 +283,9 @@ data "talos_machine_configuration" "node" {
       cluster = merge(
         local.common_cluster_patch,
         {
+          extraManifests = each.value.machine_type == "controlplane" ? [
+            "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/standard-install.yaml",
+          ] : []
           inlineManifests = each.value.machine_type == "controlplane" ? [
             {
               name     = "cilium-bootstrap"

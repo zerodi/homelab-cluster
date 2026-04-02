@@ -81,12 +81,21 @@ end
 run_check "platform application exists" "kubectl -n argocd get application platform >/dev/null"; or set failed 1
 run_check "apps application exists" "kubectl -n argocd get application apps >/dev/null"; or set failed 1
 run_check "gateway application exists" "kubectl -n argocd get application gateway >/dev/null"; or set failed 1
+run_check "hubble application exists" "kubectl -n argocd get application hubble >/dev/null"; or set failed 1
 run_check "authentik-postgresql application exists" "kubectl -n argocd get application authentik-postgresql >/dev/null"; or set failed 1
 run_check "authentik-redis application exists" "kubectl -n argocd get application authentik-redis >/dev/null"; or set failed 1
 run_check "forgejo-postgresql application exists" "kubectl -n argocd get application forgejo-postgresql >/dev/null"; or set failed 1
 run_check "forgejo-valkey application exists" "kubectl -n argocd get application forgejo-valkey >/dev/null"; or set failed 1
+run_check "observability-prereqs application exists" "kubectl -n argocd get application observability-prereqs >/dev/null"; or set failed 1
+run_check "victoria-metrics application exists" "kubectl -n argocd get application victoria-metrics >/dev/null"; or set failed 1
+run_check "loki application exists" "kubectl -n argocd get application loki >/dev/null"; or set failed 1
+run_check "tempo application exists" "kubectl -n argocd get application tempo >/dev/null"; or set failed 1
+run_check "otel-collector application exists" "kubectl -n argocd get application otel-collector >/dev/null"; or set failed 1
+run_check "grafana application exists" "kubectl -n argocd get application grafana >/dev/null"; or set failed 1
 run_check "gateway application synced" "application_synced gateway"; or set failed 1
 run_check "gateway application healthy" "application_healthy gateway"; or set failed 1
+run_check "hubble application synced" "application_synced hubble"; or set failed 1
+run_check "hubble application healthy" "application_healthy hubble"; or set failed 1
 run_check "authentik-postgresql application synced" "application_synced authentik-postgresql"; or set failed 1
 run_check "authentik-postgresql application healthy" "application_healthy authentik-postgresql"; or set failed 1
 run_check "authentik-redis application synced" "application_synced authentik-redis"; or set failed 1
@@ -95,6 +104,18 @@ run_check "forgejo-postgresql application synced" "application_synced forgejo-po
 run_check "forgejo-postgresql application healthy" "application_healthy forgejo-postgresql"; or set failed 1
 run_check "forgejo-valkey application synced" "application_synced forgejo-valkey"; or set failed 1
 run_check "forgejo-valkey application healthy" "application_healthy forgejo-valkey"; or set failed 1
+run_check "observability-prereqs application synced" "application_synced observability-prereqs"; or set failed 1
+run_check "observability-prereqs application healthy" "application_healthy observability-prereqs"; or set failed 1
+run_check "victoria-metrics application synced" "application_synced victoria-metrics"; or set failed 1
+run_check "victoria-metrics application healthy" "application_healthy victoria-metrics"; or set failed 1
+run_check "loki application synced" "application_synced loki"; or set failed 1
+run_check "loki application healthy" "application_healthy loki"; or set failed 1
+run_check "tempo application synced" "application_synced tempo"; or set failed 1
+run_check "tempo application healthy" "application_healthy tempo"; or set failed 1
+run_check "otel-collector application synced" "application_synced otel-collector"; or set failed 1
+run_check "otel-collector application healthy" "application_healthy otel-collector"; or set failed 1
+run_check "grafana application synced" "application_synced grafana"; or set failed 1
+run_check "grafana application healthy" "application_healthy grafana"; or set failed 1
 
 if kubectl get clustersecretstore openbao >/dev/null 2>&1
     run_check "openbao ClusterSecretStore ready" "clustersecretstore_ready openbao"; or set failed 1
@@ -113,21 +134,42 @@ end
 run_check "authentik namespace exists" "kubectl get namespace authentik >/dev/null"; or set failed 1
 run_check "forgejo namespace exists" "kubectl get namespace forgejo >/dev/null"; or set failed 1
 run_check "gateway namespace exists" "kubectl get namespace gateway >/dev/null"; or set failed 1
+run_check "kube-system namespace exists" "kubectl get namespace kube-system >/dev/null"; or set failed 1
+run_check "observability namespace exists" "kubectl get namespace observability >/dev/null"; or set failed 1
 
 run_check "authentik runtime secret exists" "kubectl -n authentik get secret authentik-runtime >/dev/null"; or set failed 1
+run_check "authentik tls secret exists" "kubectl -n authentik get secret authentik-tls >/dev/null"; or set failed 1
 run_check "authentik postgresql auth secret exists" "kubectl -n authentik get secret authentik-postgresql-auth >/dev/null"; or set failed 1
 run_check "authentik redis auth secret exists" "kubectl -n authentik get secret authentik-redis-auth >/dev/null"; or set failed 1
+run_check "authentik gateway exists" "kubectl -n authentik get gateway authentik >/dev/null"; or set failed 1
+run_check "authentik route exists" "kubectl -n authentik get httproute authentik >/dev/null"; or set failed 1
+run_check "authentik redirect route exists" "kubectl -n authentik get httproute authentik-http-redirect >/dev/null"; or set failed 1
 run_check "authentik pods ready" "kubectl -n authentik wait --for=condition=Ready pod --all --timeout=180s >/dev/null"; or set failed 1
 run_check "forgejo admin secret exists" "kubectl -n forgejo get secret forgejo-admin-secret >/dev/null"; or set failed 1
+run_check "forgejo tls secret exists" "kubectl -n forgejo get secret forgejo-tls >/dev/null"; or set failed 1
 run_check "forgejo postgresql auth secret exists" "kubectl -n forgejo get secret forgejo-postgresql-auth >/dev/null"; or set failed 1
 run_check "forgejo valkey auth secret exists" "kubectl -n forgejo get secret forgejo-valkey-auth >/dev/null"; or set failed 1
 run_check "forgejo runtime config secret exists" "kubectl -n forgejo get secret forgejo-runtime-config >/dev/null"; or set failed 1
 run_check "forgejo oidc secret exists" "kubectl -n forgejo get secret forgejo-oidc >/dev/null"; or set failed 1
+run_check "forgejo gateway exists" "kubectl -n forgejo get gateway forgejo >/dev/null"; or set failed 1
+run_check "forgejo route exists" "kubectl -n forgejo get httproute forgejo >/dev/null"; or set failed 1
+run_check "forgejo redirect route exists" "kubectl -n forgejo get httproute forgejo-http-redirect >/dev/null"; or set failed 1
 run_check "forgejo pods ready" "kubectl -n forgejo wait --for=condition=Ready pod --all --timeout=180s >/dev/null"; or set failed 1
+run_check "grafana admin secret exists" "kubectl -n observability get secret grafana-admin-secret >/dev/null"; or set failed 1
+run_check "grafana tls secret exists" "kubectl -n observability get secret grafana-tls >/dev/null"; or set failed 1
+run_check "grafana gateway exists" "kubectl -n observability get gateway grafana >/dev/null"; or set failed 1
+run_check "grafana route exists" "kubectl -n observability get httproute grafana >/dev/null"; or set failed 1
+run_check "grafana redirect route exists" "kubectl -n observability get httproute grafana-http-redirect >/dev/null"; or set failed 1
+run_check "observability pods ready" "kubectl -n observability wait --for=condition=Ready pod --all --timeout=240s >/dev/null"; or set failed 1
 
 run_check "ingresses listable" "kubectl get ingress -A >/dev/null"; or set failed 1
 run_check "gatewayclasses listable" "kubectl get gatewayclass >/dev/null"; or set failed 1
 run_check "gateways listable" "kubectl get gateway -A >/dev/null"; or set failed 1
+run_check "httproutes listable" "kubectl get httproute -A >/dev/null"; or set failed 1
+run_check "echo gateway exists" "kubectl -n echo get gateway echo >/dev/null"; or set failed 1
+run_check "echo route exists" "kubectl -n echo get httproute echo >/dev/null"; or set failed 1
+run_check "echo redirect route exists" "kubectl -n echo get httproute echo-http-redirect >/dev/null"; or set failed 1
+run_check "hubble route exists" "kubectl -n kube-system get httproute hubble >/dev/null"; or set failed 1
 
 info "Applications:"
 kubectl -n argocd get applications || true
@@ -146,6 +188,9 @@ kubectl get gatewayclass || true
 
 info "Gateways:"
 kubectl get gateway -A || true
+
+info "HTTPRoutes:"
+kubectl get httproute -A || true
 
 if test $failed -ne 0
     fail "post-deploy checks completed with errors"

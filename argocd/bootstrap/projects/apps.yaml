@@ -24,5 +24,9 @@ spec:
       kind: Certificate
     - group: ""
       kind: Service
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
     - group: networking.k8s.io
-      kind: Ingress
+      kind: NetworkPolicy

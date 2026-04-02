@@ -1,0 +1,880 @@
+fullnameOverride: grafana
+
+testFramework:
+  enabled: false
+
+admin:
+  existingSecret: grafana-admin-secret
+  userKey: admin-user
+  passwordKey: admin-password
+
+service:
+  type: ClusterIP
+
+persistence:
+  enabled: true
+  storageClassName: linstor-pool1-r2
+  size: 10Gi
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+grafana.ini:
+  server:
+    root_url: https://grafana.home.arpa/
+    domain: grafana.home.arpa
+  metrics:
+    enabled: true
+  unified_alerting:
+    enabled: true
+  alerting:
+    enabled: false
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: VictoriaMetrics
+        uid: victoriametrics
+        type: prometheus
+        access: proxy
+        url: http://victoria-metrics.observability.svc.cluster.local:8428
+        isDefault: true
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://loki.observability.svc.cluster.local:3100
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://tempo-gateway.observability.svc.cluster.local
+        jsonData:
+          serviceMap:
+            datasourceUid: victoriametrics
+          tracesToLogsV2:
+            datasourceUid: loki
+            tags:
+              - service.name
+              - service.namespace
+              - k8s.namespace.name
+              - k8s.pod.name
+
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: observability
+        orgId: 1
+        folder: Observability
+        type: file
+        disableDeletion: false
+        allowUiUpdates: false
+        options:
+          path: /var/lib/grafana/dashboards/observability
+
+dashboards:
+  observability:
+    observability-overview:
+      json: |
+        {
+          "annotations": {"list": []},
+          "editable": false,
+          "fiscalYearStartMonth": 0,
+          "graphTooltip": 0,
+          "id": null,
+          "links": [],
+          "panels": [
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+              "id": 1,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "max by (job) (up{job=~\"otel-collector-self|victoria-metrics|loki|tempo-distributor|tempo-query-frontend\"})",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Observability Targets Up",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+              "id": 2,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (receiver) (rate(otelcol_receiver_accepted_spans[5m]))",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Accepted Spans",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+              "id": 3,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (receiver) (rate(otelcol_receiver_accepted_log_records[5m]))",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Accepted Log Records",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+              "id": 4,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (receiver) (rate(otelcol_receiver_accepted_metric_points[5m]))",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Accepted Metric Points",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {"type": "loki", "uid": "loki"},
+              "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+              "id": 5,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (job) (count_over_time({job=~\".+\"}[5m]))",
+                  "queryType": "range",
+                  "refId": "A"
+                }
+              ],
+              "title": "Log Volume by Job",
+              "type": "timeseries"
+            }
+          ],
+          "refresh": "30s",
+          "schemaVersion": 39,
+          "style": "dark",
+          "tags": ["observability"],
+          "templating": {"list": []},
+          "time": {"from": "now-6h", "to": "now"},
+          "timepicker": {},
+          "timezone": "browser",
+          "title": "Observability Overview",
+          "uid": "observability-overview",
+          "version": 1,
+          "weekStart": ""
+        }
+    otel-collector:
+      json: |
+        {
+          "annotations": {"list": []},
+          "editable": false,
+          "fiscalYearStartMonth": 0,
+          "graphTooltip": 0,
+          "id": null,
+          "links": [],
+          "panels": [
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+              "id": 1,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (exporter) (rate(otelcol_exporter_sent_spans[5m]))",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Exported Spans",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+              "id": 2,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (exporter) (rate(otelcol_exporter_sent_log_records[5m]))",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Exported Log Records",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+              "id": 3,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (exporter) (rate(otelcol_exporter_sent_metric_points[5m]))",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Exported Metric Points",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+              "id": 4,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (exporter) (rate(otelcol_exporter_send_failed_spans[5m]) + rate(otelcol_exporter_send_failed_log_records[5m]) + rate(otelcol_exporter_send_failed_metric_points[5m]))",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Exporter Failures",
+              "type": "timeseries"
+            }
+          ],
+          "refresh": "30s",
+          "schemaVersion": 39,
+          "style": "dark",
+          "tags": ["observability", "otel"],
+          "templating": {"list": []},
+          "time": {"from": "now-6h", "to": "now"},
+          "timepicker": {},
+          "timezone": "browser",
+          "title": "OpenTelemetry Collector",
+          "uid": "otel-collector",
+          "version": 1,
+          "weekStart": ""
+        }
+    cilium-hubble:
+      json: |
+        {
+          "annotations": {"list": []},
+          "editable": false,
+          "fiscalYearStartMonth": 0,
+          "graphTooltip": 0,
+          "id": null,
+          "links": [],
+          "panels": [
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+              "id": 1,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (verdict) (rate(hubble_flows_processed_total[5m]))",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Hubble Flows by Verdict",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+              "id": 2,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (reason) (rate(hubble_drop_total[5m]))",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Hubble Drops by Reason",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+              "id": 3,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (query) (rate(hubble_dns_queries_total[5m]))",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "DNS Queries",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+              "id": 4,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (flag) (rate(hubble_tcp_flags_total[5m]))",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "TCP Flags",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+              "id": 5,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (reason) (rate(cilium_drop_count_total[5m]))",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Cilium Drops by Reason",
+              "type": "timeseries"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+              "fieldConfig": {
+                "defaults": {
+                  "color": {"mode": "palette-classic"},
+                  "custom": {
+                    "axisCenteredZero": false,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "showPoints": "never",
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              },
+              "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+              "id": 6,
+              "options": {
+                "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+                "tooltip": {"mode": "single", "sort": "none"}
+              },
+              "targets": [
+                {
+                  "editorMode": "code",
+                  "expr": "sum by (k8s_app, workload, pod) (up{job=\"cilium-pods\"})",
+                  "range": true,
+                  "refId": "A"
+                }
+              ],
+              "title": "Cilium Metrics Targets Up",
+              "type": "timeseries"
+            }
+          ],
+          "refresh": "30s",
+          "schemaVersion": 39,
+          "style": "dark",
+          "tags": ["observability", "cilium", "hubble"],
+          "templating": {"list": []},
+          "time": {"from": "now-6h", "to": "now"},
+          "timepicker": {},
+          "timezone": "browser",
+          "title": "Cilium Hubble",
+          "uid": "cilium-hubble",
+          "version": 1,
+          "weekStart": ""
+        }
+
+alerting:
+  rules.yaml:
+    apiVersion: 1
+    groups:
+      - orgId: 1
+        name: observability-baseline
+        folder: Observability
+        interval: 1m
+        rules:
+          - uid: observability-target-down
+            title: Observability Target Down
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: victoriametrics
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: victoriametrics
+                  editorMode: code
+                  expr: min by (job) (max_over_time(up{job=~"otel-collector-self|victoria-metrics|loki|tempo-distributor|tempo-query-frontend|hubble-metrics"}[5m]))
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  range: false
+                  refId: A
+              - refId: C
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 1
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: C
+                  type: classic_conditions
+            noDataState: Alerting
+            execErrState: Alerting
+            for: 5m
+            annotations:
+              summary: One or more observability scrape targets are down.
+            labels:
+              severity: warning
+          - uid: otel-exporter-failures
+            title: OTel Exporter Failures
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: victoriametrics
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: victoriametrics
+                  editorMode: code
+                  expr: sum(rate(otelcol_exporter_send_failed_spans[5m])) + sum(rate(otelcol_exporter_send_failed_log_records[5m])) + sum(rate(otelcol_exporter_send_failed_metric_points[5m]))
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  range: false
+                  refId: A
+              - refId: C
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: C
+                  type: classic_conditions
+            noDataState: NoData
+            execErrState: Alerting
+            for: 10m
+            annotations:
+              summary: OpenTelemetry Collector is failing to export telemetry.
+            labels:
+              severity: warning
+          - uid: hubble-drops-high
+            title: Hubble Drops High
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: victoriametrics
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: victoriametrics
+                  editorMode: code
+                  expr: sum(rate(hubble_drop_total[5m]))
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  range: false
+                  refId: A
+              - refId: C
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 1
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: C
+                  type: classic_conditions
+            noDataState: NoData
+            execErrState: Alerting
+            for: 10m
+            annotations:
+              summary: Hubble observes sustained dropped traffic.
+            labels:
+              severity: warning
+          - uid: cilium-metrics-missing
+            title: Cilium Metrics Missing
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: victoriametrics
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: victoriametrics
+                  editorMode: code
+                  expr: (sum(up{job="cilium-pods", k8s_app="cilium"}) < bool 1) + (sum(up{job="cilium-pods", workload="cilium-operator"}) < bool 1)
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  range: false
+                  refId: A
+              - refId: C
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: C
+                  type: classic_conditions
+            noDataState: Alerting
+            execErrState: Alerting
+            for: 10m
+            annotations:
+              summary: Cilium agent or operator metrics are missing from scrape targets.
+            labels:
+              severity: warning

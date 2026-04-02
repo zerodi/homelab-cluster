@@ -3,6 +3,10 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - admin-external-secret.yaml
+  - certificate.yaml
+  - gateway.yaml
+  - redirect-httproute.yaml
+  - httproute.yaml
   - postgresql-auth-external-secret.yaml
   - valkey-auth-external-secret.yaml
   - runtime-config-external-secret.yaml
