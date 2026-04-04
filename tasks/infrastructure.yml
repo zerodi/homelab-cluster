@@ -2,15 +2,15 @@ version: "3"
 
 vars:
   KUBECONFIG_PATH:
-    sh: cd bootstrap && realpath "$(tofu output -raw kubeconfig_path)"
+    sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"kubeconfig_path"' || exit 0; p="$(tofu output -raw kubeconfig_path 2>/dev/null || true)"; [ -z "$p" ] || realpath "$p" 2>/dev/null || printf '%s\n' "$p"; }
   PIRAEUS_NAMESPACE:
-    sh: tofu -chdir=bootstrap output -raw piraeus_namespace
+    sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"piraeus_namespace"' || exit 0; tofu output -raw piraeus_namespace 2>/dev/null || true; }
   PIRAEUS_POOL_NAME:
-    sh: tofu -chdir=bootstrap output -raw piraeus_storage_pool_name
+    sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"piraeus_storage_pool_name"' || exit 0; tofu output -raw piraeus_storage_pool_name 2>/dev/null || true; }
   PIRAEUS_DEVICE:
-    sh: tofu -chdir=bootstrap output -raw piraeus_storage_device
+    sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"piraeus_storage_device"' || exit 0; tofu output -raw piraeus_storage_device 2>/dev/null || true; }
   PIRAEUS_NODES:
-    sh: tofu -chdir=bootstrap output -raw piraeus_storage_nodes_csv
+    sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"piraeus_storage_nodes_csv"' || exit 0; tofu output -raw piraeus_storage_nodes_csv 2>/dev/null || true; }
 
 tasks:
   init:
@@ -34,6 +34,7 @@ tasks:
   wait-crds:
     desc: Wait for platform CRDs to register in API discovery
     cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=10m crd/clusterissuers.cert-manager.io
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=10m crd/certificates.cert-manager.io
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=10m crd/bundles.trust.cert-manager.io
@@ -43,6 +44,11 @@ tasks:
   bootstrap-piraeus-storage:
     desc: Create LINSTOR device pools outside the Terraform graph
     cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - test -n "{{.PIRAEUS_NAMESPACE}}"
+      - test -n "{{.PIRAEUS_POOL_NAME}}"
+      - test -n "{{.PIRAEUS_DEVICE}}"
+      - test -n "{{.PIRAEUS_NODES}}"
       - |
         ./infrastructure/scripts/bootstrap-linstor-storage.sh \
           --kubeconfig "{{.KUBECONFIG_PATH}}" \
@@ -88,6 +94,7 @@ tasks:
   health:
     desc: Run local platform bootstrap checks after infrastructure apply
     cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=5m crd/clusterissuers.cert-manager.io
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=5m crd/certificates.cert-manager.io
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=5m crd/externalsecrets.external-secrets.io

@@ -109,6 +109,11 @@ tasks:
     cmds:
       - task ops:openbao-day0
 
+  export-root-ca:
+    desc: Alias for ops:export-root-ca
+    cmds:
+      - task ops:export-root-ca
+
   apply-gitops-bootstrap:
     desc: Alias for gitops:apply-bootstrap
     cmds:

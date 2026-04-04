@@ -61,7 +61,7 @@ locals {
   effective_piraeus_replica_count = coalesce(
     var.piraeus_replica_count,
     try(local.bootstrap_platform.piraeus_replica_count, null),
-    2,
+    1,
   )
   effective_piraeus_storage_nodes = sort(distinct(compact(coalescelist(
     var.piraeus_storage_nodes,

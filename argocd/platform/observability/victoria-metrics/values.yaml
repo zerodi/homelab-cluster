@@ -5,7 +5,7 @@ server:
     enabled: false
   persistentVolume:
     enabled: true
-    storageClassName: linstor-pool1-r2
+    storageClassName: linstor-pool1-r1
     size: 20Gi
   resources:
     requests:

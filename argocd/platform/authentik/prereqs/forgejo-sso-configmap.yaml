@@ -9,3 +9,8 @@ data:
   authentik_host: https://auth.home.arpa
   application_slug: forgejo
   forgejo_root_url: https://git.home.arpa
+  values.yaml: |
+    provider_name: Authentik
+    authentik_host: https://auth.home.arpa
+    application_slug: forgejo
+    forgejo_root_url: https://git.home.arpa

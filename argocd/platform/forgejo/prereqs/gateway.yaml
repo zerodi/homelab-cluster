@@ -5,6 +5,9 @@ metadata:
   namespace: forgejo
 spec:
   gatewayClassName: cilium
+  infrastructure:
+    annotations:
+      io.cilium/lb-ipam-ips: 192.168.100.244
   listeners:
     - name: http
       protocol: HTTP

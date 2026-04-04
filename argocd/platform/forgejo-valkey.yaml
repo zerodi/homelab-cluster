@@ -10,7 +10,7 @@ spec:
   sources:
     - repoURL: registry-1.docker.io/bitnamicharts
       chart: valkey
-      targetRevision: 2.4.7
+      targetRevision: 5.4.9
       helm:
         releaseName: forgejo-valkey
         valueFiles:

@@ -129,7 +129,7 @@ data "helm_template" "cilium" {
   repository = "https://helm.cilium.io"
   chart      = "cilium"
   # renovate: datasource=helm depName=cilium registryUrl=https://helm.cilium.io
-  version      = "1.19.1"
+  version      = "1.19.2"
   kube_version = var.kubernetes_version
   api_versions = []
   set = [
@@ -284,7 +284,8 @@ data "talos_machine_configuration" "node" {
         local.common_cluster_patch,
         {
           extraManifests = each.value.machine_type == "controlplane" ? [
-            "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/standard-install.yaml",
+            "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.1/standard-install.yaml",
+            "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.4.1/config/crd/experimental/gateway.networking.k8s.io_tlsroutes.yaml",
           ] : []
           inlineManifests = each.value.machine_type == "controlplane" ? [
             {

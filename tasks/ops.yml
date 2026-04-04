@@ -2,7 +2,8 @@ version: "3"
 
 vars:
   KUBECONFIG_PATH:
-    sh: cd bootstrap && realpath "$(tofu output -raw kubeconfig_path)"
+    sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"kubeconfig_path"' || exit 0; p="$(tofu output -raw kubeconfig_path 2>/dev/null || true)"; [ -z "$p" ] || realpath "$p" 2>/dev/null || printf '%s\n' "$p"; }
+  ROOT_CA_EXPORT_PATH: '{{default "out/homelab-root-ca.crt" .ROOT_CA_EXPORT_PATH}}'
 
 tasks:
   day0-guide:
@@ -13,20 +14,37 @@ tasks:
           'Day-0 bootstrap OpenBao:' \
           '  1. Инициализируйте и разлочьте OpenBao.' \
           '  2. Экспортируйте BAO_TOKEN и запустите task ops:openbao-day0.' \
-          '  3. Запишите runtime secrets:' \
+          '  3. Сгенерируйте starter commands: task ops:generate-runtime-secret-puts.' \
+          '  4. Запишите runtime secrets:' \
           '     - secret/platform/authentik/runtime' \
           '     - secret/platform/forgejo/admin' \
           '     - secret/platform/forgejo/oidc' \
-          '  4. Обновите repoURL/sourceRepos и домены в argocd/.' \
-          '  5. Запустите task gitops:apply-bootstrap.' \
-          '  6. Полный runbook: docs/day0-bootstrap.md'
+          '  5. Обновите repoURL/sourceRepos и домены в argocd/.' \
+          '  6. Запустите task gitops:apply-bootstrap.' \
+          '  7. Полный runbook: docs/day0-bootstrap.md'
 
   day1-guide:
     desc: Print the day-1 operations runbook location
     cmds:
       - "printf '%s\\n' 'Day-1 operations runbook: docs/day1-operations.md'"
 
+  generate-runtime-secret-puts:
+    desc: Print starter bao kv put commands for runtime secrets
+    cmds:
+      - bash ./infrastructure/scripts/generate-runtime-secret-puts.sh
+
   openbao-day0:
     desc: Run the OpenBao post-init day-0 helper for External Secrets
     cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
       - ./infrastructure/scripts/openbao-day0.sh --kubeconfig "{{.KUBECONFIG_PATH}}"
+
+  export-root-ca:
+    desc: Export the homelab root CA certificate from cert-manager to a local file
+    cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - mkdir -p "$(dirname "{{.ROOT_CA_EXPORT_PATH}}")"
+      - |
+        KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl -n cert-manager get secret homelab-root-ca \
+          -o go-template='{{`{{ index .data "tls.crt" }}`}}' | base64 -d > "{{.ROOT_CA_EXPORT_PATH}}"
+      - "printf '%s\\n' 'Exported homelab root CA to {{.ROOT_CA_EXPORT_PATH}}'"

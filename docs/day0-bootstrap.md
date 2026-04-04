@@ -142,7 +142,7 @@ task ops:openbao-day0
 
 - включает `KV v2` на `secret/`
 - включает `auth/kubernetes`
-- настраивает `auth/kubernetes/config`
+- настраивает `auth/kubernetes/config` без одноразового reviewer JWT
 - создаёт policy `external-secrets`
 - создаёт role `external-secrets`
 
@@ -160,6 +160,10 @@ kubectl -n openbao port-forward svc/openbao 8200:8200
 
 ```bash
 export BAO_ADDR='http://127.0.0.1:8200'
+```
+
+```fish
+set -x BAO_ADDR 'http://127.0.0.1:8200'
 ```
 
 Проверьте статус:
@@ -335,6 +339,17 @@ bao policy read external-secrets
 
 Практические команды:
 
+Сгенерировать starter snippet можно так:
+
+```bash
+task ops:generate-runtime-secret-puts
+```
+
+Helper печатает только `bao kv put secret/platform/...` команды:
+
+- случайные значения генерируются для локально управляемых паролей и `secret_key`
+- поля, которые должны совпадать с внешними системами, остаются с `REPLACE_WITH_*`
+
 ```bash
 bao kv put secret/platform/authentik/runtime \
   secret_key='REPLACE_WITH_LONG_RANDOM_VALUE'
@@ -427,6 +442,26 @@ kubectl -n forgejo get secret forgejo-admin-secret
 kubectl -n authentik get secret forgejo-oidc
 ```
 
+Данные для первого входа администратора:
+
+Forgejo:
+
+```bash
+kubectl -n forgejo get secret forgejo-admin-secret -o jsonpath='{.data.username}' | base64 -d && echo
+kubectl -n forgejo get secret forgejo-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo
+```
+
+Authentik:
+
+- отдельный admin `Secret` в Kubernetes не создаётся
+- на первом входе используйте initial setup flow в `https://auth.home.arpa`
+- если инстанс уже инициализирован и нужен recovery/reset, выполните:
+
+```bash
+kubectl -n authentik exec deploy/authentik-server -- ak shell -c "python /manage.py createsuperuser"
+kubectl -n authentik exec deploy/authentik-server -- ak shell -c "python /manage.py changepassword <username>"
+```
+
 ### 6. Отдельный runtime/GitOps запуск
 
 После bootstrap `OpenBao` и записи секретов runtime-слой больше не поднимается через Terraform bootstrap entrypoint.
@@ -449,6 +484,7 @@ kubectl -n authentik get secret forgejo-oidc
 
 ## Дальше
 
-- импортировать корневой CA `homelab-root-ca` в локальный trust store
+- экспортировать корневой CA `homelab-root-ca`: `task ops:export-root-ca`
+- импортировать экспортированный CA в локальный trust store
 - проверить ESO-синхронизацию секретов
 - проверить SSO и связку Forgejo + Argo CD по README

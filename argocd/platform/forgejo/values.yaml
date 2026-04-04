@@ -8,7 +8,7 @@ postgresql-ha:
   enabled: false
 persistence:
   enabled: true
-  storageClass: linstor-pool1-r2
+  storageClass: linstor-pool1-r1
   size: 10Gi
 podSecurityContext:
   fsGroup: 1000
@@ -28,6 +28,21 @@ resources:
   limits:
     cpu: 500m
     memory: 512Mi
+deployment:
+  env:
+    - name: SSL_CERT_FILE
+      value: /etc/ssl/certs/ca-certificates.crt
+    - name: GIT_SSL_CAINFO
+      value: /etc/ssl/certs/ca-certificates.crt
+extraVolumes:
+  - name: homelab-root-ca
+    configMap:
+      name: homelab-root-ca
+extraContainerVolumeMounts:
+  - name: homelab-root-ca
+    mountPath: /etc/ssl/certs/ca-certificates.crt
+    subPath: ca-bundle.crt
+    readOnly: true
 gitea:
   additionalConfigSources:
     - secret:

@@ -19,6 +19,7 @@ EOF
 kubeconfig=""
 root_manifest="argocd/bootstrap/root-application.yaml"
 timeout="10m"
+test_ssh_git_dir="test-ssh-git"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -64,6 +65,46 @@ fi
 
 export KUBECONFIG="$kubeconfig"
 
+test_known_hosts="$test_ssh_git_dir/keys/known_hosts"
+test_repo_secret_manifest="$test_ssh_git_dir/templates/argocd-repository-secret.yaml"
+test_root_manifest="$test_ssh_git_dir/templates/root-application-ssh.yaml"
+
+wait_for_application() {
+  local app_name="$1"
+
+  log "Waiting for Application/${app_name} sync"
+  deadline=$((SECONDS + 600))
+  while true; do
+    sync_status="$(kubectl -n argocd get application "$app_name" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
+    if [[ "$sync_status" == "Synced" ]]; then
+      break
+    fi
+
+    if (( SECONDS >= deadline )); then
+      echo "Application/${app_name} did not reach Synced status within 10 minutes." >&2
+      kubectl -n argocd get application "$app_name" -o yaml >&2 || true
+      exit 1
+    fi
+    sleep 5
+  done
+
+  log "Waiting for Application/${app_name} health"
+  deadline=$((SECONDS + 600))
+  while true; do
+    health_status="$(kubectl -n argocd get application "$app_name" -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
+    if [[ "$health_status" == "Healthy" ]]; then
+      break
+    fi
+
+    if (( SECONDS >= deadline )); then
+      echo "Application/${app_name} did not reach Healthy status within 10 minutes." >&2
+      kubectl -n argocd get application "$app_name" -o yaml >&2 || true
+      exit 1
+    fi
+    sleep 5
+  done
+}
+
 log "Checking ArgoCD readiness"
 kubectl get namespace argocd >/dev/null
 kubectl wait --for=condition=Established --timeout="$timeout" crd/applications.argoproj.io
@@ -71,44 +112,27 @@ kubectl -n argocd rollout status --timeout="$timeout" deploy/argocd-server
 
 log "Checking for placeholder repoURL values in argocd/"
 if rg -n 'git\.example\.invalid/replace-me/gitops\.git' argocd >/dev/null; then
+  if [[ -f "$test_known_hosts" && -f "$test_repo_secret_manifest" && -f "$test_root_manifest" ]]; then
+    log "Placeholder repoURL values detected, switching to test-ssh-git bootstrap mode"
+    kubectl -n argocd create configmap argocd-ssh-known-hosts-cm \
+      --from-file=ssh_known_hosts="$test_known_hosts" \
+      -o yaml \
+      --dry-run=client | kubectl apply -f -
+    kubectl apply -f "$test_repo_secret_manifest"
+    kubectl apply -f "$test_root_manifest"
+    wait_for_application "root-ssh"
+    log "ArgoCD root bootstrap completed via test-ssh-git"
+    exit 0
+  fi
+
   echo "argocd/ still contains placeholder repoURL values." >&2
+  echo "Either replace repoURL values in argocd/ or prepare test-ssh-git via ./test-ssh-git/setup.sh." >&2
   rg -n 'git\.example\.invalid/replace-me/gitops\.git' argocd >&2
   exit 1
 fi
 
 log "Applying $root_manifest"
 kubectl apply -n argocd -f "$root_manifest"
-
-log "Waiting for Application/root sync"
-deadline=$((SECONDS + 600))
-while true; do
-  sync_status="$(kubectl -n argocd get application root -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
-  if [[ "$sync_status" == "Synced" ]]; then
-    break
-  fi
-
-  if (( SECONDS >= deadline )); then
-    echo "Application/root did not reach Synced status within 10 minutes." >&2
-    kubectl -n argocd get application root -o yaml >&2 || true
-    exit 1
-  fi
-  sleep 5
-done
-
-log "Waiting for Application/root health"
-deadline=$((SECONDS + 600))
-while true; do
-  health_status="$(kubectl -n argocd get application root -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
-  if [[ "$health_status" == "Healthy" ]]; then
-    break
-  fi
-
-  if (( SECONDS >= deadline )); then
-    echo "Application/root did not reach Healthy status within 10 minutes." >&2
-    kubectl -n argocd get application root -o yaml >&2 || true
-    exit 1
-  fi
-  sleep 5
-done
+wait_for_application "root"
 
 log "ArgoCD root bootstrap completed"

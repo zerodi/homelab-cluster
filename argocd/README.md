@@ -90,4 +90,18 @@ Mapping того, какие файлы нужно обновить после �
 kubectl apply -n argocd -f argocd/bootstrap/root-application.yaml
 ```
 
+Initial admin password для входа в Argo CD:
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo
+```
+
 Локальный SSH-стенд для тестов вынесен в `test-ssh-git/`. Он не является частью tracked GitOps source of truth и не должен влиять на содержимое манифестов в `argocd/`.
+
+Если `argocd/` всё ещё содержит placeholder `repoURL`, но подготовлен и запущен `test-ssh-git/`, то `task gitops:apply-bootstrap` автоматически переключается в test mode:
+
+- применяет `argocd-ssh-known-hosts-cm` из `test-ssh-git/keys/known_hosts`
+- применяет repository secret из `test-ssh-git/templates/argocd-repository-secret.yaml`
+- применяет `Application/root-ssh` из `test-ssh-git/templates/root-application-ssh.yaml`
+
+Это позволяет тестировать bootstrap по SSH без изменения tracked manifests в `argocd/`.

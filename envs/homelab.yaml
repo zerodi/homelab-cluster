@@ -18,8 +18,8 @@ storage:
   piraeus:
     namespace: piraeus-datastore
     pool_name: pool1
-    replica_count: 2
-    storage_class: linstor-pool1-r2
+    replica_count: 1
+    storage_class: linstor-pool1-r1
 
 platform:
   gateway:
@@ -27,6 +27,13 @@ platform:
     gateway_class_name: cilium
     internal_gateway_name: internal
     external_gateway_name: external
+    addresses:
+      authentik: 192.168.100.241
+      echo: 192.168.100.242
+      grafana: 192.168.100.243
+      forgejo: 192.168.100.244
+      external: 192.168.100.245
+      internal: 192.168.100.246
   authentik:
     namespace: authentik
     runtime_secret_name: authentik-runtime

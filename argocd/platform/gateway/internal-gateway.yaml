@@ -5,6 +5,9 @@ metadata:
   namespace: gateway
 spec:
   gatewayClassName: cilium
+  infrastructure:
+    annotations:
+      io.cilium/lb-ipam-ips: 192.168.100.246
   listeners:
     - name: http
       protocol: HTTP

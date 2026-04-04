@@ -16,7 +16,7 @@ primary:
       memory: 512Mi
   persistence:
     enabled: true
-    storageClass: linstor-pool1-r2
+    storageClass: linstor-pool1-r1
     size: 10Gi
   podSecurityContext:
     enabled: true

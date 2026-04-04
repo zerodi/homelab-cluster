@@ -205,5 +205,5 @@ variable "piraeus_storage_pool_name" {
 
 variable "piraeus_replica_count" {
   type    = number
-  default = 2
+  default = 1
 }

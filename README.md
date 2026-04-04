@@ -275,10 +275,44 @@ task gitops:apply-bootstrap
 `task ops:openbao-day0` не выполняет `bao operator init` и не хранит recovery material. Он только:
 
 - включает `KV v2` на `secret/`
-- включает и настраивает `auth/kubernetes`
+- включает и настраивает `auth/kubernetes` через in-cluster service account самого `OpenBao`
 - создаёт policy и role для `external-secrets`
 
-`task gitops:apply-bootstrap` проверяет readiness `argocd`, валидирует отсутствие placeholder `repoURL` в `argocd/` и применяет root `Application`.
+Чтобы сгенерировать starter commands для записи runtime secrets в `OpenBao`:
+
+```bash
+task ops:generate-runtime-secret-puts
+```
+
+Этот helper печатает `bao kv put secret/platform/...` команды:
+
+- случайные значения генерируются только для локально управляемых паролей и `secret_key`
+- поля, завязанные на внешние интеграции, остаются с `REPLACE_WITH_*` placeholder
+
+`task gitops:apply-bootstrap` проверяет readiness `argocd` и работает в двух режимах:
+
+- обычный режим: требует заменить placeholder `repoURL` в `argocd/` и применяет root `Application`
+- test mode: если подготовлен `test-ssh-git/`, автоматически применяет `known_hosts`, repository secret и `root-application-ssh.yaml` без изменения tracked manifests в `argocd/`
+
+Initial admin password для Argo CD можно получить так:
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo
+```
+
+Initial admin login для Forgejo можно получить так:
+
+```bash
+kubectl -n forgejo get secret forgejo-admin-secret -o jsonpath='{.data.username}' | base64 -d && echo
+kubectl -n forgejo get secret forgejo-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo
+```
+
+Для Authentik отдельный admin `Secret` в Kubernetes не создаётся. На первом входе используйте initial setup flow в `https://auth.home.arpa`, а если нужен recovery/reset уже инициализированного инстанса:
+
+```bash
+kubectl -n authentik exec deploy/authentik-server -- ak shell -c "python /manage.py createsuperuser"
+kubectl -n authentik exec deploy/authentik-server -- ak shell -c "python /manage.py changepassword <username>"
+```
 
 ## Полезные команды
 

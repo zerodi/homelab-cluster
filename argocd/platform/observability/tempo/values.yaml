@@ -39,7 +39,7 @@ ingester:
     enabled: false
   persistence:
     enabled: true
-    storageClass: linstor-pool1-r2
+    storageClass: linstor-pool1-r1
     size: 20Gi
   config:
     replication_factor: 1

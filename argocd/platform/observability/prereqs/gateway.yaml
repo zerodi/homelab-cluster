@@ -5,6 +5,9 @@ metadata:
   namespace: observability
 spec:
   gatewayClassName: cilium
+  infrastructure:
+    annotations:
+      io.cilium/lb-ipam-ips: 192.168.100.243
   listeners:
     - name: http
       protocol: HTTP

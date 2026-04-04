@@ -5,7 +5,7 @@ resource "helm_release" "openbao" {
 
   repository = "https://openbao.github.io/openbao-helm"
   chart      = "openbao"
-  version    = "0.19.2"
+  version    = "0.26.2"
 
   timeout = 900
   wait    = true
@@ -45,7 +45,7 @@ resource "helm_release" "external_secrets" {
 
   repository = "https://charts.external-secrets.io"
   chart      = "external-secrets"
-  version    = "1.3.1"
+  version    = "2.2.0"
 
   timeout = 900
   wait    = true
@@ -73,4 +73,24 @@ resource "kubernetes_cluster_role_binding_v1" "external_secrets_openbao_auth_del
   }
 
   depends_on = [helm_release.external_secrets]
+}
+
+resource "kubernetes_cluster_role_binding_v1" "openbao_kubernetes_auth_delegator" {
+  metadata {
+    name = "openbao-kubernetes-auth-delegator"
+  }
+
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = "system:auth-delegator"
+  }
+
+  subject {
+    kind      = "ServiceAccount"
+    name      = "openbao"
+    namespace = "openbao"
+  }
+
+  depends_on = [helm_release.openbao]
 }

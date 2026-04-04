@@ -141,13 +141,11 @@ else
   bao auth enable kubernetes
 fi
 
-log "Building Kubernetes auth config from service account ${eso_namespace}/${eso_service_account}"
-sa_jwt_token="$(kubectl -n "$eso_namespace" create token "$eso_service_account")"
+log "Building Kubernetes auth config for in-cluster OpenBao token reviews"
 kube_ca_crt="$(kubectl config view --raw --minify --flatten -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d)"
 
 log "Writing auth/kubernetes/config"
 bao write auth/kubernetes/config \
-  token_reviewer_jwt="$sa_jwt_token" \
   kubernetes_host="https://kubernetes.default.svc" \
   kubernetes_ca_cert="$kube_ca_crt"
 
