@@ -5,6 +5,7 @@ resources:
   - forgejo-oci-repository.yaml
   - bitnami-oci-repository.yaml
   - woodpecker-oci-repository.yaml
+  - projects/bootstrap.yaml
   - projects/platform.yaml
   - projects/apps.yaml
   - applications/platform.yaml

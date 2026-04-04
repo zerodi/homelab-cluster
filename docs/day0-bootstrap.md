@@ -100,13 +100,14 @@ task infra:apply-bootstrap
 
 `task infra:plan-bootstrap` строит план только для первой стадии platform bootstrap, где ещё нет CRD-зависимых manifests.
 
-Эта фаза поднимает:
+Эта первая стадия поднимает только CRD-delivering bootstrap-ресурсы:
 
 - `cert-manager`
-- `openbao`
 - `external-secrets`
 - `trust-manager`
 - `piraeus-operator`
+
+`openbao` применяется позже, на финальном `tofu -chdir=infrastructure apply`, после readiness chain для CRD, cert-manager manifests и LINSTOR storage bootstrap.
 
 Проверка:
 

@@ -55,8 +55,8 @@ Runtime не должен возвращаться ни в `bootstrap/`, ни в
 
 1. считать, что выполняется первый bootstrap с пустого состояния
 2. предпочитать чистый bootstrap path:
-   - `make apply-cluster`
-   - `make apply-platform-bootstrap`
+   - `task apply-cluster`
+   - `task apply-platform-bootstrap`
    - затем отдельный запуск `argocd/`, если задача относится к runtime
 3. не проектировать решение вокруг already-existing runtime resources
 
@@ -123,6 +123,5 @@ Runtime не должен возвращаться ни в `bootstrap/`, ни в
 
 - `README.md`
 - `docs/day0-bootstrap.md`
-- `docs/roadmap-terraform-vs-argocd.md`
 
 Если код и документация расходятся, сначала фиксируйте кодовую границу ownership, затем приводите документацию к ней.

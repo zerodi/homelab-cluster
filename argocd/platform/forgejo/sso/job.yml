@@ -18,7 +18,7 @@ spec:
         runAsNonRoot: true
       containers:
         - name: bootstrap
-          image: bitnami/kubectl:latest
+          image: bitnami/kubectl:1.34.1
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

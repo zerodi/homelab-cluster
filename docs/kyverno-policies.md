@@ -54,7 +54,7 @@ Helm values лежат в [argocd/platform/kyverno/values.yaml](/home/zerodi/cod
 - `trust-manager`
 - `external-secrets`
 - `openbao`
-- `piraeus-datastore`
+- namespace `Piraeus`, заданный bootstrap contract
 - `gateway`
 - `authentik`
 - `forgejo`

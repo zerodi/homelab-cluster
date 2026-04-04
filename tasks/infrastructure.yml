@@ -95,6 +95,7 @@ tasks:
     desc: Run local platform bootstrap checks after infrastructure apply
     cmds:
       - test -n "{{.KUBECONFIG_PATH}}"
+      - test -n "{{.PIRAEUS_NAMESPACE}}"
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=5m crd/clusterissuers.cert-manager.io
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=5m crd/certificates.cert-manager.io
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=5m crd/externalsecrets.external-secrets.io
@@ -103,7 +104,7 @@ tasks:
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Established --timeout=5m crd/linstorclusters.piraeus.io
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Ready pod --all -n cert-manager --timeout=10m
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Ready pod --all -n external-secrets --timeout=10m
-      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Ready pod --all -n piraeus-datastore --timeout=10m
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Ready pod --all -n "{{.PIRAEUS_NAMESPACE}}" --timeout=10m
       - |
         if KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl get namespace trust-manager >/dev/null 2>&1; then
           KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Ready pod --all -n trust-manager --timeout=10m
@@ -112,7 +113,7 @@ tasks:
         if KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl get namespace argocd >/dev/null 2>&1; then
           KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Ready pod --all -n argocd --timeout=10m
         fi
-      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl get namespace cert-manager openbao external-secrets piraeus-datastore
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl get namespace cert-manager openbao external-secrets "{{.PIRAEUS_NAMESPACE}}"
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl get clusterissuer
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl get linstorcluster -A
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl -n openbao get pods

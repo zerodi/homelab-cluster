@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: bootstrap
+  namespace: argocd
+spec:
+  description: Bootstrap metadata and root applications managed by ArgoCD
+  sourceRepos:
+    - https://git.example.invalid/replace-me/gitops.git
+  destinations:
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: external-secrets.io
+      kind: ClusterSecretStore
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"

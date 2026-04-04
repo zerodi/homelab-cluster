@@ -226,14 +226,14 @@ task infra:apply-bootstrap
 
 `task infra:plan-bootstrap` теперь строит план только для первой стадии platform bootstrap, то есть для ресурсов, которые не требуют уже установленных CRD.
 
-Эта фаза запускается из отдельного entrypoint `infrastructure/` и поднимает:
+Эта первая стадия запускается из отдельного entrypoint `infrastructure/` и поднимает только CRD-delivering bootstrap-ресурсы:
 
 - `cert-manager`
-- `openbao`
 - `external-secrets`
 - `trust-manager`
 - `piraeus-operator`
-- `argocd`, если `argocd_enabled = true`
+
+`openbao` и `argocd` применяются на финальном `tofu -chdir=infrastructure apply` после readiness chain для CRD, cert-manager manifests и LINSTOR storage bootstrap.
 
 `task infra:apply-bootstrap` теперь выполняет staged bootstrap:
 
@@ -368,8 +368,6 @@ pre-commit run --all-files
 
 `task from-scratch` выполняет:
 
-`Makefile` остаётся только как compatibility wrapper и считается deprecated. Основной локальный entrypoint теперь `task`.
-
 Для CI и локальной валидации используется один и тот же `task`-baseline. Если entrypoint ещё не инициализирован, сначала выполните:
 
 ```bash
@@ -394,5 +392,4 @@ task bootstrap:destroy
 ## Документация
 
 - [docs/day0-bootstrap.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/day0-bootstrap.md)
-- [docs/roadmap-terraform-vs-argocd.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/roadmap-terraform-vs-argocd.md)
 - [argocd/README.md](/home/zerodi/code/talos-proxmox-no-ssh/argocd/README.md)

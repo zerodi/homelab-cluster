@@ -4,7 +4,8 @@ tasks:
   tofu-fmt:
     desc: Run tofu fmt -check recursively
     cmds:
-      - tofu fmt -check -recursive
+      - tofu -chdir=bootstrap fmt -check
+      - tofu -chdir=infrastructure fmt -check
 
   tofu-validate-bootstrap:
     desc: Run tofu validate for bootstrap/

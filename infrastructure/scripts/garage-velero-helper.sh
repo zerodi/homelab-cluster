@@ -73,10 +73,8 @@ garage_status() {
 }
 
 detect_node_id() {
-  local status output
+  local output
   output="$(garage_status)"
-
-  status=0
   if [[ -n "${GARAGE_NODE_ID}" ]]; then
     printf '%s\n' "${GARAGE_NODE_ID}"
     return 0

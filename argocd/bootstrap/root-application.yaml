@@ -4,7 +4,7 @@ metadata:
   name: root
   namespace: argocd
 spec:
-  project: default
+  project: bootstrap
   source:
     repoURL: https://git.example.invalid/replace-me/gitops.git
     targetRevision: main
