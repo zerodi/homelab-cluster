@@ -1,5 +1,5 @@
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: disallow-hostpath-volumes
   annotations:
@@ -10,39 +10,53 @@ metadata:
     policies.kyverno.io/description: >-
       Запрещает hostPath volumes вне явно исключённых namespace'ов.
 spec:
-  background: true
-  validationFailureAction: Enforce
-  rules:
-    - name: check-hostpath
-      match:
-        any:
-          - resources:
-              kinds:
-                - Pod
-      exclude:
-        any:
-          - resources:
-              namespaces:
-                - argocd
-                - authentik
-                - cert-manager
-                - external-secrets
-                - forgejo
-                - gateway
-                - kube-system
-                - kyverno
-                - observability
-                - openbao
-                - piraeus-datastore
-                - trust-manager
-                - velero
-      validate:
-        message: "hostPath volumes are not allowed outside excluded namespaces."
-        foreach:
-          - list: "request.object.spec.volumes || `[]`"
-            deny:
-              conditions:
-                all:
-                  - key: "{{ element.hostPath.path || '' }}"
-                    operator: NotEquals
-                    value: ""
+  evaluation:
+    background:
+      enabled: true
+  validationActions:
+    - Deny
+    - Audit
+  autogen:
+    podControllers:
+      controllers:
+        - deployments
+        - daemonsets
+        - statefulsets
+        - jobs
+        - cronjobs
+        - replicasets
+        - replicationcontrollers
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - argocd
+            - authentik
+            - cert-manager
+            - external-secrets
+            - forgejo
+            - gateway
+            - kube-system
+            - kyverno
+            - observability
+            - openbao
+            - piraeus-datastore
+            - trust-manager
+            - velero
+    resourceRules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - pods
+  validations:
+    - message: hostPath volumes are not allowed outside excluded namespaces.
+      expression: >-
+        !has(object.spec.volumes) ||
+        object.spec.volumes.all(v, !has(v.hostPath))

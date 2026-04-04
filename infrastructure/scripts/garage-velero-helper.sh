@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+log() {
+  printf '[garage-velero-helper] %s\n' "$*"
+}
+
+usage() {
+  cat <<'EOF'
+Usage:
+  garage-velero-helper.sh --kubeconfig <path> status
+  garage-velero-helper.sh --kubeconfig <path> detect-node-id
+  garage-velero-helper.sh --kubeconfig <path> print-bootstrap
+
+Options:
+  --kubeconfig <path>  Path to kubeconfig
+
+Environment:
+  GARAGE_NAMESPACE   default: garage
+  GARAGE_POD         default: garage-0
+  GARAGE_ZONE        default: homelab
+  GARAGE_CAPACITY    default: 20G
+  GARAGE_BUCKET      default: homelab-velero
+  GARAGE_KEY_NAME    default: velero
+  GARAGE_NODE_ID     optional override for print-bootstrap
+EOF
+}
+
+KUBECONFIG_PATH=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --kubeconfig)
+      KUBECONFIG_PATH="${2:-}"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if [[ -z "${KUBECONFIG_PATH}" ]]; then
+  echo "--kubeconfig is required" >&2
+  usage >&2
+  exit 1
+fi
+
+if [[ $# -lt 1 ]]; then
+  echo "command is required" >&2
+  usage >&2
+  exit 1
+fi
+
+COMMAND="$1"
+shift || true
+
+GARAGE_NAMESPACE="${GARAGE_NAMESPACE:-garage}"
+GARAGE_POD="${GARAGE_POD:-garage-0}"
+GARAGE_ZONE="${GARAGE_ZONE:-homelab}"
+GARAGE_CAPACITY="${GARAGE_CAPACITY:-20G}"
+GARAGE_BUCKET="${GARAGE_BUCKET:-homelab-velero}"
+GARAGE_KEY_NAME="${GARAGE_KEY_NAME:-velero}"
+GARAGE_NODE_ID="${GARAGE_NODE_ID:-}"
+
+garage_status() {
+  KUBECONFIG="${KUBECONFIG_PATH}" kubectl -n "${GARAGE_NAMESPACE}" exec "${GARAGE_POD}" -- /garage status
+}
+
+detect_node_id() {
+  local status output
+  output="$(garage_status)"
+
+  status=0
+  if [[ -n "${GARAGE_NODE_ID}" ]]; then
+    printf '%s\n' "${GARAGE_NODE_ID}"
+    return 0
+  fi
+
+  local node_id=""
+  node_id="$(printf '%s\n' "${output}" | awk '
+    /garage-0\.garage-internal/ {
+      for (i = 1; i <= NF; i++) {
+        if ($i ~ /^[0-9A-Fa-f]{8,}$/) {
+          print $i
+          exit
+        }
+      }
+    }'
+  )"
+
+  if [[ -z "${node_id}" ]]; then
+    node_id="$(printf '%s\n' "${output}" | awk '
+      {
+        for (i = 1; i <= NF; i++) {
+          if ($i ~ /^[0-9A-Fa-f]{32,}$/) {
+            print $i
+            exit
+          }
+        }
+      }'
+    )"
+  fi
+
+  if [[ -z "${node_id}" ]]; then
+    echo "failed to detect Garage node id automatically" >&2
+    echo >&2
+    echo "garage status output:" >&2
+    printf '%s\n' "${output}" >&2
+    return 1
+  fi
+
+  printf '%s\n' "${node_id}"
+}
+
+print_bootstrap() {
+  local node_id
+  node_id="$(detect_node_id)"
+
+  printf '%s\n' \
+    "Detected Garage node id: ${node_id}" \
+    "" \
+    "Run the following commands:" \
+    "kubectl -n ${GARAGE_NAMESPACE} exec ${GARAGE_POD} -- /garage layout assign -z ${GARAGE_ZONE} -c ${GARAGE_CAPACITY} ${node_id}" \
+    "kubectl -n ${GARAGE_NAMESPACE} exec ${GARAGE_POD} -- /garage layout apply --version 1" \
+    "kubectl -n ${GARAGE_NAMESPACE} exec ${GARAGE_POD} -- /garage bucket create ${GARAGE_BUCKET}" \
+    "kubectl -n ${GARAGE_NAMESPACE} exec ${GARAGE_POD} -- /garage key create ${GARAGE_KEY_NAME}" \
+    "kubectl -n ${GARAGE_NAMESPACE} exec ${GARAGE_POD} -- /garage bucket allow --read --write --owner ${GARAGE_BUCKET} --key ${GARAGE_KEY_NAME}" \
+    "kubectl -n ${GARAGE_NAMESPACE} exec ${GARAGE_POD} -- /garage key info ${GARAGE_KEY_NAME} --show-secret" \
+    "" \
+    "Then update OpenBao:" \
+    "bao kv put secret/platform/velero/s3 \\" \
+    "  access_key_id='REPLACE_WITH_GARAGE_KEY_ID' \\" \
+    "  secret_access_key='REPLACE_WITH_GARAGE_SECRET_KEY'"
+}
+
+case "${COMMAND}" in
+  status)
+    garage_status
+    ;;
+  detect-node-id)
+    detect_node_id
+    ;;
+  print-bootstrap)
+    print_bootstrap
+    ;;
+  *)
+    echo "unknown command: ${COMMAND}" >&2
+    usage >&2
+    exit 1
+    ;;
+esac

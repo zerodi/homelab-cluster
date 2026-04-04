@@ -3,6 +3,8 @@ kind: Kustomization
 resources:
   - authentik-prereqs.yaml
   - gateway.yaml
+  - garage-prereqs.yaml
+  - garage.yaml
   - hubble.yaml
   - velero-prereqs.yaml
   - velero.yaml

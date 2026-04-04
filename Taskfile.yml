@@ -104,6 +104,31 @@ tasks:
     cmds:
       - task ops:day1-guide
 
+  garage-velero-guide:
+    desc: Alias for ops:garage-velero-guide
+    cmds:
+      - task ops:garage-velero-guide
+
+  garage-status:
+    desc: Alias for ops:garage-status
+    cmds:
+      - task ops:garage-status
+
+  garage-node-id:
+    desc: Alias for ops:garage-node-id
+    cmds:
+      - task ops:garage-node-id
+
+  garage-velero-bootstrap:
+    desc: Alias for ops:garage-velero-bootstrap
+    cmds:
+      - task ops:garage-velero-bootstrap
+
+  hosts-entries:
+    desc: Alias for ops:hosts-entries
+    cmds:
+      - task ops:hosts-entries
+
   openbao-day0:
     desc: Alias for ops:openbao-day0
     cmds:

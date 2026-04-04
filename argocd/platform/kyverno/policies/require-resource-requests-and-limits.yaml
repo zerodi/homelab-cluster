@@ -1,5 +1,5 @@
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: require-resource-requests-and-limits
   annotations:
@@ -10,51 +10,78 @@ metadata:
     policies.kyverno.io/description: >-
       Требует cpu/memory requests и limits для контейнеров в прикладных workload'ах.
 spec:
-  background: true
-  validationFailureAction: Audit
-  rules:
-    - name: check-container-resources
-      match:
-        any:
-          - resources:
-              kinds:
-                - Pod
-      exclude:
-        any:
-          - resources:
-              namespaces:
-                - argocd
-                - authentik
-                - cert-manager
-                - external-secrets
-                - forgejo
-                - gateway
-                - kube-system
-                - kyverno
-                - observability
-                - openbao
-                - piraeus-datastore
-                - trust-manager
-                - velero
-      validate:
-        message: "Containers must define cpu/memory requests and limits."
-        pattern:
-          spec:
-            containers:
-              - name: "*"
-                resources:
-                  requests:
-                    cpu: "?*"
-                    memory: "?*"
-                  limits:
-                    cpu: "?*"
-                    memory: "?*"
-            =(initContainers):
-              - name: "*"
-                resources:
-                  requests:
-                    cpu: "?*"
-                    memory: "?*"
-                  limits:
-                    cpu: "?*"
-                    memory: "?*"
+  evaluation:
+    background:
+      enabled: true
+  validationActions:
+    - Audit
+  autogen:
+    podControllers:
+      controllers:
+        - deployments
+        - daemonsets
+        - statefulsets
+        - jobs
+        - cronjobs
+        - replicasets
+        - replicationcontrollers
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - argocd
+            - authentik
+            - cert-manager
+            - external-secrets
+            - forgejo
+            - gateway
+            - kube-system
+            - kyverno
+            - observability
+            - openbao
+            - piraeus-datastore
+            - trust-manager
+            - velero
+    resourceRules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - pods
+  validations:
+    - message: Containers must define cpu/memory requests and limits.
+      expression: >-
+        (!has(object.spec.containers) ||
+        object.spec.containers.all(c,
+          has(c.resources) &&
+          has(c.resources.requests) &&
+          has(c.resources.requests.cpu) &&
+          c.resources.requests.cpu != '' &&
+          has(c.resources.requests.memory) &&
+          c.resources.requests.memory != '' &&
+          has(c.resources.limits) &&
+          has(c.resources.limits.cpu) &&
+          c.resources.limits.cpu != '' &&
+          has(c.resources.limits.memory) &&
+          c.resources.limits.memory != ''
+        )) &&
+        (!has(object.spec.initContainers) ||
+        object.spec.initContainers.all(c,
+          has(c.resources) &&
+          has(c.resources.requests) &&
+          has(c.resources.requests.cpu) &&
+          c.resources.requests.cpu != '' &&
+          has(c.resources.requests.memory) &&
+          c.resources.requests.memory != '' &&
+          has(c.resources.limits) &&
+          has(c.resources.limits.cpu) &&
+          c.resources.limits.cpu != '' &&
+          has(c.resources.limits.memory) &&
+          c.resources.limits.memory != ''
+        ))

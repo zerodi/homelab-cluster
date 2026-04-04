@@ -32,7 +32,7 @@ Day-1 operator actions после bootstrap вынесены в [docs/day1-opera
 4. runtime credentials для приложений:
    `platform/authentik/runtime`, `platform/authentik/postgresql`, `platform/authentik/redis`,
    `platform/forgejo/admin`, `platform/forgejo/oidc`, `platform/forgejo/postgresql`, `platform/forgejo/valkey`,
-   `platform/observability/grafana`, `platform/velero/s3`
+   `platform/observability/grafana`, `platform/garage/runtime`, `platform/velero/s3`
 
 ## Порядок шагов
 
@@ -333,6 +333,10 @@ bao policy read external-secrets
 - `secret/platform/observability/grafana`
   - `username`
   - `password`
+- `secret/platform/garage/runtime`
+  - `rpc_secret`
+  - `admin_token`
+  - `metrics_token`
 - `secret/platform/velero/s3`
   - `access_key_id`
   - `secret_access_key`
@@ -394,6 +398,13 @@ bao kv put secret/platform/observability/grafana \
 ```
 
 ```bash
+bao kv put secret/platform/garage/runtime \
+  rpc_secret='REPLACE_WITH_LONG_RANDOM_VALUE' \
+  admin_token='REPLACE_WITH_LONG_RANDOM_VALUE' \
+  metrics_token='REPLACE_WITH_LONG_RANDOM_VALUE'
+```
+
+```bash
 bao kv put secret/platform/velero/s3 \
   access_key_id='REPLACE_WITH_ACCESS_KEY_ID' \
   secret_access_key='REPLACE_WITH_SECRET_ACCESS_KEY'
@@ -410,6 +421,7 @@ bao kv get secret/platform/forgejo/postgresql
 bao kv get secret/platform/forgejo/valkey
 bao kv get secret/platform/forgejo/oidc
 bao kv get secret/platform/observability/grafana
+bao kv get secret/platform/garage/runtime
 bao kv get secret/platform/velero/s3
 ```
 
@@ -488,3 +500,4 @@ kubectl -n authentik exec deploy/authentik-server -- ak shell -c "python /manage
 - импортировать экспортированный CA в локальный trust store
 - проверить ESO-синхронизацию секретов
 - проверить SSO и связку Forgejo + Argo CD по README
+- если используете `Garage` для `Velero`, выполнить ручной bootstrap bucket/key по [docs/garage-velero-plan.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/garage-velero-plan.md)

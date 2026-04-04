@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: garage-tls
+  namespace: garage
+spec:
+  secretName: garage-tls
+  dnsNames:
+    - garage.home.arpa
+  issuerRef:
+    name: homelab-ca
+    kind: ClusterIssuer

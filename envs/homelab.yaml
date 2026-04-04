@@ -10,6 +10,7 @@ hosts:
   argocd: argocd.home.arpa
   authentik: auth.home.arpa
   forgejo: git.home.arpa
+  garage: garage.home.arpa
   echo: echo.home.arpa
   grafana: grafana.home.arpa
   hubble: hubble.home.arpa
@@ -34,6 +35,7 @@ platform:
       forgejo: 192.168.100.244
       external: 192.168.100.245
       internal: 192.168.100.246
+      garage: 192.168.100.247
   authentik:
     namespace: authentik
     runtime_secret_name: authentik-runtime
@@ -78,6 +80,16 @@ platform:
     prefix: clusters/homelab-talos
     region: us-east-1
     s3_url: https://minio.home.arpa
+  garage:
+    namespace: garage
+    runtime_secret_name: garage-config
+    image: dxflrs/garage
+    image_tag: v2.1.0
+    storage_class: linstor-pool1-r1
+    size: 20Gi
+    s3_service: garage-s3.garage.svc.cluster.local:3900
+    admin_service: garage-admin.garage.svc.cluster.local:3903
+    region: garage
   kyverno:
     namespace: kyverno
     chart_version: 3.7.1

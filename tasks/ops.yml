@@ -4,6 +4,13 @@ vars:
   KUBECONFIG_PATH:
     sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"kubeconfig_path"' || exit 0; p="$(tofu output -raw kubeconfig_path 2>/dev/null || true)"; [ -z "$p" ] || realpath "$p" 2>/dev/null || printf '%s\n' "$p"; }
   ROOT_CA_EXPORT_PATH: '{{default "out/homelab-root-ca.crt" .ROOT_CA_EXPORT_PATH}}'
+  GARAGE_NAMESPACE: '{{default "garage" .GARAGE_NAMESPACE}}'
+  GARAGE_POD: '{{default "garage-0" .GARAGE_POD}}'
+  GARAGE_ZONE: '{{default "homelab" .GARAGE_ZONE}}'
+  GARAGE_CAPACITY: '{{default "20G" .GARAGE_CAPACITY}}'
+  GARAGE_BUCKET: '{{default "homelab-velero" .GARAGE_BUCKET}}'
+  GARAGE_KEY_NAME: '{{default "velero" .GARAGE_KEY_NAME}}'
+  GARAGE_NODE_ID: '{{default "" .GARAGE_NODE_ID}}'
 
 tasks:
   day0-guide:
@@ -22,6 +29,117 @@ tasks:
           '  5. Обновите repoURL/sourceRepos и домены в argocd/.' \
           '  6. Запустите task gitops:apply-bootstrap.' \
           '  7. Полный runbook: docs/day0-bootstrap.md'
+
+  garage-velero-guide:
+    desc: Print the manual Garage bootstrap sequence for Velero cutover
+    cmds:
+      - |
+        printf '%s\n' \
+          'Garage -> Velero cutover:' \
+          '  1. Запишите secret/platform/garage/runtime в OpenBao.' \
+          '  2. Синкните garage-prereqs и garage.' \
+          '  3. Проверьте pod garage-0, Gateway и Certificate.' \
+          '  4. Узнайте NODE_ID: kubectl -n garage exec garage-0 -- /garage status' \
+          '  5. Назначьте layout: kubectl -n garage exec garage-0 -- /garage layout assign -z homelab -c 20G <NODE_ID>' \
+          '  6. Примените layout: kubectl -n garage exec garage-0 -- /garage layout apply --version 1' \
+          '  7. Создайте bucket: kubectl -n garage exec garage-0 -- /garage bucket create homelab-velero' \
+          '  8. Создайте key: kubectl -n garage exec garage-0 -- /garage key create velero' \
+          '  9. Выдайте доступ: kubectl -n garage exec garage-0 -- /garage bucket allow --read --write --owner homelab-velero --key velero' \
+          ' 10. Получите secret: kubectl -n garage exec garage-0 -- /garage key info velero --show-secret' \
+          ' 11. Обновите secret/platform/velero/s3 в OpenBao.' \
+          ' 12. После этого переключайте Velero на garage-s3.garage.svc.cluster.local:3900.' \
+          ' 13. Полный runbook: docs/garage-velero-plan.md и docs/backup-restore.md'
+
+  garage-status:
+    desc: Show raw Garage status from the running pod
+    cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - |
+        GARAGE_NAMESPACE="{{.GARAGE_NAMESPACE}}" \
+        GARAGE_POD="{{.GARAGE_POD}}" \
+        ./infrastructure/scripts/garage-velero-helper.sh --kubeconfig "{{.KUBECONFIG_PATH}}" status
+
+  garage-node-id:
+    desc: Detect the current Garage node id from garage status
+    cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - |
+        GARAGE_NAMESPACE="{{.GARAGE_NAMESPACE}}" \
+        GARAGE_POD="{{.GARAGE_POD}}" \
+        GARAGE_NODE_ID="{{.GARAGE_NODE_ID}}" \
+        ./infrastructure/scripts/garage-velero-helper.sh --kubeconfig "{{.KUBECONFIG_PATH}}" detect-node-id
+
+  garage-velero-bootstrap:
+    desc: Print Garage bootstrap commands for the Velero bucket and key
+    cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - |
+        GARAGE_NAMESPACE="{{.GARAGE_NAMESPACE}}" \
+        GARAGE_POD="{{.GARAGE_POD}}" \
+        GARAGE_ZONE="{{.GARAGE_ZONE}}" \
+        GARAGE_CAPACITY="{{.GARAGE_CAPACITY}}" \
+        GARAGE_BUCKET="{{.GARAGE_BUCKET}}" \
+        GARAGE_KEY_NAME="{{.GARAGE_KEY_NAME}}" \
+        GARAGE_NODE_ID="{{.GARAGE_NODE_ID}}" \
+        ./infrastructure/scripts/garage-velero-helper.sh --kubeconfig "{{.KUBECONFIG_PATH}}" print-bootstrap
+
+  hosts-entries:
+    desc: Print IP/domain pairs from envs/homelab.yaml for a local hosts file
+    cmds:
+      - |
+        awk '
+          BEGIN {
+            in_hosts = 0
+            in_addresses = 0
+          }
+          /^hosts:$/ {
+            in_hosts = 1
+            in_addresses = 0
+            next
+          }
+          /^platform:$/ {
+            in_hosts = 0
+            next
+          }
+          in_hosts && $0 ~ /^  [a-z_]+: / {
+            key = $1
+            sub(/:$/, "", key)
+            value = $2
+            gsub(/"/, "", value)
+            hosts[key] = value
+            next
+          }
+          /^[[:space:]]+addresses:$/ {
+            in_addresses = 1
+            next
+          }
+          in_addresses && $0 ~ /^      [a-z_]+: [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ {
+            key = $1
+            sub(/:$/, "", key)
+            value = $2
+            gsub(/"/, "", value)
+            ips[key] = value
+            next
+          }
+          in_addresses && $0 !~ /^[[:space:]]{6,}[a-z_]+:/ {
+            in_addresses = 0
+          }
+          END {
+            order[1] = "authentik"
+            order[2] = "forgejo"
+            order[3] = "echo"
+            order[4] = "grafana"
+            order[5] = "hubble"
+            order[6] = "garage"
+
+            for (i = 1; i <= 6; i++) {
+              key = order[i]
+              if ((key in hosts) && (key in ips)) {
+                printf "%s %s\n", ips[key], hosts[key]
+              }
+            }
+          }
+        ' envs/homelab.yaml
 
   day1-guide:
     desc: Print the day-1 operations runbook location

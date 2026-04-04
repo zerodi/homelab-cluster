@@ -53,6 +53,76 @@ Non-secret object storage параметры живут в [envs/homelab.yaml](/
 - region
 - `s3Url`
 
+## Garage Bootstrap For Velero
+
+Если объектное хранилище для `Velero` переводится на `Garage`, сначала поднимите сам `Garage`, а потом отдельно создайте bucket и S3 key.
+
+Короткая памятка:
+
+```bash
+task ops:garage-velero-guide
+```
+
+Helper-ы:
+
+```bash
+task ops:garage-status
+task ops:garage-node-id
+task ops:garage-velero-bootstrap
+```
+
+Подготовка secret:
+
+```bash
+bao kv put secret/platform/garage/runtime \
+  rpc_secret="$(openssl rand -hex 32)" \
+  admin_token="$(openssl rand -hex 32)" \
+  metrics_token="$(openssl rand -hex 32)"
+```
+
+Проверка runtime:
+
+```bash
+kubectl -n garage get secret garage-config
+kubectl -n garage get pods
+kubectl -n garage get gateway,httproute,certificate
+```
+
+Инициализация single-node layout:
+
+```bash
+kubectl -n garage exec garage-0 -- /garage status
+kubectl -n garage exec garage-0 -- /garage layout assign -z homelab -c 20G <NODE_ID>
+kubectl -n garage exec garage-0 -- /garage layout apply --version 1
+```
+
+Создание bucket и key для `Velero`:
+
+```bash
+kubectl -n garage exec garage-0 -- /garage bucket create homelab-velero
+kubectl -n garage exec garage-0 -- /garage key create velero
+kubectl -n garage exec garage-0 -- /garage bucket allow --read --write --owner homelab-velero --key velero
+kubectl -n garage exec garage-0 -- /garage key info velero --show-secret
+```
+
+Полученные `Key ID` и `Secret key` нужно записать обратно в `OpenBao`:
+
+```bash
+bao kv put secret/platform/velero/s3 \
+  access_key_id='REPLACE_WITH_GARAGE_KEY_ID' \
+  secret_access_key='REPLACE_WITH_GARAGE_SECRET_KEY'
+```
+
+Только после этого можно переключать `Velero` на `Garage`.
+
+Планируемый internal endpoint для `Velero`:
+
+- `http://garage-s3.garage.svc.cluster.local:3900`
+
+Внешний endpoint для ручной проверки:
+
+- `https://garage.home.arpa`
+
 ## Создание backup
 
 После sync `Velero` можно делать ad hoc backup через `velero` CLI или через CR.
@@ -109,6 +179,31 @@ kubectl -n velero get backupstoragelocation
 ```
 
 Если нужен другой retention или namespace scope, правьте [argocd/platform/velero/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/velero/values.yaml), а не ad hoc runtime state.
+
+## Safe Cutover To Garage
+
+Безопасная последовательность переключения:
+
+1. убедиться, что `garage-0` healthy
+2. проверить, что bucket `homelab-velero` уже создан
+3. обновить `secret/platform/velero/s3`
+4. изменить `s3Url` в [argocd/platform/velero/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/velero/values.yaml)
+5. дождаться sync `velero`
+6. проверить `BackupStorageLocation`
+7. выполнить smoke backup
+
+Проверка после cutover:
+
+```bash
+kubectl -n velero get backupstoragelocation
+kubectl -n velero describe backupstoragelocation default
+velero backup create garage-smoke-$(date +%Y%m%d%H%M) \
+  --include-namespaces forgejo \
+  --storage-location default \
+  --ttl 24h
+kubectl -n velero get backups
+velero backup describe garage-smoke --details
+```
 
 ## Restore namespace
 

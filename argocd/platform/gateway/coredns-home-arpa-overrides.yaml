@@ -22,6 +22,7 @@ data:
             192.168.100.243 grafana.home.arpa
             192.168.100.244 git.home.arpa
             192.168.100.246 hubble.home.arpa
+            192.168.100.247 garage.home.arpa
             fallthrough
         }
 

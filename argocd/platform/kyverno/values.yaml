@@ -1,5 +1,12 @@
 fullnameOverride: kyverno
 
+crds:
+  install: true
+  groups:
+    kyverno:
+      clusterpolicies: true
+      policies: true
+
 grafana:
   enabled: false
 

@@ -1,5 +1,5 @@
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: require-basic-security-context
   annotations:
@@ -10,72 +10,76 @@ metadata:
     policies.kyverno.io/description: >-
       Требует базовый pod/container securityContext для прикладных workload'ов.
 spec:
-  background: true
-  validationFailureAction: Audit
-  rules:
-    - name: check-pod-security-context
-      match:
-        any:
-          - resources:
-              kinds:
-                - Pod
-      exclude:
-        any:
-          - resources:
-              namespaces:
-                - argocd
-                - authentik
-                - cert-manager
-                - external-secrets
-                - forgejo
-                - gateway
-                - kube-system
-                - kyverno
-                - observability
-                - openbao
-                - piraeus-datastore
-                - trust-manager
-                - velero
-      validate:
-        message: "Pods must define seccompProfile and containers must use a basic restricted securityContext."
-        anyPattern:
-          - spec:
-              securityContext:
-                seccompProfile:
-                  type: RuntimeDefault
-              containers:
-                - name: "*"
-                  securityContext:
-                    runAsNonRoot: true
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                      drop:
-                        - ALL
-              =(initContainers):
-                - name: "*"
-                  securityContext:
-                    runAsNonRoot: true
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                      drop:
-                        - ALL
-          - spec:
-              securityContext:
-                seccompProfile:
-                  type: Localhost
-              containers:
-                - name: "*"
-                  securityContext:
-                    runAsNonRoot: true
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                      drop:
-                        - ALL
-              =(initContainers):
-                - name: "*"
-                  securityContext:
-                    runAsNonRoot: true
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                      drop:
-                        - ALL
+  evaluation:
+    background:
+      enabled: true
+  validationActions:
+    - Audit
+  autogen:
+    podControllers:
+      controllers:
+        - deployments
+        - daemonsets
+        - statefulsets
+        - jobs
+        - cronjobs
+        - replicasets
+        - replicationcontrollers
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - argocd
+            - authentik
+            - cert-manager
+            - external-secrets
+            - forgejo
+            - gateway
+            - kube-system
+            - kyverno
+            - observability
+            - openbao
+            - piraeus-datastore
+            - trust-manager
+            - velero
+    resourceRules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - pods
+  validations:
+    - message: Pods must define seccompProfile and containers must use a basic restricted securityContext.
+      expression: >-
+        has(object.spec.securityContext) &&
+        has(object.spec.securityContext.seccompProfile) &&
+        has(object.spec.securityContext.seccompProfile.type) &&
+        ['RuntimeDefault', 'Localhost'].exists(t, object.spec.securityContext.seccompProfile.type == t) &&
+        (!has(object.spec.containers) ||
+        object.spec.containers.all(c,
+          has(c.securityContext) &&
+          has(c.securityContext.runAsNonRoot) &&
+          c.securityContext.runAsNonRoot == true &&
+          has(c.securityContext.allowPrivilegeEscalation) &&
+          c.securityContext.allowPrivilegeEscalation == false &&
+          has(c.securityContext.capabilities) &&
+          has(c.securityContext.capabilities.drop) &&
+          c.securityContext.capabilities.drop.exists(d, d == 'ALL')
+        )) &&
+        (!has(object.spec.initContainers) ||
+        object.spec.initContainers.all(c,
+          has(c.securityContext) &&
+          has(c.securityContext.runAsNonRoot) &&
+          c.securityContext.runAsNonRoot == true &&
+          has(c.securityContext.allowPrivilegeEscalation) &&
+          c.securityContext.allowPrivilegeEscalation == false &&
+          has(c.securityContext.capabilities) &&
+          has(c.securityContext.capabilities.drop) &&
+          c.securityContext.capabilities.drop.exists(d, d == 'ALL')
+        ))
