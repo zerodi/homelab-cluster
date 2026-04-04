@@ -5,6 +5,10 @@ resources:
   - gateway.yaml
   - garage-prereqs.yaml
   - garage.yaml
+  - harbor-prereqs.yaml
+  - harbor-postgresql.yaml
+  - harbor-valkey.yaml
+  - harbor.yaml
   - hubble.yaml
   - velero-prereqs.yaml
   - velero.yaml
@@ -24,3 +28,5 @@ resources:
   - tempo.yaml
   - otel-collector.yaml
   - grafana.yaml
+  - woodpecker-prereqs.yaml
+  - woodpecker.yaml

@@ -17,7 +17,7 @@ Runtime secrets по-прежнему живут в `OpenBao`, а day-0 Terrafor
 
 - `cluster.name` и `cluster.base_domain`
 - `gitops.repo_url` и `gitops.revision`
-- ingress hostnames для `argocd`, `authentik`, `forgejo`, `echo`, `grafana`, `hubble`
+- ingress hostnames для `argocd`, `authentik`, `forgejo`, `harbor`, `woodpecker`, `echo`, `grafana`, `hubble`
 - storage naming для `Piraeus` и LINSTOR
 - runtime naming contracts вроде namespace, secret names, `root_url`, `discovery_url`
 - non-secret backup storage coordinates для `Velero`
@@ -77,6 +77,22 @@ Runtime secrets по-прежнему живут в `OpenBao`, а day-0 Terrafor
 - [argocd/platform/forgejo/prereqs/forgejo-sso-configmap.yml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/forgejo/prereqs/forgejo-sso-configmap.yml)
 - [argocd/platform/authentik/prereqs/forgejo-sso-configmap.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/authentik/prereqs/forgejo-sso-configmap.yaml)
 - [argocd/platform/authentik/prereqs/forgejo-sso-blueprint-template-configmap.yml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/authentik/prereqs/forgejo-sso-blueprint-template-configmap.yml)
+
+`hosts.harbor`
+- [envs/homelab.yaml](/home/zerodi/code/talos-proxmox-no-ssh/envs/homelab.yaml)
+- [argocd/platform/harbor/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/harbor/values.yaml)
+- [argocd/platform/harbor/prereqs/certificate.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/harbor/prereqs/certificate.yaml)
+- [argocd/platform/harbor/prereqs/gateway.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/harbor/prereqs/gateway.yaml)
+- [argocd/platform/harbor/prereqs/httproute.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/harbor/prereqs/httproute.yaml)
+- [argocd/platform/harbor/prereqs/redirect-httproute.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/harbor/prereqs/redirect-httproute.yaml)
+
+`hosts.woodpecker`
+- [envs/homelab.yaml](/home/zerodi/code/talos-proxmox-no-ssh/envs/homelab.yaml)
+- [argocd/platform/woodpecker/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/woodpecker/values.yaml)
+- [argocd/platform/woodpecker/prereqs/certificate.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/woodpecker/prereqs/certificate.yaml)
+- [argocd/platform/woodpecker/prereqs/gateway.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/woodpecker/prereqs/gateway.yaml)
+- [argocd/platform/woodpecker/prereqs/httproute.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/woodpecker/prereqs/httproute.yaml)
+- [argocd/platform/woodpecker/prereqs/redirect-httproute.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/woodpecker/prereqs/redirect-httproute.yaml)
 
 `hosts.echo`
 - [argocd/apps/echo/resources/certificate.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/apps/echo/resources/certificate.yaml)
@@ -174,6 +190,22 @@ Runtime secrets по-прежнему живут в `OpenBao`, а day-0 Terrafor
 - [argocd/platform/forgejo/prereqs/runtime-config-external-secret.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/forgejo/prereqs/runtime-config-external-secret.yaml)
 - [argocd/platform/forgejo/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/forgejo/values.yaml)
 - [docs/forgejo-postgresql-migration.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/forgejo-postgresql-migration.md)
+
+`platform.harbor.*`
+- [envs/homelab.yaml](/home/zerodi/code/talos-proxmox-no-ssh/envs/homelab.yaml)
+- [argocd/platform/harbor.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/harbor.yaml)
+- [argocd/platform/harbor/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/harbor/values.yaml)
+- [argocd/platform/harbor/prereqs/runtime-external-secret.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/harbor/prereqs/runtime-external-secret.yaml)
+- [argocd/platform/harbor/postgresql/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/harbor/postgresql/values.yaml)
+- [argocd/platform/harbor/valkey/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/harbor/valkey/values.yaml)
+- [argocd/platform/harbor/prereqs/postgresql-auth-external-secret.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/harbor/prereqs/postgresql-auth-external-secret.yaml)
+- [argocd/platform/harbor/prereqs/valkey-auth-external-secret.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/harbor/prereqs/valkey-auth-external-secret.yaml)
+
+`platform.woodpecker.*`
+- [envs/homelab.yaml](/home/zerodi/code/talos-proxmox-no-ssh/envs/homelab.yaml)
+- [argocd/platform/woodpecker.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/woodpecker.yaml)
+- [argocd/platform/woodpecker/values.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/woodpecker/values.yaml)
+- [argocd/platform/woodpecker/prereqs/runtime-external-secret.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/woodpecker/prereqs/runtime-external-secret.yaml)
 
 `platform.forgejo.sso.provider_name`, `platform.forgejo.sso.application_slug`, `platform.forgejo.sso.authentik_host`, `platform.forgejo.sso.forgejo_root_url`
 - [argocd/platform/authentik/prereqs/forgejo-sso-configmap.yaml](/home/zerodi/code/talos-proxmox-no-ssh/argocd/platform/authentik/prereqs/forgejo-sso-configmap.yaml)

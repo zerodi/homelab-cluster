@@ -11,6 +11,8 @@ hosts:
   authentik: auth.home.arpa
   forgejo: git.home.arpa
   garage: garage.home.arpa
+  harbor: harbor.home.arpa
+  woodpecker: ci.home.arpa
   echo: echo.home.arpa
   grafana: grafana.home.arpa
   hubble: hubble.home.arpa
@@ -36,6 +38,8 @@ platform:
       external: 192.168.100.245
       internal: 192.168.100.246
       garage: 192.168.100.247
+      harbor: 192.168.100.248
+      woodpecker: 192.168.100.249
   authentik:
     namespace: authentik
     runtime_secret_name: authentik-runtime
@@ -72,6 +76,31 @@ platform:
       application_slug: forgejo
       forgejo_root_url: https://git.home.arpa
       discovery_url: https://auth.home.arpa/application/o/forgejo/.well-known/openid-configuration
+  harbor:
+    namespace: harbor
+    runtime_secret_name: harbor-runtime
+    postgresql_auth_secret_name: harbor-postgresql-auth
+    valkey_auth_secret_name: harbor-valkey-auth
+    host: harbor.home.arpa
+    external_url: https://harbor.home.arpa
+    postgresql:
+      host: harbor-postgresql.harbor.svc.cluster.local
+      database: registry
+      user: harbor
+      chart_version: 18.5.15
+    valkey:
+      addr: harbor-valkey-primary.harbor.svc.cluster.local:6379
+      chart_version: 5.4.9
+    chart_version: 1.18.0
+  woodpecker:
+    namespace: woodpecker
+    runtime_secret_name: woodpecker-runtime
+    host: ci.home.arpa
+    forgejo_url: https://git.home.arpa
+    chart_version: 3.5.1
+    server_storage_class: linstor-pool1-r1
+    server_storage_size: 10Gi
+    pipeline_volume_size: 10G
   velero:
     namespace: velero
     credentials_secret_name: velero-credentials

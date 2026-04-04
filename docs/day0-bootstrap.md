@@ -32,6 +32,8 @@ Day-1 operator actions после bootstrap вынесены в [docs/day1-opera
 4. runtime credentials для приложений:
    `platform/authentik/runtime`, `platform/authentik/postgresql`, `platform/authentik/redis`,
    `platform/forgejo/admin`, `platform/forgejo/oidc`, `platform/forgejo/postgresql`, `platform/forgejo/valkey`,
+   `platform/harbor/runtime`, `platform/harbor/postgresql`, `platform/harbor/valkey`,
+   `platform/woodpecker/runtime`,
    `platform/observability/grafana`, `platform/garage/runtime`, `platform/velero/s3`
 
 ## Порядок шагов
@@ -330,9 +332,26 @@ bao policy read external-secrets
 - `secret/platform/forgejo/oidc`
   - `client_id`
   - `client_secret`
+- `secret/platform/harbor/runtime`
+  - `admin_password`
+  - `secret_key`
+  - `core_secret`
+  - `xsrf_key`
+  - `jobservice_secret`
+  - `registry_http_secret`
+  - `registry_password`
+  - `registry_htpasswd`
+- `secret/platform/harbor/postgresql`
+  - `password`
+- `secret/platform/harbor/valkey`
+  - `password`
 - `secret/platform/observability/grafana`
   - `username`
   - `password`
+- `secret/platform/woodpecker/runtime`
+  - `agent_secret`
+  - `forgejo_client`
+  - `forgejo_secret`
 - `secret/platform/garage/runtime`
   - `rpc_secret`
   - `admin_token`
@@ -392,9 +411,38 @@ bao kv put secret/platform/forgejo/oidc \
 ```
 
 ```bash
+bao kv put secret/platform/harbor/runtime \
+  admin_password='REPLACE_WITH_LONG_RANDOM_VALUE' \
+  secret_key='REPLACE_WITH_16_CHAR_VALUE' \
+  core_secret='REPLACE_WITH_16_CHAR_VALUE' \
+  xsrf_key='REPLACE_WITH_32_CHAR_VALUE' \
+  jobservice_secret='REPLACE_WITH_16_CHAR_VALUE' \
+  registry_http_secret='REPLACE_WITH_16_CHAR_VALUE' \
+  registry_password='REPLACE_WITH_LONG_RANDOM_VALUE' \
+  registry_htpasswd='REPLACE_WITH_BCRYPT_HTPASSWD_LINE'
+```
+
+```bash
+bao kv put secret/platform/harbor/postgresql \
+  password='REPLACE_WITH_LONG_RANDOM_VALUE'
+```
+
+```bash
+bao kv put secret/platform/harbor/valkey \
+  password='REPLACE_WITH_LONG_RANDOM_VALUE'
+```
+
+```bash
 bao kv put secret/platform/observability/grafana \
   username='admin' \
   password='REPLACE_WITH_LONG_RANDOM_VALUE'
+```
+
+```bash
+bao kv put secret/platform/woodpecker/runtime \
+  agent_secret='REPLACE_WITH_LONG_RANDOM_VALUE' \
+  forgejo_client='REPLACE_WITH_FORGEJO_OAUTH_CLIENT_ID' \
+  forgejo_secret='REPLACE_WITH_FORGEJO_OAUTH_CLIENT_SECRET'
 ```
 
 ```bash
@@ -420,7 +468,11 @@ bao kv get secret/platform/forgejo/admin
 bao kv get secret/platform/forgejo/postgresql
 bao kv get secret/platform/forgejo/valkey
 bao kv get secret/platform/forgejo/oidc
+bao kv get secret/platform/harbor/runtime
+bao kv get secret/platform/harbor/postgresql
+bao kv get secret/platform/harbor/valkey
 bao kv get secret/platform/observability/grafana
+bao kv get secret/platform/woodpecker/runtime
 bao kv get secret/platform/garage/runtime
 bao kv get secret/platform/velero/s3
 ```
@@ -452,6 +504,8 @@ task gitops:apply-bootstrap
 kubectl -n authentik get secret authentik-runtime
 kubectl -n forgejo get secret forgejo-admin-secret
 kubectl -n authentik get secret forgejo-oidc
+kubectl -n harbor get secret harbor-runtime harbor-postgresql-auth harbor-valkey-auth
+kubectl -n woodpecker get secret woodpecker-runtime
 ```
 
 Данные для первого входа администратора:
@@ -462,6 +516,19 @@ Forgejo:
 kubectl -n forgejo get secret forgejo-admin-secret -o jsonpath='{.data.username}' | base64 -d && echo
 kubectl -n forgejo get secret forgejo-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo
 ```
+
+Harbor:
+
+```bash
+kubectl -n harbor get secret harbor-runtime -o jsonpath='{.data.HARBOR_ADMIN_PASSWORD}' | base64 -d && echo
+```
+
+Woodpecker:
+
+- до первого входа должен существовать OAuth application в Forgejo
+- callback URL должен быть `https://ci.home.arpa/authorize`
+- `forgejo_client` и `forgejo_secret` в `secret/platform/woodpecker/runtime` должны совпадать с этой application
+- после sync полезно открыть `https://ci.home.arpa/` и завершить OAuth login через Forgejo
 
 Authentik:
 
@@ -485,6 +552,8 @@ kubectl -n authentik exec deploy/authentik-server -- ak shell -c "python /manage
 - что `external-secrets` controller запущен
 - что OpenBao unsealed
 - что пути `secret/platform/...` реально существуют
+- что для `Harbor` уже записаны `runtime`, `postgresql` и `valkey` secrets
+- что для `Woodpecker` уже записан runtime secret и создан Forgejo OAuth application
 
 ## Что пока остаётся bootstrap-исключением
 
@@ -500,4 +569,5 @@ kubectl -n authentik exec deploy/authentik-server -- ak shell -c "python /manage
 - импортировать экспортированный CA в локальный trust store
 - проверить ESO-синхронизацию секретов
 - проверить SSO и связку Forgejo + Argo CD по README
+- проверить вход в `Harbor` и `Woodpecker`
 - если используете `Garage` для `Velero`, выполнить ручной bootstrap bucket/key по [docs/garage-velero-plan.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/garage-velero-plan.md)

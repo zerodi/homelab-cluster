@@ -4,6 +4,7 @@ resources:
   - openbao-cluster-secret-store.yaml
   - forgejo-oci-repository.yaml
   - bitnami-oci-repository.yaml
+  - woodpecker-oci-repository.yaml
   - projects/platform.yaml
   - projects/apps.yaml
   - applications/platform.yaml

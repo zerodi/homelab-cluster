@@ -83,7 +83,7 @@ fish argocd/scripts/post-argocd-check.fish
 
 - проверить `Application` health в Argo CD
 - проверить готовность `ExternalSecret` и materialized `Secret`
-- проверить runtime endpoints для `authentik`, `forgejo`, `echo`, `grafana`, `hubble`
+- проверить runtime endpoints для `authentik`, `forgejo`, `harbor`, `woodpecker`, `echo`, `grafana`, `hubble`
 - проверить `Velero` и наличие `BackupStorageLocation default`
 - проверить `Kyverno` policy reports после rollout
 - открыть `grafana.home.arpa` и убедиться, что появились dashboards `Observability Overview`, `OpenTelemetry Collector` и `Cilium Hubble`

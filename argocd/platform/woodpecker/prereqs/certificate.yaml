@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: woodpecker-tls
+  namespace: woodpecker
+spec:
+  secretName: woodpecker-tls
+  dnsNames:
+    - ci.home.arpa
+  issuerRef:
+    name: homelab-ca
+    kind: ClusterIssuer

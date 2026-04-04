@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: woodpecker-oci-repo
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  name: woodpecker-oci
+  type: helm
+  enableOCI: "true"
+  url: ghcr.io/woodpecker-ci/helm

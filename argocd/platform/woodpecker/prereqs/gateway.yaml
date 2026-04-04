@@ -1,0 +1,30 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: woodpecker
+  namespace: woodpecker
+spec:
+  gatewayClassName: cilium
+  infrastructure:
+    annotations:
+      io.cilium/lb-ipam-ips: 192.168.100.249
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: ci.home.arpa
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: ci.home.arpa
+      tls:
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: woodpecker-tls
+      allowedRoutes:
+        namespaces:
+          from: Same

@@ -5,7 +5,7 @@
 Структура:
 
 - `bootstrap/`: root `Application` и базовые `AppProject`
-- `platform/`: prereqs, runtime и bootstrap для `authentik`, `forgejo`, observability, `velero` и `kyverno`
+- `platform/`: prereqs, runtime и bootstrap для `authentik`, `forgejo`, `harbor`, `woodpecker`, observability, `velero` и `kyverno`
 - `apps/`: demo `echo`
 
 В `platform/` теперь также лежат отдельные runtime data services:
@@ -14,6 +14,8 @@
 - `authentik-redis`
 - `forgejo-postgresql`
 - `forgejo-valkey`
+- `harbor-postgresql`
+- `harbor-valkey`
 - `victoria-metrics`
 - `loki`
 - `tempo`
@@ -45,7 +47,7 @@ Backup/policy baseline теперь такой:
 
 Текущий baseline такой:
 
-- `authentik`, `echo`, `forgejo` и `grafana` уже переведены на namespaced `Gateway` + `HTTPRoute`
+- `authentik`, `echo`, `forgejo`, `grafana`, `harbor` и `woodpecker` уже переведены на namespaced `Gateway` + `HTTPRoute`
 - `hubble` опубликован через shared `internal` gateway как cluster-observability endpoint
 - shared `gateway` application даёт только общий HTTP foundation и `GatewayClass`
 - Gateway API теперь является реальным runtime path, а не только foundation
@@ -79,6 +81,7 @@ https://git.example.invalid/replace-me/gitops.git
 - домены `*.home.arpa`
 - значения в `values.yaml`
 - `authentik_host` и blueprint contents в `platform/authentik/prereqs/forgejo-sso-configmap.yaml`
+- hostnames и values/secrets contracts для `platform/harbor/*` и `platform/woodpecker/*`
 
 Mapping того, какие файлы нужно обновить после изменения environment contract, описан в [docs/environment-contract.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/environment-contract.md).
 
@@ -105,3 +108,36 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.pas
 - применяет `Application/root-ssh` из `test-ssh-git/templates/root-application-ssh.yaml`
 
 Это позволяет тестировать bootstrap по SSH без изменения tracked manifests в `argocd/`.
+
+## Harbor и Woodpecker
+
+`Harbor` и `Woodpecker` тоже считаются runtime-сервисами этого слоя.
+
+Для `Harbor` перед первым sync должны существовать:
+
+- `secret/platform/harbor/runtime`
+- `secret/platform/harbor/postgresql`
+- `secret/platform/harbor/valkey`
+
+Важно:
+
+- `registry_htpasswd` в `secret/platform/harbor/runtime` должен быть bcrypt htpasswd-строкой
+- chart использует external PostgreSQL и external Valkey в namespace `harbor`
+
+Для `Woodpecker` перед первым sync должны существовать:
+
+- `secret/platform/woodpecker/runtime`
+
+И ещё до первого логина нужно вручную создать OAuth application в Forgejo:
+
+- callback URL: `https://ci.home.arpa/authorize`
+- значения должны быть записаны в `forgejo_client` и `forgejo_secret`
+
+Быстрая post-sync проверка:
+
+```bash
+kubectl -n harbor get secret harbor-runtime harbor-postgresql-auth harbor-valkey-auth
+kubectl -n woodpecker get secret woodpecker-runtime
+kubectl -n harbor get pods
+kubectl -n woodpecker get pods
+```

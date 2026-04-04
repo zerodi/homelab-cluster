@@ -7,7 +7,7 @@
 - root: только `terraform.tfvars`, examples и документация
 - `bootstrap/`: самостоятельный Terraform/OpenTofu entrypoint для Talos image, VM lifecycle, machine config, control plane bootstrap, локальных `kubeconfig` и `talosconfig`, базового Cilium bootstrap
 - `infrastructure/`: отдельный Terraform/OpenTofu entrypoint для bootstrap-операторов и storage/bootstrap readiness внутри Kubernetes
-- `argocd/`: runtime/GitOps scaffold для `authentik`, `forgejo`, `echo`, observability stack, `ClusterSecretStore openbao` и app-of-apps bootstrap
+- `argocd/`: runtime/GitOps scaffold для `authentik`, `forgejo`, `harbor`, `woodpecker`, `echo`, observability stack, `ClusterSecretStore openbao` и app-of-apps bootstrap
 
 Root больше не является Terraform/OpenTofu entrypoint.
 
@@ -56,7 +56,7 @@ Root больше не является Terraform/OpenTofu entrypoint.
 `argocd/` содержит runtime/GitOps manifests:
 
 - `bootstrap/`: root `Application` и базовые `AppProject`
-- `platform/`: `authentik`, `forgejo`, observability stack и связанные prereqs/bootstrap manifests
+- `platform/`: `authentik`, `forgejo`, `harbor`, `woodpecker`, observability stack и связанные prereqs/bootstrap manifests
 - `platform/`: также включает `velero` и `kyverno` как runtime platform services
 - `apps/`: demo `echo`
 
@@ -64,13 +64,14 @@ Runtime stateful services для приложений тоже живут зде
 
 - `authentik` использует отдельные runtime `Application` для PostgreSQL и Redis
 - `forgejo` использует отдельные runtime `Application` для PostgreSQL и Valkey
+- `harbor` использует отдельные runtime `Application` для PostgreSQL и Valkey
 - observability stack состоит из `VictoriaMetrics`, `Loki`, `Tempo`, `Grafana` и `OpenTelemetry Collector`
 - backup/restore baseline обеспечивается `Velero`
 - policy guardrails baseline обеспечивается `Kyverno`
 - observability stack сразу приезжает с self-scrape через `OTel Collector`, Hubble metrics scrape, provisioned dashboards и базовыми Grafana alert rules
 - observability stack также скрапит базовые metrics endpoints у `Velero` и `Kyverno`
 - `gateway` используется как shared runtime Gateway API foundation
-- `authentik`, `echo`, `forgejo` и `grafana` используют собственные namespaced `Gateway` и `HTTPRoute`
+- `authentik`, `echo`, `forgejo`, `grafana`, `harbor` и `woodpecker` используют собственные namespaced `Gateway` и `HTTPRoute`
 - `hubble` публикуется через отдельный `HTTPRoute` на shared `internal` gateway
 - runtime workloads с credentials получают их только через `OpenBao` + `External Secrets`
 
@@ -305,6 +306,34 @@ Initial admin login для Forgejo можно получить так:
 ```bash
 kubectl -n forgejo get secret forgejo-admin-secret -o jsonpath='{.data.username}' | base64 -d && echo
 kubectl -n forgejo get secret forgejo-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo
+```
+
+Initial admin password для Harbor можно получить так:
+
+```bash
+kubectl -n harbor get secret harbor-runtime -o jsonpath='{.data.HARBOR_ADMIN_PASSWORD}' | base64 -d && echo
+```
+
+Для Woodpecker нужно заранее создать OAuth application в Forgejo с callback URL:
+
+```text
+https://ci.home.arpa/authorize
+```
+
+Минимальный day-0 contract для новых сервисов:
+
+- `Harbor` требует `secret/platform/harbor/runtime`, `secret/platform/harbor/postgresql`, `secret/platform/harbor/valkey`
+- в `secret/platform/harbor/runtime` поле `registry_htpasswd` должно быть готовой bcrypt htpasswd-строкой
+- `Woodpecker` требует `secret/platform/woodpecker/runtime`
+- `forgejo_client` и `forgejo_secret` в `secret/platform/woodpecker/runtime` должны совпадать с OAuth application в Forgejo
+
+Минимальная проверка после GitOps apply:
+
+```bash
+kubectl -n harbor get secret harbor-runtime harbor-postgresql-auth harbor-valkey-auth
+kubectl -n woodpecker get secret woodpecker-runtime
+kubectl -n harbor get gateway,httproute
+kubectl -n woodpecker get gateway,httproute
 ```
 
 Для Authentik отдельный admin `Secret` в Kubernetes не создаётся. На первом входе используйте initial setup flow в `https://auth.home.arpa`, а если нужен recovery/reset уже инициализированного инстанса:

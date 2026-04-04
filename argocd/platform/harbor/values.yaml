@@ -1,0 +1,90 @@
+expose:
+  type: clusterIP
+  tls:
+    enabled: false
+  clusterIP:
+    name: harbor
+    ports:
+      httpPort: 80
+      httpsPort: 443
+
+externalURL: https://harbor.home.arpa
+
+existingSecretAdminPassword: harbor-runtime
+existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
+existingSecretSecretKey: harbor-runtime
+
+updateStrategy:
+  type: Recreate
+
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    registry:
+      storageClass: linstor-pool1-r1
+      size: 50Gi
+    jobservice:
+      jobLog:
+        storageClass: linstor-pool1-r1
+        size: 5Gi
+    trivy:
+      storageClass: linstor-pool1-r1
+      size: 5Gi
+
+database:
+  type: external
+  external:
+    host: harbor-postgresql.harbor.svc.cluster.local
+    port: "5432"
+    username: harbor
+    coreDatabase: registry
+    existingSecret: harbor-postgresql-auth
+    sslmode: disable
+
+redis:
+  type: external
+  external:
+    addr: harbor-valkey-primary.harbor.svc.cluster.local:6379
+    existingSecret: harbor-valkey-auth
+    coreDatabaseIndex: "0"
+    jobserviceDatabaseIndex: "1"
+    registryDatabaseIndex: "2"
+    trivyAdapterIndex: "5"
+
+core:
+  existingSecret: harbor-runtime
+  existingXsrfSecret: harbor-runtime
+
+jobservice:
+  existingSecret: harbor-runtime
+
+registry:
+  existingSecret: harbor-runtime
+  credentials:
+    existingSecret: harbor-runtime
+
+trivy:
+  enabled: true
+
+metrics:
+  enabled: false
+
+trace:
+  enabled: true
+  provider: otel
+  sample_rate: 1
+  namespace: harbor
+  otel:
+    endpoint: otel-collector.observability.svc.cluster.local:4318
+    url_path: /v1/traces
+    insecure: true
+
+containerSecurityContext:
+  privileged: false
+  allowPrivilegeEscalation: false
+  seccompProfile:
+    type: RuntimeDefault
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL

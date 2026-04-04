@@ -1,0 +1,42 @@
+fullnameOverride: harbor-postgresql
+
+auth:
+  enablePostgresUser: false
+  username: harbor
+  database: registry
+  existingSecret: harbor-postgresql-auth
+  secretKeys:
+    userPasswordKey: password
+
+architecture: standalone
+
+primary:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  persistence:
+    enabled: true
+    storageClass: linstor-pool1-r1
+    size: 8Gi
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+  containerSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+
+metrics:
+  enabled: false
