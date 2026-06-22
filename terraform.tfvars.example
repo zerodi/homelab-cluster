@@ -1,9 +1,10 @@
 proxmox = {
-  endpoint        = "https://pve.example.com:8006/api2/json"
+  endpoint        = "https://pve.example.com:8006"
   insecure        = true
   node_name       = "pve01"
   vm_datastore    = "local-lvm"
   image_datastore = "local"
+  ssh_username    = "terraform"
 }
 
 # Sensitive Terraform inputs should not live here.
@@ -11,10 +12,8 @@ proxmox = {
 #   export TF_VAR_proxmox_api_token='terraform@pve!talos=...'
 # or an encrypted SOPS file based on secrets.sops.tfvars.example.
 
-talos = {
-  version      = "v1.12.6"
-  schematic_id = "<SCHEMATIC_ID>"
-}
+talos_version = "v1.13.0"
+talos_schematic_id = "<SCHEMATIC_ID>"
 
 cluster_name         = "homelab-talos"
 controlplane_vip     = "192.168.10.110"
@@ -27,7 +26,6 @@ cilium_lb_pool_stop  = "192.168.10.129"
 # Optional.
 # nameservers = ["192.168.10.1", "1.1.1.1"]
 
-argocd_enabled         = true
 argocd_host            = "argocd.home.arpa"
 trust_manager_enabled  = true
 
@@ -35,7 +33,6 @@ controlplane_node_defaults = {
   cpu_cores = 4
   memory_mb = 8192
   disk_gb   = 40
-  cidr      = 24
 }
 
 controlplane_nodes = {
@@ -62,8 +59,8 @@ controlplane_nodes = {
 worker_node_defaults = {
   cpu_cores = 4
   memory_mb = 8192
-  disk_gb   = 80
-  cidr      = 24
+  disk_gb   = 40
+  additional_disk_gb = 80
 }
 
 worker_nodes = {

@@ -1,19 +1,18 @@
 resource "proxmox_virtual_environment_vm" "node" {
   for_each = local.all_nodes
 
-  name          = "${var.prefix}-${each.key}"
+  name          = "${var.node_prefix}-${each.key}"
   description   = "Managed by Terraform/OpenTofu - Talos ${each.value.machine_type}"
   tags          = ["terraform", "talos", "kubernetes", each.value.machine_type]
   node_name     = var.proxmox.node_name
   vm_id         = each.value.vm_id
   machine       = "q35"
   bios          = "ovmf"
-  scsi_hardware = "virtio-scsi-pci"
-  # on_boot         = true
+  scsi_hardware = "virtio-scsi-single"
+  on_boot         = true
   started         = true
   stop_on_destroy = true
   boot_order      = ["scsi0"]
-  # reboot          = false
 
   operating_system {
     type = "l26"
@@ -63,7 +62,7 @@ resource "proxmox_virtual_environment_vm" "node" {
     content {
       datastore_id = var.proxmox.vm_datastore
       interface    = "scsi1"
-      size         = 80
+      size         = each.value.additional_disk_gb
       discard      = "on"
       file_format  = "raw"
       cache        = "writethrough"
@@ -75,15 +74,11 @@ resource "proxmox_virtual_environment_vm" "node" {
   initialization {
     ip_config {
       ipv4 {
-        address = "${each.value.ip}/${each.value.cidr}"
+        address = "${each.value.ip}/24"
         gateway = var.gateway
       }
     }
   }
-
-  # vga {
-  #   type = "qxl"
-  # }
 
   serial_device {}
 }

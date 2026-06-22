@@ -15,17 +15,17 @@ locals {
     # see https://docs.siderolabs.com/talos/v1.12/reference/configuration/v1alpha1/config#discovery
     # see https://github.com/siderolabs/talos/issues/9980
     # see https://github.com/siderolabs/talos/commit/c12b52491456d1e52204eb290d0686a317358c7c    
-    # discovery = {
-    #   enabled = false
-    #   registries = {
-    #     kubernetes = {
-    #       disabled = true
-    #     }
-    #     service = {
-    #       disabled = true
-    #     }
-    #   }
-    # }
+    discovery = {
+      enabled = false
+      registries = {
+        kubernetes = {
+          disabled = true
+        }
+        service = {
+          disabled = true
+        }
+      }
+    }
 
     network = {
       cni = {
@@ -34,22 +34,6 @@ locals {
     }
     proxy = {
       disabled = true
-    }
-  }
-
-  common_machine_features = {
-    # see https://docs.siderolabs.com/kubernetes-guides/advanced-guides/kubeprism
-    # see talosctl -n $c0 read /etc/kubernetes/kubeconfig-kubelet | yq .clusters[].cluster.server
-    # NB if you use a non-default CNI, you must configure it to use the
-    #    https://localhost:7445 kube-apiserver endpoint.
-    kubePrism = {
-      enabled = true
-      port    = 7445
-    }
-    # see https://docs.siderolabs.com/talos/v1.12/networking/host-dns
-    hostDNS = {
-      enabled              = true
-      forwardKubeDNSToHost = true
     }
   }
 
@@ -275,7 +259,7 @@ data "talos_machine_configuration" "node" {
   cluster_endpoint   = local.kubernetes_endpoint
   machine_type       = each.value.machine_type
   machine_secrets    = talos_machine_secrets.this.machine_secrets
-  talos_version      = var.talos.version
+  talos_version      = var.talos_version
   kubernetes_version = var.kubernetes_version
 
   config_patches = [
@@ -296,7 +280,6 @@ data "talos_machine_configuration" "node" {
         }
       )
       machine = {
-        features = local.common_machine_features
         kernel   = local.drbd_patch
       }
     })
@@ -305,7 +288,7 @@ data "talos_machine_configuration" "node" {
 
 // see https://registry.terraform.io/providers/siderolabs/talos/0.10.1/docs/resources/machine_secrets
 resource "talos_machine_secrets" "this" {
-  talos_version = var.talos.version
+  talos_version = var.talos_version
 }
 
 // see https://registry.terraform.io/providers/siderolabs/talos/0.10.1/docs/resources/machine_configuration_apply

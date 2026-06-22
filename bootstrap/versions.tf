@@ -4,20 +4,20 @@ terraform {
   required_providers {
     proxmox = {
       source  = "bpg/proxmox"
-      version = "~> 0.98"
+      version = "~> 0.110"
     }
 
     talos = {
       source  = "siderolabs/talos"
-      version = "~> 0.10"
+      version = "~> 0.11"
     }
     helm = {
       source  = "hashicorp/helm"
-      version = "~> 3.1"
+      version = "~> 3.2"
     }
     local = {
       source  = "hashicorp/local"
-      version = "~> 2.5"
+      version = "~> 2.9"
     }
   }
 }
@@ -28,7 +28,7 @@ provider "proxmox" {
   insecure  = var.proxmox.insecure
   ssh {
     agent    = true
-    username = "terraform"
+    username = var.proxmox.ssh_username
   }
 }
 

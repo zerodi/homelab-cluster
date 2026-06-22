@@ -13,9 +13,10 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 tfplan
-
+.env
 # Local ArgoCD SSH test stand
 test-ssh-git/.worktree/
 test-ssh-git/keys/
 test-ssh-git/repo-data/
 test-ssh-git/templates/
+.codex
