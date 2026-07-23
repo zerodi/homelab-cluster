@@ -2,7 +2,7 @@ locals {
   effective_proxmox = merge(
     var.proxmox,
     {
-      api_token = coalesce(var.proxmox_api_token, try(var.proxmox.api_token, null))
+      api_token = var.proxmox_api_token
     }
   )
 

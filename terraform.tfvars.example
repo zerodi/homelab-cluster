@@ -23,11 +23,8 @@ kubernetes_version   = "1.35.0"
 cilium_lb_pool_start = "192.168.10.120"
 cilium_lb_pool_stop  = "192.168.10.129"
 
-# Optional.
-# nameservers = ["192.168.10.1", "1.1.1.1"]
-
-argocd_host            = "argocd.home.arpa"
-trust_manager_enabled  = true
+# Platform naming, including the Argo CD host and Piraeus settings, lives in
+# envs/homelab.yaml and is consumed by infrastructure/.
 
 controlplane_node_defaults = {
   cpu_cores = 4

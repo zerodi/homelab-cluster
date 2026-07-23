@@ -1,6 +1,16 @@
 version: "3"
 
 tasks:
+  bootstrap-isolation:
+    desc: Verify that bootstrap does not own platform or runtime resources
+    cmds:
+      - python3 ./scripts/check-isolation.py
+
+  env-contract:
+    desc: Validate that envs/homelab.yaml stays in sync with argocd/ consumers
+    cmds:
+      - ./argocd/scripts/validate-env-contract.py --mode scaffold
+
   tofu-fmt:
     desc: Run tofu fmt -check recursively
     cmds:
@@ -50,6 +60,8 @@ tasks:
   validate:
     desc: Run the local validation baseline used by CI and pre-commit
     cmds:
+      - task check:bootstrap-isolation
+      - task check:env-contract
       - task check:tofu-fmt
       - task check:tofu-validate-bootstrap
       - task check:tofu-validate-infrastructure

@@ -1,38 +1,94 @@
 ###
-# Proxmox variables
+# Proxmox
 ###
+
 variable "proxmox" {
-  description = "Base proxmox configuration"
+  description = "Non-secret Proxmox connection, node, and datastore settings."
   type = object({
     endpoint        = string
-    api_token       = optional(string)
     insecure        = optional(bool, true)
     node_name       = string
     vm_datastore    = string
     image_datastore = string
     ssh_username    = string
-
   })
 }
 
 variable "proxmox_api_token" {
+  description = "Sensitive Proxmox API token. Set it through TF_VAR_proxmox_api_token or an encrypted SOPS tfvars file."
   type        = string
-  description = "Sensitive Proxmox API token. Prefer TF_VAR_proxmox_api_token or an encrypted SOPS tfvars file over terraform.tfvars."
   default     = null
   nullable    = true
   sensitive   = true
 }
 
 ###
-# Nodes variables
+# Talos cluster
 ###
+
+variable "cluster_name" {
+  description = "Talos and Kubernetes cluster name."
+  type        = string
+  default     = "talos-pve"
+}
+
+variable "talos_version" {
+  description = "Talos release version with the required v prefix, for example v1.13.0."
+  type        = string
+
+  validation {
+    condition     = can(regex("^v[0-9]+\\.[0-9]+\\.[0-9]+$", var.talos_version))
+    error_message = "talos_version must be a Talos release in the form v1.13.0."
+  }
+}
+
+variable "talos_schematic_id" {
+  description = "Talos Image Factory schematic ID used to download the installer image."
+  type        = string
+}
+
+variable "kubernetes_version" {
+  description = "Kubernetes version baked into Talos machine configuration."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "controlplane_vip" {
+  description = "Virtual IPv4 address used by the Kubernetes API endpoint."
+  type        = string
+}
+
+variable "cluster_endpoint" {
+  description = "Optional Kubernetes API URL. When unset, it is derived from controlplane_vip."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "cluster_health_check_timeout" {
+  description = "Timeout used by talos_cluster_health after bootstrap."
+  type        = string
+  default     = "20m"
+}
+
+###
+# VM inventory
+###
+
 variable "node_prefix" {
-  type    = string
-  default = "talos"
+  description = "Prefix added to Proxmox VM names."
+  type        = string
+  default     = "talos"
+}
+
+variable "gateway" {
+  description = "Default IPv4 gateway assigned to every Talos VM."
+  type        = string
 }
 
 variable "controlplane_node_defaults" {
-  description = "Shared hardware and network settings for all control plane nodes."
+  description = "Shared hardware settings for control plane VMs."
   type = object({
     cpu_cores = number
     memory_mb = number
@@ -41,7 +97,7 @@ variable "controlplane_node_defaults" {
 }
 
 variable "controlplane_nodes" {
-  description = "Per-control-plane inventory. Shared characteristics are defined in controlplane_node_defaults."
+  description = "Control plane VM inventory keyed by a stable node name."
   type = map(object({
     vm_id       = number
     ip          = string
@@ -51,17 +107,17 @@ variable "controlplane_nodes" {
 }
 
 variable "worker_node_defaults" {
-  description = "Shared hardware and network settings for all worker nodes."
+  description = "Shared hardware settings for worker VMs."
   type = object({
-    cpu_cores = number
-    memory_mb = number
-    disk_gb   = number
+    cpu_cores          = number
+    memory_mb          = number
+    disk_gb            = number
     additional_disk_gb = number
   })
 }
 
 variable "worker_nodes" {
-  description = "Per-worker inventory. Shared characteristics are defined in worker_node_defaults."
+  description = "Worker VM inventory keyed by a stable node name."
   type = map(object({
     vm_id       = number
     ip          = string
@@ -71,103 +127,43 @@ variable "worker_nodes" {
 }
 
 ###
-# Talos variables
+# Cilium bootstrap
 ###
-variable "talos_version" {
-  description = "Talos release version. Must include the `v` prefix, for example `v1.12.6`."
-  type        = string
-  default     = null
-  nullable    = true
-  validation {
-    condition     = can(regex("^v[0-9]+\\.[0-9]+\\.[0-9]+$", var.talos_version))
-    error_message = "talos_version must be a Talos release in the form `v1.12.6` with the required `v` prefix."
-  }
-}
 
-variable "talos_schematic_id" {
-  description = "Talos Image Factory schematic ID used to build/download installer artifacts."
-  type        = string
-  default     = null
-  nullable    = true
-}
-
-###
-# Cluster variables
-###
-variable "cluster_name" {
-  type    = string
-  default = "talos-pve"
-}
-
-variable "controlplane_vip" {
-  type        = string
-  description = "Virtual IP for Kubernetes API on the control plane subnet, e.g. 192.168.100.210"
-}
-
-variable "cluster_endpoint" {
-  type        = string
-  description = "Kubernetes/Talos cluster endpoint"
-  default     = null
-}
-
-variable "kubernetes_version" {
-  description = "Optional Kubernetes version to bake into Talos machine config"
-  type        = string
-  default     = null
-}
-
-variable "cluster_health_check_timeout" {
-  type        = string
-  description = "Timeout for talos_cluster_health checks after bootstrap"
-  default     = "20m"
-}
-
-# Network
-variable "gateway" {
-  description = "Default IPv4 gateway used only if you later switch to static IP patches"
-  type        = string
-  default     = null
-}
-
-variable "nameservers" {
-  description = "DNS servers used only if you later switch to static IP patches"
-  type        = list(string)
-  default     = []
-}
-
-###
-# Cilium variables
-###
 variable "cilium_interface" {
+  description = "Talos network interface used by Cilium and the control plane VIP."
   type        = string
-  description = "Cilium network interface"
   default     = "eth0"
 }
 
 variable "cilium_chart_version" {
+  description = "Cilium Helm chart version rendered into Talos inline manifests."
   type        = string
-  description = "Cilium Helm chart version"
   default     = "1.19.1"
 }
 
 variable "cilium_lb_pool_start" {
+  description = "First IPv4 address in the Cilium LoadBalancer pool."
   type        = string
-  description = "First IP in Cilium LoadBalancer pool"
 }
 
 variable "cilium_lb_pool_stop" {
+  description = "Last IPv4 address in the Cilium LoadBalancer pool."
   type        = string
-  description = "Last IP in Cilium LoadBalancer pool"
 }
 
+###
+# Local bootstrap artifacts
+###
+
 variable "talosconfig_file_path" {
+  description = "Path where bootstrap writes talosconfig."
   type        = string
-  description = "Path to write talosconfig"
   default     = "../out/talosconfig"
 }
 
 variable "kubeconfig_file_path" {
+  description = "Path where bootstrap writes kubeconfig."
   type        = string
-  description = "Path to write kubeconfig"
   default     = "../out/kubeconfig"
 }

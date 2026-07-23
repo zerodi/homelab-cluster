@@ -108,11 +108,10 @@ locals {
 // see https://github.com/cilium/cilium/tree/v1.19.0/install/kubernetes/cilium
 // see https://registry.terraform.io/providers/hashicorp/helm/latest/docs/data-sources/template
 data "helm_template" "cilium" {
-  namespace  = "kube-system"
-  name       = "cilium"
-  repository = "https://helm.cilium.io"
-  chart      = "cilium"
-  # renovate: datasource=helm depName=cilium registryUrl=https://helm.cilium.io
+  namespace    = "kube-system"
+  name         = "cilium"
+  repository   = "https://helm.cilium.io"
+  chart        = "cilium"
   version      = "1.19.2"
   kube_version = var.kubernetes_version
   api_versions = []
@@ -280,7 +279,7 @@ data "talos_machine_configuration" "node" {
         }
       )
       machine = {
-        kernel   = local.drbd_patch
+        kernel = local.drbd_patch
       }
     })
   ]

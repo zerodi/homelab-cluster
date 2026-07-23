@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitOps Runtime Change"
+  short_description: "Change runtime manifests within GitOps boundaries"
+  default_prompt: "Use $gitops-runtime-change to implement and validate a runtime application change."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Diagnose Platform Readiness"
+  short_description: "Trace cluster and platform readiness failures"
+  default_prompt: "Use $diagnose-platform-readiness to diagnose the current platform readiness failure."

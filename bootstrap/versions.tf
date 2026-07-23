@@ -39,6 +39,6 @@ provider "helm" {}
 check "proxmox_api_token_configured" {
   assert {
     condition     = local.effective_proxmox.api_token != null && trimspace(local.effective_proxmox.api_token) != ""
-    error_message = "Set proxmox_api_token via TF_VAR_proxmox_api_token or provide it from an encrypted SOPS tfvars file. proxmox.api_token is kept only as a backward-compatible fallback."
+    error_message = "Set proxmox_api_token via TF_VAR_proxmox_api_token or provide it from an encrypted SOPS tfvars file."
   }
 }

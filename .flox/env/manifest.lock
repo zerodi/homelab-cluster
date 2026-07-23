@@ -12,13 +12,6 @@
       "go-task": {
         "pkg-path": "go-task"
       },
-      "helm": {
-        "pkg-path": "helm",
-        "systems": [
-          "aarch64-linux",
-          "x86_64-linux"
-        ]
-      },
       "hubble": {
         "pkg-path": "hubble"
       },
@@ -27,6 +20,9 @@
       },
       "kubectl": {
         "pkg-path": "kubectl"
+      },
+      "kubernetes-helm": {
+        "pkg-path": "kubernetes-helm"
       },
       "kustomize": {
         "pkg-path": "kustomize"
@@ -46,8 +42,8 @@
       "yamllint": {
         "pkg-path": "yamllint"
       },
-      "yq": {
-        "pkg-path": "yq"
+      "yq-go": {
+        "pkg-path": "yq-go"
       }
     },
     "hook": {},
@@ -422,68 +418,6 @@
       ],
       "outputs": {
         "out": "/nix/store/ajlbzd5gnxrs1yki1sjf327rjx7qq060-go-task-3.48.0"
-      },
-      "system": "x86_64-linux",
-      "group": "toplevel",
-      "priority": 5
-    },
-    {
-      "attr_path": "helm",
-      "broken": false,
-      "derivation": "/nix/store/9yq4bkivbigqmcxvl8rjsryfx4amqw13-helm-0.9.0.drv",
-      "description": "Free, cross-platform, polyphonic synthesizer",
-      "install_id": "helm",
-      "license": "GPL-3.0-or-later",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=64c08a7ca051951c8eae34e3e3cb1e202fe36786",
-      "name": "helm-0.9.0",
-      "pname": "helm",
-      "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
-      "rev_count": 1004030,
-      "rev_date": "2026-05-23T18:24:25Z",
-      "scrape_date": "2026-05-26T07:34:46.311683Z",
-      "stabilities": [
-        "stable",
-        "staging",
-        "unstable"
-      ],
-      "unfree": false,
-      "version": "0.9.0",
-      "outputs_to_install": [
-        "out"
-      ],
-      "outputs": {
-        "out": "/nix/store/vbcgk7iswlg02n33jsxscrm8jjaksczn-helm-0.9.0"
-      },
-      "system": "aarch64-linux",
-      "group": "toplevel",
-      "priority": 5
-    },
-    {
-      "attr_path": "helm",
-      "broken": false,
-      "derivation": "/nix/store/5fqnz75wiv6z8ijklp2957wl26ffcxv4-helm-0.9.0.drv",
-      "description": "Free, cross-platform, polyphonic synthesizer",
-      "install_id": "helm",
-      "license": "GPL-3.0-or-later",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=64c08a7ca051951c8eae34e3e3cb1e202fe36786",
-      "name": "helm-0.9.0",
-      "pname": "helm",
-      "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
-      "rev_count": 1004030,
-      "rev_date": "2026-05-23T18:24:25Z",
-      "scrape_date": "2026-05-26T08:33:11.749427Z",
-      "stabilities": [
-        "stable",
-        "staging",
-        "unstable"
-      ],
-      "unfree": false,
-      "version": "0.9.0",
-      "outputs_to_install": [
-        "out"
-      ],
-      "outputs": {
-        "out": "/nix/store/21ysjpyqfaxzdsxsgydxvv7b42qf446l-helm-0.9.0"
       },
       "system": "x86_64-linux",
       "group": "toplevel",
@@ -869,6 +803,131 @@
         "convert": "/nix/store/pajisc6xx344n31bklar8r04a395x7ws-kubectl-1.36.1-convert",
         "man": "/nix/store/wln7k2l3lglmzmaxc5s3ycbzdc793vdv-kubectl-1.36.1-man",
         "out": "/nix/store/hpxrpfnk0cdij0vwq0djimy9dcjl22vd-kubectl-1.36.1"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "kubernetes-helm",
+      "broken": false,
+      "derivation": "/nix/store/n7lvzsp019irj6sdqpan4i5q6xi8mm6q-kubernetes-helm-3.20.2.drv",
+      "description": "Package manager for kubernetes",
+      "install_id": "kubernetes-helm",
+      "license": "Apache-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=64c08a7ca051951c8eae34e3e3cb1e202fe36786",
+      "name": "kubernetes-helm-3.20.2",
+      "pname": "kubernetes-helm",
+      "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
+      "rev_count": 1004030,
+      "rev_date": "2026-05-23T18:24:25Z",
+      "scrape_date": "2026-05-26T07:06:20.935220Z",
+      "stabilities": [
+        "stable",
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "3.20.2",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/gkrsgz343hdglwf80sd6bm03lsg6x4kr-kubernetes-helm-3.20.2"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "kubernetes-helm",
+      "broken": false,
+      "derivation": "/nix/store/nj09d1iv89hrhblpmgjqnkkba5nbyr4f-kubernetes-helm-3.20.2.drv",
+      "description": "Package manager for kubernetes",
+      "install_id": "kubernetes-helm",
+      "license": "Apache-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=64c08a7ca051951c8eae34e3e3cb1e202fe36786",
+      "name": "kubernetes-helm-3.20.2",
+      "pname": "kubernetes-helm",
+      "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
+      "rev_count": 1004030,
+      "rev_date": "2026-05-23T18:24:25Z",
+      "scrape_date": "2026-05-26T07:34:50.743860Z",
+      "stabilities": [
+        "stable",
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "3.20.2",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/aw83ikfgr397vj9nac8j5vcdpr22hy56-kubernetes-helm-3.20.2"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "kubernetes-helm",
+      "broken": false,
+      "derivation": "/nix/store/ajbr6gw2nzsz8930mw9iyvvias8kdgnw-kubernetes-helm-3.20.2.drv",
+      "description": "Package manager for kubernetes",
+      "install_id": "kubernetes-helm",
+      "license": "Apache-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=64c08a7ca051951c8eae34e3e3cb1e202fe36786",
+      "name": "kubernetes-helm-3.20.2",
+      "pname": "kubernetes-helm",
+      "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
+      "rev_count": 1004030,
+      "rev_date": "2026-05-23T18:24:25Z",
+      "scrape_date": "2026-05-26T08:02:29.928663Z",
+      "stabilities": [
+        "stable",
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "3.20.2",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/hqqx1aqvh7j75p9i89chhs7zdrr3m7nd-kubernetes-helm-3.20.2"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "kubernetes-helm",
+      "broken": false,
+      "derivation": "/nix/store/83xzq1ri1dscyjma3riahaqshysk766n-kubernetes-helm-3.20.2.drv",
+      "description": "Package manager for kubernetes",
+      "install_id": "kubernetes-helm",
+      "license": "Apache-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=64c08a7ca051951c8eae34e3e3cb1e202fe36786",
+      "name": "kubernetes-helm-3.20.2",
+      "pname": "kubernetes-helm",
+      "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
+      "rev_count": 1004030,
+      "rev_date": "2026-05-23T18:24:25Z",
+      "scrape_date": "2026-05-26T08:33:16.146485Z",
+      "stabilities": [
+        "stable",
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "3.20.2",
+      "outputs_to_install": [
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/89r6lacw4snczana92k6sm8cxw61iq9k-kubernetes-helm-3.20.2"
       },
       "system": "x86_64-linux",
       "group": "toplevel",
@@ -1645,128 +1704,125 @@
       "priority": 5
     },
     {
-      "attr_path": "yq",
+      "attr_path": "yq-go",
       "broken": false,
-      "derivation": "/nix/store/vyza7sj3z1qd520bnlsm0afm5c1s4srj-python3.13-yq-3.4.3.drv",
-      "description": "Command-line YAML/XML/TOML processor - jq wrapper for YAML, XML, TOML documents",
-      "install_id": "yq",
-      "license": "Apache-2.0",
+      "derivation": "/nix/store/qkqj77brrg0z1xfvg5617dxh2pc8aj4j-yq-go-4.53.2.drv",
+      "description": "Portable command-line YAML processor",
+      "install_id": "yq-go",
+      "license": "[ MIT ]",
       "locked_url": "https://github.com/flox/nixpkgs?rev=64c08a7ca051951c8eae34e3e3cb1e202fe36786",
-      "name": "python3.13-yq-3.4.3",
-      "pname": "yq",
+      "name": "yq-go-4.53.2",
+      "pname": "yq-go",
       "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
       "rev_count": 1004030,
       "rev_date": "2026-05-23T18:24:25Z",
-      "scrape_date": "2026-05-26T07:08:51.243956Z",
+      "scrape_date": "2026-05-26T07:08:51.247590Z",
       "stabilities": [
         "stable",
         "staging",
         "unstable"
       ],
       "unfree": false,
-      "version": "3.4.3",
+      "version": "4.53.2",
       "outputs_to_install": [
         "out"
       ],
       "outputs": {
-        "dist": "/nix/store/pni8wa9kvs9rdmp3c73hcpbgkqcf9p9y-python3.13-yq-3.4.3-dist",
-        "out": "/nix/store/dm5zzpwan4gxyqnamgqzkmd4fi4q6wls-python3.13-yq-3.4.3"
+        "out": "/nix/store/ffkx6855qiv6004asmckjqwcq6dvc32q-yq-go-4.53.2"
       },
       "system": "aarch64-darwin",
       "group": "toplevel",
       "priority": 5
     },
     {
-      "attr_path": "yq",
+      "attr_path": "yq-go",
       "broken": false,
-      "derivation": "/nix/store/rh6aqkcjfk6qv3mgwjpvrm6s8dnkvzpj-python3.13-yq-3.4.3.drv",
-      "description": "Command-line YAML/XML/TOML processor - jq wrapper for YAML, XML, TOML documents",
-      "install_id": "yq",
-      "license": "Apache-2.0",
+      "derivation": "/nix/store/rmr4nxxfa7sjl6kjbw9c05gyis2mabl2-yq-go-4.53.2.drv",
+      "description": "Portable command-line YAML processor",
+      "install_id": "yq-go",
+      "license": "[ MIT ]",
       "locked_url": "https://github.com/flox/nixpkgs?rev=64c08a7ca051951c8eae34e3e3cb1e202fe36786",
-      "name": "python3.13-yq-3.4.3",
-      "pname": "yq",
+      "name": "yq-go-4.53.2",
+      "pname": "yq-go",
       "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
       "rev_count": 1004030,
       "rev_date": "2026-05-23T18:24:25Z",
-      "scrape_date": "2026-05-26T07:38:20.723381Z",
+      "scrape_date": "2026-05-26T07:38:20.727807Z",
       "stabilities": [
         "stable",
         "staging",
         "unstable"
       ],
       "unfree": false,
-      "version": "3.4.3",
+      "version": "4.53.2",
       "outputs_to_install": [
         "out"
       ],
       "outputs": {
-        "dist": "/nix/store/v33adkgim04a7lnajsfwjrjfn4iky68h-python3.13-yq-3.4.3-dist",
-        "out": "/nix/store/v89i2ia46kd3a33pvdilw9qmi31iwz2l-python3.13-yq-3.4.3"
+        "out": "/nix/store/3hsajqhhm8m9nx306jh09m1qz4idwmxk-yq-go-4.53.2"
       },
       "system": "aarch64-linux",
       "group": "toplevel",
       "priority": 5
     },
     {
-      "attr_path": "yq",
+      "attr_path": "yq-go",
       "broken": false,
-      "derivation": "/nix/store/ffrj2jw35dpxb7r3k565l3svz079crrw-python3.13-yq-3.4.3.drv",
-      "description": "Command-line YAML/XML/TOML processor - jq wrapper for YAML, XML, TOML documents",
-      "install_id": "yq",
-      "license": "Apache-2.0",
+      "derivation": "/nix/store/bjzrjkp77nhj5ax3n0axkq1xk8nmr1ah-yq-go-4.53.2.drv",
+      "description": "Portable command-line YAML processor",
+      "install_id": "yq-go",
+      "license": "[ MIT ]",
       "locked_url": "https://github.com/flox/nixpkgs?rev=64c08a7ca051951c8eae34e3e3cb1e202fe36786",
-      "name": "python3.13-yq-3.4.3",
-      "pname": "yq",
+      "name": "yq-go-4.53.2",
+      "pname": "yq-go",
       "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
       "rev_count": 1004030,
       "rev_date": "2026-05-23T18:24:25Z",
-      "scrape_date": "2026-05-26T08:05:00.438920Z",
+      "scrape_date": "2026-05-26T08:05:00.442611Z",
       "stabilities": [
         "stable",
         "staging",
         "unstable"
       ],
       "unfree": false,
-      "version": "3.4.3",
+      "version": "4.53.2",
       "outputs_to_install": [
         "out"
       ],
       "outputs": {
-        "dist": "/nix/store/68c7x1dh12ai7f0zz0jgqd0cd706hxca-python3.13-yq-3.4.3-dist",
-        "out": "/nix/store/knn37mxdbai8vw8hrysqnhwzrw8w492z-python3.13-yq-3.4.3"
+        "out": "/nix/store/mh9wimc8ddgqag0ma18izcd08bkldk1a-yq-go-4.53.2"
       },
       "system": "x86_64-darwin",
       "group": "toplevel",
       "priority": 5
     },
     {
-      "attr_path": "yq",
+      "attr_path": "yq-go",
       "broken": false,
-      "derivation": "/nix/store/gbk03n9pr3jqkdr72s73j2b0sj0jgzfb-python3.13-yq-3.4.3.drv",
-      "description": "Command-line YAML/XML/TOML processor - jq wrapper for YAML, XML, TOML documents",
-      "install_id": "yq",
-      "license": "Apache-2.0",
+      "derivation": "/nix/store/z61vlmh9xh1wjgh8xd1s78zvgv1m4giw-yq-go-4.53.2.drv",
+      "description": "Portable command-line YAML processor",
+      "install_id": "yq-go",
+      "license": "[ MIT ]",
       "locked_url": "https://github.com/flox/nixpkgs?rev=64c08a7ca051951c8eae34e3e3cb1e202fe36786",
-      "name": "python3.13-yq-3.4.3",
-      "pname": "yq",
+      "name": "yq-go-4.53.2",
+      "pname": "yq-go",
       "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
       "rev_count": 1004030,
       "rev_date": "2026-05-23T18:24:25Z",
-      "scrape_date": "2026-05-26T08:36:41.678059Z",
+      "scrape_date": "2026-05-26T08:36:41.682268Z",
       "stabilities": [
         "stable",
         "staging",
         "unstable"
       ],
       "unfree": false,
-      "version": "3.4.3",
+      "version": "4.53.2",
       "outputs_to_install": [
+        "out",
         "out"
       ],
       "outputs": {
-        "dist": "/nix/store/a4n67838ybdk1xs21dsnl4afzcc8p729-python3.13-yq-3.4.3-dist",
-        "out": "/nix/store/7jh563kddcyj954pyffmcb79vcwrn6h5-python3.13-yq-3.4.3"
+        "out": "/nix/store/pibhm258wp416plqdaxym4z6lis8ksla-yq-go-4.53.2"
       },
       "system": "x86_64-linux",
       "group": "toplevel",

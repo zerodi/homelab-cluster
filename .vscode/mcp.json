@@ -15,7 +15,16 @@
         "-y",
         "kubernetes-mcp-server@latest",
         "--kubeconfig",
-        "${env:HOME}/.kube/config"
+        "${workspaceFolder}/out/kubeconfig",
+        "--read-only",
+        "--disable-multi-cluster"
+      ]
+    },
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
       ]
     }
   }

@@ -1,14 +1,14 @@
 resource "proxmox_virtual_environment_vm" "node" {
   for_each = local.all_nodes
 
-  name          = "${var.node_prefix}-${each.key}"
-  description   = "Managed by Terraform/OpenTofu - Talos ${each.value.machine_type}"
-  tags          = ["terraform", "talos", "kubernetes", each.value.machine_type]
-  node_name     = var.proxmox.node_name
-  vm_id         = each.value.vm_id
-  machine       = "q35"
-  bios          = "ovmf"
-  scsi_hardware = "virtio-scsi-single"
+  name            = "${var.node_prefix}-${each.key}"
+  description     = "Managed by Terraform/OpenTofu - Talos ${each.value.machine_type}"
+  tags            = ["terraform", "talos", "kubernetes", each.value.machine_type]
+  node_name       = var.proxmox.node_name
+  vm_id           = each.value.vm_id
+  machine         = "q35"
+  bios            = "ovmf"
+  scsi_hardware   = "virtio-scsi-single"
   on_boot         = true
   started         = true
   stop_on_destroy = true

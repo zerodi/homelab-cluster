@@ -31,13 +31,6 @@ output "worker_ips_csv" {
   description = "Comma-separated worker IPs used by local health helpers."
 }
 
-output "platform_bootstrap" {
-  value = {
-    kubeconfig_path           = abspath(local_sensitive_file.kubeconfig.filename)
-  }
-  description = "Non-secret inputs consumed by the separate infrastructure entrypoint."
-}
-
 resource "local_sensitive_file" "talosconfig" {
   filename        = var.talosconfig_file_path
   file_permission = "0600"

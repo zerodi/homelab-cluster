@@ -2,15 +2,36 @@ version: "3"
 
 vars:
   KUBECONFIG_PATH:
-    sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"kubeconfig_path"' || exit 0; p="$(tofu output -raw kubeconfig_path 2>/dev/null || true)"; [ -z "$p" ] || realpath "$p" 2>/dev/null || printf '%s\n' "$p"; }
+    sh: >-
+      cd bootstrap &&
+      { json="$(tofu output -json 2>/dev/null || true)";
+      printf '%s' "$json" | grep -q '"kubeconfig_path"' || exit 0;
+      p="$(tofu output -raw kubeconfig_path 2>/dev/null || true)";
+      [ -z "$p" ] || realpath "$p" 2>/dev/null || printf '%s\n' "$p"; }
   PIRAEUS_NAMESPACE:
-    sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"piraeus_namespace"' || exit 0; tofu output -raw piraeus_namespace 2>/dev/null || true; }
+    sh: >-
+      cd infrastructure &&
+      { json="$(tofu output -json 2>/dev/null || true)";
+      printf '%s' "$json" | grep -q '"piraeus_namespace"' || exit 0;
+      tofu output -raw piraeus_namespace 2>/dev/null || true; }
   PIRAEUS_POOL_NAME:
-    sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"piraeus_storage_pool_name"' || exit 0; tofu output -raw piraeus_storage_pool_name 2>/dev/null || true; }
+    sh: >-
+      cd infrastructure &&
+      { json="$(tofu output -json 2>/dev/null || true)";
+      printf '%s' "$json" | grep -q '"piraeus_storage_pool_name"' || exit 0;
+      tofu output -raw piraeus_storage_pool_name 2>/dev/null || true; }
   PIRAEUS_DEVICE:
-    sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"piraeus_storage_device"' || exit 0; tofu output -raw piraeus_storage_device 2>/dev/null || true; }
+    sh: >-
+      cd infrastructure &&
+      { json="$(tofu output -json 2>/dev/null || true)";
+      printf '%s' "$json" | grep -q '"piraeus_storage_device"' || exit 0;
+      tofu output -raw piraeus_storage_device 2>/dev/null || true; }
   PIRAEUS_NODES:
-    sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"piraeus_storage_nodes_csv"' || exit 0; tofu output -raw piraeus_storage_nodes_csv 2>/dev/null || true; }
+    sh: >-
+      cd infrastructure &&
+      { json="$(tofu output -json 2>/dev/null || true)";
+      printf '%s' "$json" | grep -q '"piraeus_storage_nodes_csv"' || exit 0;
+      tofu output -raw piraeus_storage_nodes_csv 2>/dev/null || true; }
 
 tasks:
   init:

@@ -26,9 +26,10 @@ tasks:
           '     - secret/platform/authentik/runtime' \
           '     - secret/platform/forgejo/admin' \
           '     - secret/platform/forgejo/oidc' \
-          '  5. Обновите repoURL/sourceRepos и домены в argocd/.' \
-          '  6. Запустите task gitops:apply-bootstrap.' \
-          '  7. Полный runbook: docs/day0-bootstrap.md'
+          '  5. Проверьте contract: task gitops:preflight.' \
+          '  6. Обновите repoURL/sourceRepos и домены в argocd/.' \
+          '  7. Запустите task gitops:apply-bootstrap.' \
+          '  8. Полный runbook: docs/day0-bootstrap.md'
 
   garage-velero-guide:
     desc: Print the manual Garage bootstrap sequence for Velero cutover
@@ -156,6 +157,16 @@ tasks:
     cmds:
       - test -n "{{.KUBECONFIG_PATH}}"
       - ./infrastructure/scripts/openbao-day0.sh --kubeconfig "{{.KUBECONFIG_PATH}}"
+
+  openbao-runtime-preflight:
+    desc: Validate required OpenBao runtime secret paths and keys without printing secret values
+    cmds:
+      - ./infrastructure/scripts/openbao-runtime-preflight.py
+
+  post-argocd-check:
+    desc: Run post-bootstrap Argo CD and runtime smoke checks
+    cmds:
+      - ./argocd/scripts/post-argocd-check.sh
 
   export-root-ca:
     desc: Export the homelab root CA certificate from cert-manager to a local file

@@ -8,6 +8,13 @@ repos:
 
   - repo: local
     hooks:
+      - id: bootstrap-isolation
+        name: task check:bootstrap-isolation
+        entry: task check:bootstrap-isolation
+        language: system
+        pass_filenames: false
+        files: ^(bootstrap/|.*tfvars\.example$|tasks/(bootstrap|checks|infrastructure)\.yml$|\.pre-commit-config\.yaml$)
+
       - id: tofu-fmt-check
         name: task check:tofu-fmt
         entry: task check:tofu-fmt

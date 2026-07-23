@@ -1,0 +1,4 @@
+interface:
+  display_name: "Talos Greenfield Bootstrap"
+  short_description: "Bootstrap Talos and platform from empty state"
+  default_prompt: "Use $talos-greenfield-bootstrap to plan and validate a greenfield cluster bootstrap."

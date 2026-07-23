@@ -20,6 +20,7 @@ hosts:
 storage:
   piraeus:
     namespace: piraeus-datastore
+    device: /dev/sdb
     pool_name: pool1
     replica_count: 1
     storage_class: linstor-pool1-r1
@@ -49,10 +50,10 @@ platform:
       host: authentik-postgresql.authentik.svc.cluster.local
       database: authentik
       user: authentik
-      chart_version: 16.7.15
+      chart_version: 18.5.15
     redis:
       host: authentik-redis-master.authentik.svc.cluster.local
-      chart_version: 21.2.13
+      chart_version: 25.3.9
   forgejo:
     namespace: forgejo
     admin_secret_name: forgejo-admin-secret
@@ -66,10 +67,10 @@ platform:
       host: forgejo-postgresql.forgejo.svc.cluster.local:5432
       database: forgejo
       user: forgejo
-      chart_version: 16.7.15
+      chart_version: 18.5.15
     valkey:
       host: forgejo-valkey-primary.forgejo.svc.cluster.local:6379
-      chart_version: 2.4.7
+      chart_version: 5.4.9
     sso:
       provider_name: Authentik
       authentik_host: https://auth.home.arpa
@@ -129,7 +130,7 @@ platform:
       root_url: https://grafana.home.arpa/
       chart_version: 11.3.6
     victoriametrics:
-      chart_version: 0.33.0
+      chart_version: 0.34.0
       retention: 30d
     loki:
       chart_version: 9.3.6
