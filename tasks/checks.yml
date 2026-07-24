@@ -4,12 +4,17 @@ tasks:
   bootstrap-isolation:
     desc: Verify that bootstrap does not own platform or runtime resources
     cmds:
-      - python3 ./scripts/check-isolation.py
+      - python3 ./scripts/check-bootstrap-isolation.py
+
+  infrastructure-isolation:
+    desc: Verify infrastructure ownership and its required bootstrap state contract
+    cmds:
+      - python3 ./scripts/check-infrastructure-isolation.py
 
   env-contract:
     desc: Validate that envs/homelab.yaml stays in sync with argocd/ consumers
     cmds:
-      - ./argocd/scripts/validate-env-contract.py --mode scaffold
+      - ./scripts/validate-env-contract.py --mode scaffold
 
   tofu-fmt:
     desc: Run tofu fmt -check recursively
@@ -35,7 +40,7 @@ tasks:
   shellcheck:
     desc: Run shellcheck for repository helper scripts
     cmds:
-      - shellcheck infrastructure/scripts/*.sh argocd/scripts/*.sh
+      - shellcheck scripts/*.sh
 
   kustomize-bootstrap:
     desc: Build argocd/bootstrap with kustomize or kubectl fallback
@@ -61,6 +66,7 @@ tasks:
     desc: Run the local validation baseline used by CI and pre-commit
     cmds:
       - task check:bootstrap-isolation
+      - task check:infrastructure-isolation
       - task check:env-contract
       - task check:tofu-fmt
       - task check:tofu-validate-bootstrap

@@ -58,7 +58,7 @@ tasks:
       - |
         GARAGE_NAMESPACE="{{.GARAGE_NAMESPACE}}" \
         GARAGE_POD="{{.GARAGE_POD}}" \
-        ./infrastructure/scripts/garage-velero-helper.sh --kubeconfig "{{.KUBECONFIG_PATH}}" status
+        ./scripts/garage-velero-helper.sh --kubeconfig "{{.KUBECONFIG_PATH}}" status
 
   garage-node-id:
     desc: Detect the current Garage node id from garage status
@@ -68,7 +68,7 @@ tasks:
         GARAGE_NAMESPACE="{{.GARAGE_NAMESPACE}}" \
         GARAGE_POD="{{.GARAGE_POD}}" \
         GARAGE_NODE_ID="{{.GARAGE_NODE_ID}}" \
-        ./infrastructure/scripts/garage-velero-helper.sh --kubeconfig "{{.KUBECONFIG_PATH}}" detect-node-id
+        ./scripts/garage-velero-helper.sh --kubeconfig "{{.KUBECONFIG_PATH}}" detect-node-id
 
   garage-velero-bootstrap:
     desc: Print Garage bootstrap commands for the Velero bucket and key
@@ -82,7 +82,7 @@ tasks:
         GARAGE_BUCKET="{{.GARAGE_BUCKET}}" \
         GARAGE_KEY_NAME="{{.GARAGE_KEY_NAME}}" \
         GARAGE_NODE_ID="{{.GARAGE_NODE_ID}}" \
-        ./infrastructure/scripts/garage-velero-helper.sh --kubeconfig "{{.KUBECONFIG_PATH}}" print-bootstrap
+        ./scripts/garage-velero-helper.sh --kubeconfig "{{.KUBECONFIG_PATH}}" print-bootstrap
 
   hosts-entries:
     desc: Print IP/domain pairs from envs/homelab.yaml for a local hosts file
@@ -150,23 +150,23 @@ tasks:
   generate-runtime-secret-puts:
     desc: Print starter bao kv put commands for runtime secrets
     cmds:
-      - bash ./infrastructure/scripts/generate-runtime-secret-puts.sh
+      - bash ./scripts/generate-runtime-secret-puts.sh
 
   openbao-day0:
     desc: Run the OpenBao post-init day-0 helper for External Secrets
     cmds:
       - test -n "{{.KUBECONFIG_PATH}}"
-      - ./infrastructure/scripts/openbao-day0.sh --kubeconfig "{{.KUBECONFIG_PATH}}"
+      - ./scripts/openbao-day0.sh --kubeconfig "{{.KUBECONFIG_PATH}}"
 
   openbao-runtime-preflight:
     desc: Validate required OpenBao runtime secret paths and keys without printing secret values
     cmds:
-      - ./infrastructure/scripts/openbao-runtime-preflight.py
+      - ./scripts/openbao-runtime-preflight.py
 
   post-argocd-check:
     desc: Run post-bootstrap Argo CD and runtime smoke checks
     cmds:
-      - ./argocd/scripts/post-argocd-check.sh
+      - ./scripts/post-argocd-check.sh
 
   export-root-ca:
     desc: Export the homelab root CA certificate from cert-manager to a local file

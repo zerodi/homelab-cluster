@@ -15,6 +15,13 @@ repos:
         pass_filenames: false
         files: ^(bootstrap/|.*tfvars\.example$|tasks/(bootstrap|checks|infrastructure)\.yml$|\.pre-commit-config\.yaml$)
 
+      - id: infrastructure-isolation
+        name: task check:infrastructure-isolation
+        entry: task check:infrastructure-isolation
+        language: system
+        pass_filenames: false
+        files: ^(infrastructure/|scripts/check-infrastructure-isolation\.py$|tasks/(checks|infrastructure)\.yml$|\.pre-commit-config\.yaml$)
+
       - id: tofu-fmt-check
         name: task check:tofu-fmt
         entry: task check:tofu-fmt

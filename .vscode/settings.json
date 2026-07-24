@@ -1,0 +1,22 @@
+{
+    "yaml.disableSchemaDetection": [
+        "**/.github/workflows/*.yml",
+        "**/.github/workflows/*.yaml",
+        "**/.gitea/workflows/*.yml",
+        "**/.gitea/workflows/*.yaml",
+        "**/.forgejo/workflows/*.yml",
+        "**/.forgejo/workflows/*.yaml"
+    ],
+    "yaml.schemas": {
+        "file:///Users/zerodi/.vscode/extensions/continue.continue-1.2.4-darwin-x64/config-yaml-schema.json": [
+            ".continue/**/*.yaml"
+        ],
+        "https://taskfile.dev/schema.json": [
+            "file:///Users/zerodi/Development/Infra/talos-proxmox-no-ssh/tasks/bootstrap.yml",
+            "file:///Users/zerodi/Development/Infra/talos-proxmox-no-ssh/tasks/infrastructure.yml",
+            "file:///Users/zerodi/Development/Infra/talos-proxmox-no-ssh/tasks/gitops.yml",
+            "file:///Users/zerodi/Development/Infra/talos-proxmox-no-ssh/tasks/ops.yml",
+            "file:///Users/zerodi/Development/Infra/talos-proxmox-no-ssh/tasks/checks.yml"
+        ]
+    }
+}

@@ -71,7 +71,7 @@ tasks:
       - test -n "{{.PIRAEUS_DEVICE}}"
       - test -n "{{.PIRAEUS_NODES}}"
       - |
-        ./infrastructure/scripts/bootstrap-linstor-storage.sh \
+        ./scripts/bootstrap-linstor-storage.sh \
           --kubeconfig "{{.KUBECONFIG_PATH}}" \
           --namespace "{{.PIRAEUS_NAMESPACE}}" \
           --pool-name "{{.PIRAEUS_POOL_NAME}}" \
@@ -110,7 +110,7 @@ tasks:
   destroy:
     desc: Run staged infrastructure destroy with CRD-backed cleanup
     cmds:
-      - ./infrastructure/scripts/destroy-platform-bootstrap.sh
+      - ./scripts/destroy-platform-bootstrap.sh
 
   health:
     desc: Run local platform bootstrap checks after infrastructure apply

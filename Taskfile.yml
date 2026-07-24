@@ -1,5 +1,8 @@
 version: "3"
 
+dotenv:
+  - .env
+
 includes:
   bootstrap:
     taskfile: ./tasks/bootstrap.yml

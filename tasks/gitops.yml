@@ -8,12 +8,12 @@ tasks:
   preflight:
     desc: Validate env contract and OpenBao runtime secrets before GitOps bootstrap
     cmds:
-      - ./argocd/scripts/validate-env-contract.py --mode strict
-      - ./infrastructure/scripts/openbao-runtime-preflight.py
+      - ./scripts/validate-env-contract.py --mode strict
+      - ./scripts/openbao-runtime-preflight.py
 
   apply-bootstrap:
     desc: Apply the Argo CD root Application after bootstrap preflight checks
     cmds:
       - test -n "{{.KUBECONFIG_PATH}}"
       - task gitops:preflight
-      - ./argocd/scripts/apply-bootstrap.sh --kubeconfig "{{.KUBECONFIG_PATH}}"
+      - ./scripts/argocd-apply-bootstrap.sh --kubeconfig "{{.KUBECONFIG_PATH}}"

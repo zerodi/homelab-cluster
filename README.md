@@ -13,7 +13,7 @@
 - `argocd/`
   отвечает за runtime/GitOps manifests: `authentik`, `forgejo`, `harbor`, `woodpecker`, `garage`, observability stack, `velero`, `kyverno`, demo `echo`
 - root
-  не является Terraform/OpenTofu entrypoint и хранит только examples, `envs/homelab.yaml` и документацию
+  не является Terraform/OpenTofu entrypoint и хранит examples, `envs/homelab.yaml`, документацию и общие orchestration/validation helpers в `scripts/`
 
 ## Secret Model
 
@@ -33,6 +33,7 @@
 ```bash
 task init
 cp terraform.tfvars.example terraform.tfvars
+cp .env.example .env
 task bootstrap:apply-cluster
 task bootstrap:health
 ```
@@ -72,6 +73,7 @@ task check:validate
 
 ```bash
 task check:bootstrap-isolation
+task check:infrastructure-isolation
 task check:env-contract
 task ops:openbao-runtime-preflight
 task ops:post-argocd-check
