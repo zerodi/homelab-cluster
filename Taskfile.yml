@@ -47,6 +47,11 @@ tasks:
     cmds:
       - task check:validate
 
+  sync-chart-versions:
+    desc: Synchronize generated Argo CD chart pins from versions.yaml
+    cmds:
+      - task check:chart-versions-sync
+
   plan:
     desc: Alias for bootstrap:plan-cluster
     cmds:

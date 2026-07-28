@@ -1,4 +1,6 @@
 locals {
+  chart_versions = yamldecode(file("${path.root}/../versions.yaml")).charts
+
   effective_proxmox = merge(
     var.proxmox,
     {

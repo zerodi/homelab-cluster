@@ -13,7 +13,7 @@
 - `argocd/`
   отвечает за runtime/GitOps manifests: `authentik`, `forgejo`, `harbor`, `woodpecker`, `garage`, observability stack, `velero`, `kyverno`, demo `echo`
 - root
-  не является Terraform/OpenTofu entrypoint и хранит examples, `envs/homelab.yaml`, документацию и общие orchestration/validation helpers в `scripts/`
+  не является Terraform/OpenTofu entrypoint и хранит examples, `envs/homelab.yaml`, единый `versions.yaml`, документацию и общие orchestration/validation helpers в `scripts/`
 
 ## Secret Model
 
@@ -74,10 +74,15 @@ task check:validate
 ```bash
 task check:bootstrap-isolation
 task check:infrastructure-isolation
+task check:chart-versions
 task check:env-contract
 task ops:openbao-runtime-preflight
 task ops:post-argocd-check
 ```
+
+Все Helm chart pins задаются только в `versions.yaml`. После изменения файла
+выполните `task sync-chart-versions`, чтобы обновить проверяемые
+`targetRevision` mirrors в Argo CD Applications.
 
 Если entrypoint ещё не инициализирован, для части локальных проверок сначала выполните:
 
@@ -100,6 +105,7 @@ task bootstrap:destroy
 - [terraform.tfvars.example](/home/zerodi/code/talos-proxmox-no-ssh/terraform.tfvars.example)
 - [secrets.sops.tfvars.example](/home/zerodi/code/talos-proxmox-no-ssh/secrets.sops.tfvars.example)
 - [envs/homelab.yaml](/home/zerodi/code/talos-proxmox-no-ssh/envs/homelab.yaml)
+- [versions.yaml](/home/zerodi/code/talos-proxmox-no-ssh/versions.yaml)
 - [argocd/README.md](/home/zerodi/code/talos-proxmox-no-ssh/argocd/README.md)
 
 ## Docs
@@ -108,6 +114,7 @@ task bootstrap:destroy
 - [docs/day0-bootstrap.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/day0-bootstrap.md)
 - [docs/day1-operations.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/day1-operations.md)
 - [docs/environment-contract.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/environment-contract.md)
+- [docs/chart-versions.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/chart-versions.md)
 - [docs/runtime-dependency-matrix.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/runtime-dependency-matrix.md)
 - [docs/runtime-recovery-boundaries.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/runtime-recovery-boundaries.md)
 - [docs/backup-restore.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/backup-restore.md)

@@ -11,6 +11,17 @@ tasks:
     cmds:
       - python3 ./scripts/check-infrastructure-isolation.py
 
+  chart-versions:
+    desc: Verify all Helm chart pins against versions.yaml
+    cmds:
+      - ./scripts/check-chart-versions.py
+
+  chart-versions-sync:
+    desc: Synchronize Argo CD chart pins from versions.yaml
+    cmds:
+      - ./scripts/check-chart-versions.py --write
+      - ./scripts/check-chart-versions.py
+
   env-contract:
     desc: Validate that envs/homelab.yaml stays in sync with argocd/ consumers
     cmds:
@@ -67,6 +78,7 @@ tasks:
     cmds:
       - task check:bootstrap-isolation
       - task check:infrastructure-isolation
+      - task check:chart-versions
       - task check:env-contract
       - task check:tofu-fmt
       - task check:tofu-validate-bootstrap

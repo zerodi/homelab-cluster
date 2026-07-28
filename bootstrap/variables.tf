@@ -136,12 +136,6 @@ variable "cilium_interface" {
   default     = "eth0"
 }
 
-variable "cilium_chart_version" {
-  description = "Cilium Helm chart version rendered into Talos inline manifests."
-  type        = string
-  default     = "1.19.1"
-}
-
 variable "cilium_lb_pool_start" {
   description = "First IPv4 address in the Cilium LoadBalancer pool."
   type        = string

@@ -50,10 +50,8 @@ platform:
       host: authentik-postgresql.authentik.svc.cluster.local
       database: authentik
       user: authentik
-      chart_version: 18.5.15
     redis:
       host: authentik-redis-master.authentik.svc.cluster.local
-      chart_version: 25.3.9
   forgejo:
     namespace: forgejo
     admin_secret_name: forgejo-admin-secret
@@ -67,10 +65,8 @@ platform:
       host: forgejo-postgresql.forgejo.svc.cluster.local:5432
       database: forgejo
       user: forgejo
-      chart_version: 18.5.15
     valkey:
       host: forgejo-valkey-primary.forgejo.svc.cluster.local:6379
-      chart_version: 5.4.9
     sso:
       provider_name: Authentik
       authentik_host: https://auth.home.arpa
@@ -88,24 +84,19 @@ platform:
       host: harbor-postgresql.harbor.svc.cluster.local
       database: registry
       user: harbor
-      chart_version: 18.5.15
     valkey:
       addr: harbor-valkey-primary.harbor.svc.cluster.local:6379
-      chart_version: 5.4.9
-    chart_version: 1.18.0
   woodpecker:
     namespace: woodpecker
     runtime_secret_name: woodpecker-runtime
     host: ci.home.arpa
     forgejo_url: https://git.home.arpa
-    chart_version: 3.5.1
     server_storage_class: linstor-pool1-r1
     server_storage_size: 10Gi
     pipeline_volume_size: 10G
   velero:
     namespace: velero
     credentials_secret_name: velero-credentials
-    chart_version: 12.0.0
     bucket: homelab-velero
     prefix: clusters/homelab-talos
     region: us-east-1
@@ -122,22 +113,13 @@ platform:
     region: garage
   kyverno:
     namespace: kyverno
-    chart_version: 3.7.1
   observability:
     namespace: observability
     grafana:
       admin_secret_name: grafana-admin-secret
       root_url: https://grafana.home.arpa/
-      chart_version: 11.3.6
     victoriametrics:
-      chart_version: 0.34.0
       retention: 30d
-    loki:
-      chart_version: 9.3.6
-    tempo:
-      chart_version: 2.9.0
-    otel_collector:
-      chart_version: 0.147.1
 
 apps:
   echo:

@@ -1,0 +1,29 @@
+schema_version: 1
+
+# Helm chart versions are release policy, not environment-specific settings.
+# Update this file, then run: task sync-chart-versions
+charts:
+  cilium: "1.19.2"
+
+  argo_cd: "9.4.17"
+  cert_manager: "v1.20.1"
+  external_secrets: "2.2.0"
+  openbao: "0.26.2"
+  piraeus: "2.10.5"
+  trust_manager: "0.20.3"
+
+  authentik: "2026.2.1"
+  forgejo: "16.2.1"
+  grafana: "11.3.6"
+  harbor: "1.18.0"
+  kyverno: "3.7.1"
+  loki: "9.3.6"
+  opentelemetry_collector: "0.147.1"
+  postgresql: "18.5.15"
+  redis: "25.3.9"
+  reloader: "2.2.0"
+  tempo_distributed: "2.9.0"
+  valkey: "5.4.9"
+  velero: "12.0.0"
+  victoria_metrics_single: "0.34.0"
+  woodpecker: "3.5.1"

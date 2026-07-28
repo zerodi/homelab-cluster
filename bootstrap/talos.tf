@@ -112,7 +112,7 @@ data "helm_template" "cilium" {
   name         = "cilium"
   repository   = "https://helm.cilium.io"
   chart        = "cilium"
-  version      = "1.19.2"
+  version      = local.chart_versions["cilium"]
   kube_version = var.kubernetes_version
   api_versions = []
   set = [
