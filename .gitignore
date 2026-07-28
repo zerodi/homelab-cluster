@@ -20,3 +20,5 @@ test-ssh-git/keys/
 test-ssh-git/repo-data/
 test-ssh-git/templates/
 .codex
+
+__pycache__/

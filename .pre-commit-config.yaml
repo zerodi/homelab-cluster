@@ -27,7 +27,7 @@ repos:
         entry: task check:chart-versions
         language: system
         pass_filenames: false
-        files: ^(versions\.yaml|(bootstrap|infrastructure|argocd)/|scripts/check-chart-versions\.py|tasks/checks\.yml|Taskfile\.yml|\.pre-commit-config\.yaml)
+        files: ^(versions\.yaml|renovate\.json|(bootstrap|infrastructure|argocd)/|scripts/check-chart-versions\.py|tasks/checks\.yml|Taskfile\.yml|\.pre-commit-config\.yaml)
 
       - id: tofu-fmt-check
         name: task check:tofu-fmt

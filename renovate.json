@@ -1,0 +1,75 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "enabledManagers": [
+    "custom.regex",
+    "github-actions",
+    "terraform"
+  ],
+  "dependencyDashboard": true,
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update Helm chart pins only through the root version contract",
+      "managerFilePatterns": [
+        "/^versions\\.yaml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: registryUrl=(?<registryUrl>\\S+))? versioning=(?<versioning>\\S+)\\n\\s+[a-z0-9_]+:\\s+\"(?<currentValue>[^\"]+)\""
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "Update explicitly annotated CI tool versions",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/[^/]+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n\\s+[a-z0-9_]+:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ],
+      "versioningTemplate": "semver-coerced"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Ignore non-provider dependencies discovered in OpenTofu files",
+      "matchManagers": [
+        "terraform"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Update OpenTofu providers without bypassing the chart version contract",
+      "matchManagers": [
+        "terraform"
+      ],
+      "matchDatasources": [
+        "terraform-provider"
+      ],
+      "groupName": "OpenTofu providers",
+      "enabled": true,
+      "automerge": false
+    },
+    {
+      "description": "Keep release-policy changes reviewable",
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "automerge": false,
+      "rangeStrategy": "pin"
+    }
+  ],
+  "postUpgradeTasks": {
+    "commands": [
+      "flox activate -- task sync-chart-versions"
+    ],
+    "fileFilters": [
+      "argocd/platform/*.yaml"
+    ],
+    "executionMode": "branch"
+  }
+}

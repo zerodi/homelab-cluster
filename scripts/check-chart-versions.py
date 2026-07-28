@@ -15,6 +15,15 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS_FILE = "versions.yaml"
+RENOVATE_ANNOTATION = re.compile(
+    r"^\s*# renovate: datasource=(?P<datasource>\S+) "
+    r"depName=(?P<dep_name>\S+) "
+    r"(?:(?:registryUrl=(?P<registry_url>\S+)) )?"
+    r"versioning=(?P<versioning>\S+)\s*$"
+)
+CHART_PIN = re.compile(
+    r'^\s{2}(?P<key>[a-z0-9_]+):\s+"(?P<version>[^"]+)"\s*$'
+)
 
 
 @dataclass(frozen=True)
@@ -152,6 +161,57 @@ def discover_terraform_consumers(root: Path) -> set[tuple[str, str]]:
     return discovered
 
 
+def validate_renovate_annotations(path: Path, chart_keys: set[str]) -> list[str]:
+    errors: list[str] = []
+    lines = path.read_text(encoding="utf-8").splitlines()
+    annotations: dict[str, re.Match[str]] = {}
+
+    for index, line in enumerate(lines):
+        pin_match = CHART_PIN.match(line)
+        if pin_match is None:
+            continue
+
+        key = pin_match.group("key")
+        if index == 0:
+            errors.append(f"{VERSIONS_FILE}: chart {key!r} has no Renovate annotation")
+            continue
+
+        annotation_match = RENOVATE_ANNOTATION.match(lines[index - 1])
+        if annotation_match is None:
+            errors.append(f"{VERSIONS_FILE}: chart {key!r} has no Renovate annotation")
+            continue
+        annotations[key] = annotation_match
+
+    for key in sorted(chart_keys - set(annotations)):
+        if not any(f"chart {key!r} has no Renovate annotation" in item for item in errors):
+            errors.append(f"{VERSIONS_FILE}: chart {key!r} has no Renovate annotation")
+
+    for key, annotation in sorted(annotations.items()):
+        datasource = annotation.group("datasource")
+        registry_url = annotation.group("registry_url")
+        versioning = annotation.group("versioning")
+        if datasource not in {"helm", "docker"}:
+            errors.append(
+                f"{VERSIONS_FILE}: chart {key!r} uses unsupported Renovate "
+                f"datasource {datasource!r}"
+            )
+        if datasource == "helm" and registry_url is None:
+            errors.append(
+                f"{VERSIONS_FILE}: Helm chart {key!r} must declare registryUrl"
+            )
+        if datasource == "helm" and versioning != "helm":
+            errors.append(
+                f"{VERSIONS_FILE}: Helm chart {key!r} must use helm versioning"
+            )
+        if datasource == "docker" and versioning != "semver-coerced":
+            errors.append(
+                f"{VERSIONS_FILE}: OCI chart {key!r} must use "
+                "semver-coerced versioning"
+            )
+
+    return errors
+
+
 def set_manifest_chart_version(
     path: Path,
     chart: str,
@@ -210,6 +270,7 @@ def validate(root: Path, write: bool) -> int:
     }
     actual_keys = set(versions)
     errors: list[str] = []
+    errors.extend(validate_renovate_annotations(root / VERSIONS_FILE, actual_keys))
 
     for key in sorted(expected_keys - actual_keys):
         errors.append(f"{VERSIONS_FILE}: missing chart key {key!r}")
