@@ -12,16 +12,16 @@
 Текущий проект разделён так:
 
 - root: только `terraform.tfvars`, `terraform.tfvars.example`, `secrets.sops.tfvars.example` и общая документация
-- `bootstrap/`: самостоятельный Terraform/OpenTofu entrypoint для Proxmox VM, Talos image, Talos machine config, cluster bootstrap, локальных `kubeconfig` и `talosconfig`
+- `cluster/`: самостоятельный Terraform/OpenTofu entrypoint для Proxmox VM, Talos image, Talos machine config, cluster bootstrap, локальных `kubeconfig` и `talosconfig`
 - `infrastructure/`: отдельный Terraform/OpenTofu entrypoint для минимального platform bootstrap внутри Kubernetes
 - `argocd/`: отдельный runtime/GitOps scaffold, не подключённый к Terraform entrypoint
 
-Runtime не должен возвращаться ни в `bootstrap/`, ни в `infrastructure/`.
+Runtime не должен возвращаться ни в `cluster/`, ни в `infrastructure/`.
 `authentik`, `forgejo`, `echo` и app-level GitOps bootstrap живут вне Terraform bootstrap entrypoint.
 
 ## Ownership Rules
 
-`bootstrap/` владеет только:
+`cluster/` владеет только:
 
 - Talos image download/import
 - Proxmox VM lifecycle
@@ -55,8 +55,8 @@ Runtime не должен возвращаться ни в `bootstrap/`, ни в
 
 1. считать, что выполняется первый bootstrap с пустого состояния
 2. предпочитать чистый bootstrap path:
-   - `task apply-cluster`
-   - `task apply-platform-bootstrap`
+   - `task cluster:apply`
+   - `task infra:apply`
    - затем отдельный запуск `argocd/`, если задача относится к runtime
 3. не проектировать решение вокруг already-existing runtime resources
 
@@ -88,7 +88,7 @@ Runtime не должен возвращаться ни в `bootstrap/`, ни в
 
 При изменениях сначала определяйте слой ownership:
 
-- если изменение касается VM, Talos, bootstrap networking, `out/` артефактов: это `bootstrap/`
+- если изменение касается VM, Talos, bootstrap networking, `out/` артефактов: это `cluster/`
 - если изменение нужно для доведения кластера до `ArgoCD + OpenBao + ESO + Storage ready`: это `infrastructure/`
 - если изменение касается приложений или app-level manifests: это `argocd/`
 
@@ -110,7 +110,7 @@ Runtime не должен возвращаться ни в `bootstrap/`, ни в
 
 При аудите и review в первую очередь ищите:
 
-- утечку runtime обратно в `bootstrap/` или `infrastructure/`
+- утечку runtime обратно в `cluster/` или `infrastructure/`
 - зависимость bootstrap от уже существующего state
 - хранение секретов не по модели `OpenBao/ESO/SOPS`
 - `terraform_data + local-exec`, который создаёт long-lived runtime objects
@@ -122,6 +122,6 @@ Runtime не должен возвращаться ни в `bootstrap/`, ни в
 Перед значимыми изменениями сверяйтесь с:
 
 - `README.md`
-- `docs/deployment/day0-bootstrap.md`
+- `docs/day0-bootstrap.md`
 
 Если код и документация расходятся, сначала фиксируйте кодовую границу ownership, затем приводите документацию к ней.

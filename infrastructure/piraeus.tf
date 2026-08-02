@@ -192,7 +192,7 @@ resource "terraform_data" "linstor_csi_ready" {
   lifecycle {
     precondition {
       condition     = length(local.effective_piraeus_storage_nodes) > 0
-      error_message = "Piraeus bootstrap requires at least one storage node. Set piraeus_storage_nodes explicitly or run infrastructure after the root bootstrap state is present."
+      error_message = "Piraeus bootstrap requires at least one storage node. Set piraeus_storage_nodes explicitly or run infrastructure after the cluster state is present."
     }
   }
 

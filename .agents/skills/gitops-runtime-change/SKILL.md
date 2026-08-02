@@ -1,14 +1,13 @@
 ---
 name: gitops-runtime-change
-description: Implement or review application and runtime GitOps changes in this repository. Use for argocd/ applications, Helm values, Kustomize resources, ExternalSecrets, namespaces, Gateway API routes, Authentik, Forgejo, Harbor, Woodpecker, observability, Velero, Kyverno, Garage, or echo; do not move these resources into bootstrap/ or infrastructure/.
+description: Implement or review application and runtime GitOps changes in this repository. Use for argocd/ applications, Helm values, Kustomize resources, ExternalSecrets, namespaces, Gateway API routes, Authentik, Forgejo, Harbor, Woodpecker, observability, Velero, Kyverno, Garage, or echo; do not move these resources into cluster/ or infrastructure/.
 ---
 
 # GitOps Runtime Change
 
-Read `argocd/README.md` and the relevant deployment sections of
-`docs/deployment/day0-bootstrap.md`. For environment changes, also read
-`docs/configuration/environment-contract.md` before a significant runtime
-change.
+Read `argocd/README.md` and the relevant sections of
+`docs/day0-bootstrap.md`. For environment changes, also read
+`docs/environment-contract.md` before a significant runtime change.
 
 ## Preserve runtime ownership
 

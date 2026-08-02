@@ -8,12 +8,12 @@ repos:
 
   - repo: local
     hooks:
-      - id: bootstrap-isolation
-        name: task check:bootstrap-isolation
-        entry: task check:bootstrap-isolation
+      - id: cluster-isolation
+        name: task check:cluster-isolation
+        entry: task check:cluster-isolation
         language: system
         pass_filenames: false
-        files: ^(bootstrap/|.*tfvars\.example$|tasks/(bootstrap|checks|infrastructure)\.yml$|\.pre-commit-config\.yaml$)
+        files: ^(cluster/|.*tfvars\.example$|scripts/check-cluster-isolation\.py$|tasks/(cluster|checks|infrastructure)\.yml$|\.pre-commit-config\.yaml$)
 
       - id: infrastructure-isolation
         name: task check:infrastructure-isolation
@@ -27,7 +27,7 @@ repos:
         entry: task check:chart-versions
         language: system
         pass_filenames: false
-        files: ^(versions\.yaml|(bootstrap|infrastructure|argocd)/|scripts/check-chart-versions\.py|tasks/checks\.yml|Taskfile\.yml|\.pre-commit-config\.yaml)
+        files: ^(versions\.yaml|(cluster|infrastructure|argocd)/|scripts/check-chart-versions\.py|tasks/checks\.yml|Taskfile\.yml|\.pre-commit-config\.yaml)
 
       - id: environment-contract
         name: task check:env-contract
@@ -56,9 +56,9 @@ repos:
         language: system
         pass_filenames: false
 
-      - id: tofu-validate-bootstrap
-        name: task check:tofu-validate-bootstrap
-        entry: task check:tofu-validate-bootstrap
+      - id: tofu-validate-cluster
+        name: task check:tofu-validate-cluster
+        entry: task check:tofu-validate-cluster
         language: system
         pass_filenames: false
 

@@ -349,7 +349,7 @@ def main() -> int:
             )
         else:
             print(
-                "Next actions: use task ops:seed-runtime-secrets, then populate any incomplete secret/platform/* entries documented in docs/deployment/day0-bootstrap.md.",
+                "Next actions: use task ops:seed-runtime-secrets, then populate any incomplete secret/platform/* entries documented in docs/day0-bootstrap.md.",
                 file=sys.stderr,
             )
         return 1

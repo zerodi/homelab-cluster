@@ -13,22 +13,22 @@ terraform {
   }
 }
 
-data "terraform_remote_state" "bootstrap" {
+data "terraform_remote_state" "cluster" {
   backend = "local"
 
   config = {
-    path = var.bootstrap_state_path
+    path = var.cluster_state_path
   }
 }
 
 locals {
   environment_contract = yamldecode(file(var.environment_contract_path))
   chart_versions       = yamldecode(file("${path.root}/../versions.yaml")).charts
-  bootstrap_outputs    = data.terraform_remote_state.bootstrap.outputs
+  cluster_outputs      = data.terraform_remote_state.cluster.outputs
 
   effective_kubeconfig_path = coalesce(
     var.kubeconfig_path,
-    try(local.bootstrap_outputs.kubeconfig_path, null),
+    try(local.cluster_outputs.kubeconfig_path, null),
   )
 
   effective_argocd_host = coalesce(
@@ -64,7 +64,7 @@ locals {
   effective_piraeus_storage_nodes = sort(distinct(compact(
     var.piraeus_storage_nodes != null ?
     var.piraeus_storage_nodes :
-    try(local.bootstrap_outputs.worker_hostnames, [])
+    try(local.cluster_outputs.worker_hostnames, [])
   )))
 }
 

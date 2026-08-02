@@ -11,8 +11,8 @@ read-only inspection when it is available; otherwise use read-only `task`,
 
 ## Establish the failed layer
 
-Read `docs/deployment/day0-bootstrap.md` and
-`docs/configuration/day1-operations.md` as needed. Then trace in order:
+Read `docs/day0-bootstrap.md` and `docs/day1-operations.md` as needed. Then
+trace in order:
 
 1. Proxmox VM and Talos node/API health.
 2. Cilium networking and Kubernetes node readiness.
@@ -28,7 +28,7 @@ Read `docs/deployment/day0-bootstrap.md` and
 Start with repository helpers where they cover the layer:
 
 ```bash
-task bootstrap:health
+task cluster:health
 task infra:health
 task check:env-contract
 task ops:openbao-runtime-preflight

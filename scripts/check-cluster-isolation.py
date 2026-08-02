@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Enforce the repository ownership boundary around bootstrap/."""
+"""Enforce the repository ownership boundary around cluster/."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from typing import Iterable
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_BOOTSTRAP_DIR = PROJECT_ROOT / "bootstrap"
+DEFAULT_CLUSTER_DIR = PROJECT_ROOT / "cluster"
 DEFAULT_TFVARS_FILES = (
     PROJECT_ROOT / "terraform.tfvars.example",
     PROJECT_ROOT / "secrets.sops.tfvars.example",
@@ -54,23 +54,23 @@ FORBIDDEN_NAME_PARTS = {
 FORBIDDEN_SOURCE_PATTERNS = (
     (
         re.compile(r'(?m)^\s*provider\s+"kubernetes"\s*\{'),
-        "bootstrap must not configure the Kubernetes provider",
+        "cluster must not configure the Kubernetes provider",
     ),
     (
         re.compile(r'(?m)^\s*(?:resource|data)\s+"kubernetes_[^"]+"\s+"'),
-        "bootstrap must not own Kubernetes provider resources",
+        "cluster must not own Kubernetes provider resources",
     ),
     (
         re.compile(r'(?m)^\s*resource\s+"helm_release"\s+"'),
-        "bootstrap may render Cilium but must not own Helm releases",
+        "cluster may render Cilium but must not own Helm releases",
     ),
     (
         re.compile(r'(?m)^\s*source\s*=\s*"hashicorp/kubernetes"\s*$'),
-        "bootstrap must not depend on the Kubernetes provider",
+        "cluster must not depend on the Kubernetes provider",
     ),
     (
         re.compile(r'(?i)(?:^|["/])\.\./(?:argocd|infrastructure)(?:[/"]|$)'),
-        "bootstrap must not read files from argocd/ or infrastructure/",
+        "cluster must not read files from argocd/ or infrastructure/",
     ),
     (
         re.compile(
@@ -78,7 +78,7 @@ FORBIDDEN_SOURCE_PATTERNS = (
             r'(?:argoproj\.io|cert-manager\.io|external-secrets\.io|'
             r'piraeus\.io|trust\.cert-manager\.io)/'
         ),
-        "bootstrap must not declare platform/runtime Kubernetes API objects",
+        "cluster must not declare platform/runtime Kubernetes API objects",
     ),
     (
         re.compile(
@@ -87,11 +87,11 @@ FORBIDDEN_SOURCE_PATTERNS = (
             r'ClusterSecretStore|ExternalSecret|LinstorCluster|'
             r'LinstorSatelliteConfiguration|StorageClass)\b'
         ),
-        "bootstrap must not declare platform/runtime Kubernetes kinds",
+        "cluster must not declare platform/runtime Kubernetes kinds",
     ),
     (
         re.compile(r'(?i)(?:secret/data/)?platform/[a-z0-9_./-]+'),
-        "bootstrap must not reference runtime secret paths",
+        "cluster must not reference runtime secret paths",
     ),
 )
 
@@ -161,16 +161,16 @@ def scan_terraform_file(path: Path, display_root: Path) -> list[Violation]:
                 Violation(
                     display_path,
                     line_number(text, match.start()),
-                    f'bootstrap {block_type} "{name}" belongs to platform/runtime',
+                    f'cluster {block_type} "{name}" belongs to platform/runtime',
                 )
             )
 
     return violations
 
 
-def declared_bootstrap_variables(bootstrap_dir: Path) -> set[str]:
+def declared_cluster_variables(cluster_dir: Path) -> set[str]:
     declared: set[str] = set()
-    for path in sorted(bootstrap_dir.glob("*.tf")):
+    for path in sorted(cluster_dir.glob("*.tf")):
         text = active_hcl(path.read_text(encoding="utf-8"))
         declared.update(
             match.group(1)
@@ -228,7 +228,7 @@ def scan_tfvars_file(
                 Violation(
                     display_path,
                     number,
-                    f'top-level input "{name}" is not declared by bootstrap/',
+                    f'top-level input "{name}" is not declared by cluster/',
                 )
             )
 
@@ -236,16 +236,16 @@ def scan_tfvars_file(
 
 
 def run_checks(
-    bootstrap_dir: Path,
+    cluster_dir: Path,
     tfvars_files: Iterable[Path],
     display_root: Path,
 ) -> list[Violation]:
     violations: list[Violation] = []
 
-    for path in sorted(bootstrap_dir.glob("*.tf")):
+    for path in sorted(cluster_dir.glob("*.tf")):
         violations.extend(scan_terraform_file(path, display_root))
 
-    declared_variables = declared_bootstrap_variables(bootstrap_dir)
+    declared_variables = declared_cluster_variables(cluster_dir)
     for path in tfvars_files:
         violations.extend(scan_tfvars_file(path, declared_variables, display_root))
 
@@ -306,28 +306,28 @@ def self_test() -> int:
 
     if failures:
         for failure in failures:
-            print(f"[bootstrap-isolation] self-test failed: {failure}", file=sys.stderr)
+            print(f"[cluster-isolation] self-test failed: {failure}", file=sys.stderr)
         return 1
 
-    print("[bootstrap-isolation] self-test passed")
+    print("[cluster-isolation] self-test passed")
     return 0
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Check that bootstrap/ does not own platform/runtime resources."
+        description="Check that cluster/ does not own platform/runtime resources."
     )
     parser.add_argument(
-        "--bootstrap-dir",
+        "--cluster-dir",
         type=Path,
-        default=DEFAULT_BOOTSTRAP_DIR,
-        help="Bootstrap directory to scan.",
+        default=DEFAULT_CLUSTER_DIR,
+        help="Cluster directory to scan.",
     )
     parser.add_argument(
         "--tfvars",
         type=Path,
         action="append",
-        help="Tracked tfvars file to compare with bootstrap variable declarations.",
+        help="Tracked tfvars file to compare with cluster variable declarations.",
     )
     parser.add_argument(
         "--self-test",
@@ -342,27 +342,27 @@ def main() -> int:
     if args.self_test:
         return self_test()
 
-    bootstrap_dir = args.bootstrap_dir.resolve()
+    cluster_dir = args.cluster_dir.resolve()
     tfvars_files = tuple(
         path.resolve() for path in (args.tfvars or DEFAULT_TFVARS_FILES)
     )
 
-    violations = run_checks(bootstrap_dir, tfvars_files, PROJECT_ROOT)
+    violations = run_checks(cluster_dir, tfvars_files, PROJECT_ROOT)
     if violations:
         for violation in violations:
             print(
                 f"{violation.path}:{violation.line}: "
-                f"bootstrap isolation violation: {violation.message}",
+                f"cluster isolation violation: {violation.message}",
                 file=sys.stderr,
             )
         print(
-            f"[bootstrap-isolation] failed with {len(violations)} violation(s)",
+            f"[cluster-isolation] failed with {len(violations)} violation(s)",
             file=sys.stderr,
         )
         return 1
 
     print(
-        "[bootstrap-isolation] passed: bootstrap owns only "
+        "[cluster-isolation] passed: cluster owns only "
         "Proxmox, Talos, local artifacts, and Cilium bootstrap"
     )
     return 0

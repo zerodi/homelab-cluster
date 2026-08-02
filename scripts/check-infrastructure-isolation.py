@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Enforce the ownership and bootstrap dependency of infrastructure/."""
+"""Enforce the ownership and cluster-state dependency of infrastructure/."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ APPROVED_RESOURCES = {
 }
 
 APPROVED_DATA_SOURCES = {
-    ("terraform_remote_state", "bootstrap"),
+    ("terraform_remote_state", "cluster"),
 }
 
 APPROVED_READINESS_RESOURCES = {
@@ -57,7 +57,7 @@ APPROVED_READINESS_RESOURCES = {
     ("terraform_data", "piraeus_operator_ready"),
 }
 
-APPROVED_BOOTSTRAP_OUTPUTS = {
+APPROVED_CLUSTER_OUTPUTS = {
     "kubeconfig_path",
     "worker_hostnames",
 }
@@ -222,7 +222,7 @@ def extract_blocks(text: str) -> list[HclBlock]:
 def scan_source(
     text: str,
     path: Path,
-    require_bootstrap_contract: bool = False,
+    require_cluster_contract: bool = False,
 ) -> list[Violation]:
     active = active_hcl(text)
     violations: list[Violation] = []
@@ -234,7 +234,7 @@ def scan_source(
                 Violation(path, line_number(active, match.start()), message)
             )
 
-    bootstrap_blocks: list[HclBlock] = []
+    cluster_blocks: list[HclBlock] = []
     for block in blocks:
         address = (block.type_name, block.name)
         block_line = line_number(active, block.start)
@@ -268,8 +268,8 @@ def scan_source(
                         f'data source "{block.type_name}.{block.name}" is not approved',
                     )
                 )
-            if address == ("terraform_remote_state", "bootstrap"):
-                bootstrap_blocks.append(block)
+            if address == ("terraform_remote_state", "cluster"):
+                cluster_blocks.append(block)
 
         if 'provisioner "local-exec"' in block.text:
             if address not in APPROVED_READINESS_RESOURCES:
@@ -289,51 +289,51 @@ def scan_source(
                     )
                 )
 
-    if require_bootstrap_contract:
-        if len(bootstrap_blocks) != 1:
+    if require_cluster_contract:
+        if len(cluster_blocks) != 1:
             violations.append(
                 Violation(
                     path,
                     1,
                     "infrastructure must declare exactly one "
-                    'data.terraform_remote_state.bootstrap dependency',
+                    'data.terraform_remote_state.cluster dependency',
                 )
             )
         else:
-            bootstrap = bootstrap_blocks[0]
-            bootstrap_line = line_number(active, bootstrap.start)
-            if not re.search(r'(?m)^\s*backend\s*=\s*"local"\s*$', bootstrap.text):
+            cluster = cluster_blocks[0]
+            cluster_line = line_number(active, cluster.start)
+            if not re.search(r'(?m)^\s*backend\s*=\s*"local"\s*$', cluster.text):
                 violations.append(
                     Violation(
                         path,
-                        bootstrap_line,
-                        "bootstrap dependency must use the local state backend",
+                        cluster_line,
+                        "cluster dependency must use the local state backend",
                     )
                 )
             if not re.search(
-                r"(?m)^\s*path\s*=\s*var\.bootstrap_state_path\s*$",
-                bootstrap.text,
+                r"(?m)^\s*path\s*=\s*var\.cluster_state_path\s*$",
+                cluster.text,
             ):
                 violations.append(
                     Violation(
                         path,
-                        bootstrap_line,
-                        "bootstrap state path must come from var.bootstrap_state_path",
+                        cluster_line,
+                        "cluster state path must come from var.cluster_state_path",
                     )
                 )
-            if re.search(r"(?m)^\s*(?:count|for_each)\s*=", bootstrap.text):
+            if re.search(r"(?m)^\s*(?:count|for_each)\s*=", cluster.text):
                 violations.append(
                     Violation(
                         path,
-                        bootstrap_line,
-                        "bootstrap state dependency must remain unconditional",
+                        cluster_line,
+                        "cluster state dependency must remain unconditional",
                     )
                 )
 
     return violations
 
 
-def scan_bootstrap_contract(
+def scan_cluster_contract(
     combined_text: str,
     display_path: Path,
 ) -> list[Violation]:
@@ -341,7 +341,7 @@ def scan_bootstrap_contract(
     active = active_hcl(combined_text)
 
     variable_match = re.search(
-        r'(?ms)^\s*variable\s+"bootstrap_state_path"\s*\{(.*?)^\s*\}',
+        r'(?ms)^\s*variable\s+"cluster_state_path"\s*\{(.*?)^\s*\}',
         active,
     )
     if not variable_match:
@@ -349,64 +349,64 @@ def scan_bootstrap_contract(
             Violation(
                 display_path,
                 1,
-                'required variable "bootstrap_state_path" is missing',
+                'required variable "cluster_state_path" is missing',
             )
         )
     elif not re.search(
-        r'(?m)^\s*default\s*=\s*"\.\./bootstrap/terraform\.tfstate"\s*$',
+        r'(?m)^\s*default\s*=\s*"\.\./cluster/terraform\.tfstate"\s*$',
         variable_match.group(1),
     ):
         violations.append(
             Violation(
                 display_path,
                 line_number(active, variable_match.start()),
-                "bootstrap_state_path must default to "
-                "../bootstrap/terraform.tfstate",
+                "cluster_state_path must default to "
+                "../cluster/terraform.tfstate",
             )
         )
 
     referenced_outputs: set[str] = set()
     output_reference_patterns = (
-        r"\blocal\.bootstrap_outputs\.([A-Za-z_][A-Za-z0-9_]*)",
-        r'\blocal\.bootstrap_outputs\["([^"]+)"\]',
-        r"\bdata\.terraform_remote_state\.bootstrap\.outputs\."
+        r"\blocal\.cluster_outputs\.([A-Za-z_][A-Za-z0-9_]*)",
+        r'\blocal\.cluster_outputs\["([^"]+)"\]',
+        r"\bdata\.terraform_remote_state\.cluster\.outputs\."
         r"([A-Za-z_][A-Za-z0-9_]*)",
-        r'\bdata\.terraform_remote_state\.bootstrap\.outputs\["([^"]+)"\]',
+        r'\bdata\.terraform_remote_state\.cluster\.outputs\["([^"]+)"\]',
     )
     for pattern in output_reference_patterns:
         referenced_outputs.update(re.findall(pattern, active))
-    unapproved_outputs = referenced_outputs - APPROVED_BOOTSTRAP_OUTPUTS
+    unapproved_outputs = referenced_outputs - APPROVED_CLUSTER_OUTPUTS
     for output in sorted(unapproved_outputs):
         match = re.search(rf'(?:"|\.){re.escape(output)}(?:"|\b)', active)
         violations.append(
             Violation(
                 display_path,
                 line_number(active, match.start()) if match else 1,
-                f'bootstrap output "{output}" is not approved for infrastructure/',
+                f'cluster output "{output}" is not approved for infrastructure/',
             )
         )
 
-    missing_outputs = APPROVED_BOOTSTRAP_OUTPUTS - referenced_outputs
+    missing_outputs = APPROVED_CLUSTER_OUTPUTS - referenced_outputs
     for output in sorted(missing_outputs):
         violations.append(
             Violation(
                 display_path,
                 1,
-                f'infrastructure must consume bootstrap output "{output}"',
+                f'infrastructure must consume cluster output "{output}"',
             )
         )
 
     if not re.search(
-        r"(?m)^\s*bootstrap_outputs\s*=\s*"
-        r"data\.terraform_remote_state\.bootstrap\.outputs\s*$",
+        r"(?m)^\s*cluster_outputs\s*=\s*"
+        r"data\.terraform_remote_state\.cluster\.outputs\s*$",
         active,
     ):
         violations.append(
             Violation(
                 display_path,
                 1,
-                "bootstrap outputs must come from "
-                "data.terraform_remote_state.bootstrap.outputs",
+                "cluster outputs must come from "
+                "data.terraform_remote_state.cluster.outputs",
             )
         )
 
@@ -433,8 +433,8 @@ def scan_task_contract(text: str, display_path: Path) -> list[Violation]:
             "Piraeus device must come from the root environment contract",
         ),
         (
-            r"tofu -chdir=bootstrap output -json worker_hostnames",
-            "Piraeus nodes must come from completed bootstrap state",
+            r"tofu -chdir=cluster output -json worker_hostnames",
+            "Piraeus nodes must come from completed cluster state",
         ),
     )
     for pattern, message in required_patterns:
@@ -474,13 +474,13 @@ def run_checks(infrastructure_dir: Path, display_root: Path) -> list[Violation]:
             scan_source(
                 text,
                 display_path,
-                require_bootstrap_contract=path.name == "providers.tf",
+                require_cluster_contract=path.name == "providers.tf",
             )
         )
 
     combined_text = "\n".join(combined_parts)
     violations.extend(
-        scan_bootstrap_contract(
+        scan_cluster_contract(
             combined_text,
             infrastructure_dir.relative_to(display_root),
         )
@@ -547,40 +547,40 @@ resource "terraform_data" "argocd_ready" {
         if not scan_source(sample, Path("forbidden.tf")):
             failures.append(f"did not reject {label}")
 
-    conditional_bootstrap = '''
-data "terraform_remote_state" "bootstrap" {
+    conditional_cluster = '''
+data "terraform_remote_state" "cluster" {
   count   = var.enabled ? 1 : 0
   backend = "local"
   config = {
-    path = var.bootstrap_state_path
+    path = var.cluster_state_path
   }
 }
 '''
     violations = scan_source(
-        conditional_bootstrap,
+        conditional_cluster,
         Path("providers.tf"),
-        require_bootstrap_contract=True,
+        require_cluster_contract=True,
     )
     if not any("unconditional" in item.message for item in violations):
-        failures.append("did not reject conditional bootstrap state dependency")
+        failures.append("did not reject conditional cluster state dependency")
 
     contract_with_unapproved_output = '''
-variable "bootstrap_state_path" {
-  default = "../bootstrap/terraform.tfstate"
+variable "cluster_state_path" {
+  default = "../cluster/terraform.tfstate"
 }
 locals {
-  bootstrap_outputs = data.terraform_remote_state.bootstrap.outputs
-  kubeconfig        = local.bootstrap_outputs.kubeconfig_path
-  workers           = local.bootstrap_outputs.worker_hostnames
-  controlplanes     = data.terraform_remote_state.bootstrap.outputs.controlplane_ips
+  cluster_outputs = data.terraform_remote_state.cluster.outputs
+  kubeconfig      = local.cluster_outputs.kubeconfig_path
+  workers         = local.cluster_outputs.worker_hostnames
+  controlplanes   = data.terraform_remote_state.cluster.outputs.controlplane_ips
 }
 '''
-    violations = scan_bootstrap_contract(
+    violations = scan_cluster_contract(
         contract_with_unapproved_output,
         Path("infrastructure"),
     )
     if not any('output "controlplane_ips"' in item.message for item in violations):
-        failures.append("did not reject an unapproved bootstrap output")
+        failures.append("did not reject an unapproved cluster output")
 
     valid_task_contract = '''
 ENVIRONMENT_CONTRACT_PATH:
@@ -592,10 +592,10 @@ PIRAEUS_POOL_NAME:
 PIRAEUS_DEVICE:
   sh: yq eval '.storage.piraeus.device' "{{.ENVIRONMENT_CONTRACT_PATH}}"
 PIRAEUS_NODES:
-  sh: tofu -chdir=bootstrap output -json worker_hostnames
+  sh: tofu -chdir=cluster output -json worker_hostnames
 '''
     if scan_task_contract(valid_task_contract, Path("tasks/infrastructure.yml")):
-        failures.append("rejected the root env/bootstrap task contract")
+        failures.append("rejected the root env/cluster task contract")
 
     stale_task_contract = valid_task_contract + '''
 PIRAEUS_NAMESPACE:
@@ -624,7 +624,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Check that infrastructure/ owns only platform bootstrap resources "
-            "and still requires completed bootstrap state."
+            "and still requires completed cluster state."
         )
     )
     parser.add_argument(
@@ -664,7 +664,7 @@ def main() -> int:
 
     print(
         "[infrastructure-isolation] passed: infrastructure owns only approved "
-        "platform bootstrap resources and requires bootstrap state"
+        "platform bootstrap resources and requires cluster state"
     )
     return 0
 

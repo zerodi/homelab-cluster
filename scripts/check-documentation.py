@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate deployment-only documentation layout and local Markdown links."""
+"""Validate the flat docs/ layout and local Markdown links."""
 
 from __future__ import annotations
 
@@ -11,23 +11,10 @@ from urllib.parse import unquote
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DOCS_ROOT = PROJECT_ROOT / "docs"
-DOC_SECTIONS = {"deployment", "configuration"}
 LINK_PATTERN = re.compile(r"!?\[[^\]]*]\((?P<target>[^)]+)\)")
 LEGACY_PATHS = (
-    "docs/prerequisites.md",
-    "docs/day0-bootstrap.md",
-    "docs/day1-operations.md",
-    "docs/environment-contract.md",
-    "docs/chart-versions.md",
-    "docs/renovate.md",
-    "docs/backup-restore.md",
-    "docs/garage-velero-plan.md",
-    "docs/kyverno-policies.md",
-    "docs/runtime-dependency-matrix.md",
-    "docs/runtime-recovery-boundaries.md",
-    "docs/bootstrap-audit.md",
-    "docs/ai-stack-integration-plan.md",
-    "docs/reference/",
+    "docs/deployment/",
+    "docs/configuration/",
 )
 
 
@@ -41,14 +28,10 @@ def markdown_files() -> list[Path]:
 def validate_layout() -> list[str]:
     errors: list[str] = []
     for path in sorted(DOCS_ROOT.iterdir()):
-        if path.is_file() and path.name != "README.md":
+        if path.is_dir():
             errors.append(
-                f"{path.relative_to(PROJECT_ROOT)}: documentation must live "
-                "under deployment/ or configuration/"
-            )
-        if path.is_dir() and path.name not in DOC_SECTIONS:
-            errors.append(
-                f"{path.relative_to(PROJECT_ROOT)}: unknown documentation section"
+                f"{path.relative_to(PROJECT_ROOT)}: documentation must use the "
+                "flat docs/ layout"
             )
     return errors
 

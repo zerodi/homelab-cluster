@@ -22,7 +22,7 @@ flox activate -- task sync-chart-versions
 
 ```bash
 task check:chart-versions
-task check:tofu-validate-bootstrap
+task check:tofu-validate-cluster
 task check:tofu-validate-infrastructure
 ```
 

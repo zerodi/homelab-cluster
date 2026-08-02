@@ -61,7 +61,7 @@ clustersecretstore_ready() {
 require_cmd kubectl
 require_cmd tofu
 
-kubeconfig="$(cd "$repo_root/bootstrap" && realpath "$(tofu output -raw kubeconfig_path)")"
+kubeconfig="$(cd "$repo_root/cluster" && realpath "$(tofu output -raw kubeconfig_path)")"
 export KUBECONFIG="$kubeconfig"
 
 failed=0

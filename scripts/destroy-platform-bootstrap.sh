@@ -12,7 +12,7 @@ require_cmd() {
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo_root=$(cd -- "$script_dir/.." && pwd)
 infra_dir="$repo_root/infrastructure"
-bootstrap_dir="$repo_root/bootstrap"
+cluster_dir="$repo_root/cluster"
 destroy_args=("$@")
 
 crd_backed_targets=(
@@ -44,7 +44,7 @@ prime_kubeconfig() {
     return 1
   fi
 
-  kubeconfig_path=$(tofu -chdir="$bootstrap_dir" output -raw kubeconfig_path 2>/dev/null || true)
+  kubeconfig_path=$(tofu -chdir="$cluster_dir" output -raw kubeconfig_path 2>/dev/null || true)
   if [[ -z "$kubeconfig_path" || ! -f "$kubeconfig_path" ]]; then
     return 1
   fi

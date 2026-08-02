@@ -7,7 +7,7 @@
 
 ### 1. Tooling
 
-Минимальный toolchain описан в [docs/deployment/prerequisites.md](docs/deployment/prerequisites.md).
+Минимальный toolchain описан в [docs/prerequisites.md](docs/prerequisites.md).
 
 ### 2. Bootstrap cluster
 
@@ -15,14 +15,14 @@
 task init
 cp terraform.tfvars.example terraform.tfvars
 cp .env.example .env
-task bootstrap:apply-cluster
-task bootstrap:health
+task cluster:apply
+task cluster:health
 ```
 
 ### 3. Bootstrap platform operators
 
 ```bash
-task infra:apply-bootstrap
+task infra:apply
 task infra:health
 ```
 
@@ -76,7 +76,7 @@ task check:validate
 Отдельные useful checks:
 
 ```bash
-task check:bootstrap-isolation
+task check:cluster-isolation
 task check:infrastructure-isolation
 task check:chart-versions
 task check:env-contract
@@ -92,12 +92,12 @@ task ops:post-argocd-check
 Если entrypoint ещё не инициализирован, для части локальных проверок сначала выполните:
 
 ```bash
-task bootstrap:init -- -backend=false
+task cluster:init -- -backend=false
 task infra:init -- -backend=false
 ```
 
 ## Подробный runbook
 
-- [Требования к окружению](docs/deployment/prerequisites.md)
-- [Day-0 bootstrap](docs/deployment/day0-bootstrap.md)
+- [Требования к окружению](docs/prerequisites.md)
+- [Day-0 bootstrap](docs/day0-bootstrap.md)
 - [Настройка и эксплуатация](docs/README.md)

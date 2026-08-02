@@ -57,7 +57,7 @@ cp .env.example .env
 
 `task init` инициализирует оба entrypoint:
 
-- `bootstrap/`
+- `cluster/`
 - `infrastructure/`
 
 Секреты Terraform передавайте отдельно.
@@ -74,18 +74,18 @@ export TF_VAR_proxmox_api_token='terraform@pve!talos=...'
 cp secrets.sops.tfvars.example secrets.sops.tfvars
 # заполните файл и зашифруйте его
 sops -e -i secrets.sops.tfvars
-sops -d secrets.sops.tfvars > bootstrap/secrets.auto.tfvars
+sops -d secrets.sops.tfvars > cluster/secrets.auto.tfvars
 ```
 
-`bootstrap/secrets.auto.tfvars` должен оставаться только локальным рабочим
+`cluster/secrets.auto.tfvars` должен оставаться только локальным рабочим
 файлом. Он создаётся внутри фактического OpenTofu entrypoint, поэтому
-автоматически загружается командами `task bootstrap:*`.
+автоматически загружается командами `task cluster:*`.
 
 ### 2. Bootstrap кластера
 
 ```bash
-task bootstrap:plan-cluster
-task bootstrap:apply-cluster
+task cluster:plan
+task cluster:apply
 ```
 
 После этого должны появиться:
@@ -96,19 +96,19 @@ task bootstrap:apply-cluster
 Проверка:
 
 ```bash
-task bootstrap:health
+task cluster:health
 ```
 
-Platform bootstrap выполняется из отдельного entrypoint `infrastructure/`, который читает не-секретные входы из `bootstrap/terraform.tfstate`.
+Platform bootstrap выполняется из отдельного entrypoint `infrastructure/`, который читает не-секретные входы из `cluster/terraform.tfstate`.
 
 ### 3. Bootstrap platform operators
 
 ```bash
-task infra:plan-bootstrap
-task infra:apply-bootstrap
+task infra:plan
+task infra:apply
 ```
 
-`task infra:plan-bootstrap` строит план только для первой стадии platform bootstrap, где ещё нет CRD-зависимых manifests.
+`task infra:plan` строит план только для первой стадии platform bootstrap, где ещё нет CRD-зависимых manifests.
 
 Эта первая стадия поднимает только CRD-delivering bootstrap-ресурсы:
 
@@ -125,14 +125,14 @@ task infra:apply-bootstrap
 task infra:health
 ```
 
-Во время `task infra:apply-bootstrap` сначала поэтапно ставятся CRD-delivering releases и CRD-backed manifests, затем LINSTOR device pools создаются отдельным helper-скриптом вне Terraform graph, и только после этого выполняется финальный `infrastructure` apply.
+Во время `task infra:apply` сначала поэтапно ставятся CRD-delivering releases и CRD-backed manifests, затем LINSTOR device pools создаются отдельным helper-скриптом вне Terraform graph, и только после этого выполняется финальный `infrastructure` apply.
 
 Параметры LINSTOR helper получает до финального apply:
 
 - namespace, pool name и device — из effective contract
   (`envs/homelab.yaml` + optional `envs/homelab.override.yaml`)
-- worker nodes — из `bootstrap.worker_hostnames`
-- kubeconfig — из root `.env` (`KUBECONFIG`), recovery override или bootstrap state
+- worker nodes — из `cluster.worker_hostnames`
+- kubeconfig — из root `.env` (`KUBECONFIG`), recovery override или cluster state
 
 Helper не зависит от outputs незавершённого `infrastructure` apply.
 
@@ -440,7 +440,7 @@ task ops:openbao-runtime-preflight-final
 
 После записи runtime secrets:
 
-1. обновите [envs/homelab.yaml](../../envs/homelab.yaml) или environment-specific
+1. обновите [envs/homelab.yaml](../envs/homelab.yaml) или environment-specific
    `envs/homelab.override.yaml`
 2. запустите `task sync-env-contract`, чтобы обновить repository coordinates,
    домены и остальные tracked mirrors в `argocd/`
@@ -525,7 +525,7 @@ task ops:openbao-port-forward-stop
 
 Развёртывание завершено, когда:
 
-- `task bootstrap:health` и `task infra:health` проходят
+- `task cluster:health` и `task infra:health` проходят
 - OpenBao инициализирован и unsealed
 - `task gitops:preflight` проходит
 - root application имеет состояния `Synced` и `Healthy`

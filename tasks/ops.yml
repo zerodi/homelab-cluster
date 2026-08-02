@@ -9,7 +9,7 @@ vars:
         realpath "$KUBECONFIG" 2>/dev/null || printf '%s\n' "$KUBECONFIG"
         exit 0
       fi
-      cd bootstrap
+      cd cluster
       json="$(tofu output -json 2>/dev/null || true)"
       printf '%s' "$json" | grep -q '"kubeconfig_path"' || exit 0
       p="$(tofu output -raw kubeconfig_path 2>/dev/null || true)"
@@ -45,7 +45,7 @@ tasks:
           '  9. Запустите task gitops:apply-bootstrap.' \
           ' 10. Замените временные Woodpecker OAuth и Velero S3 credentials.' \
           ' 11. Закройте port-forward: task ops:openbao-port-forward-stop.' \
-          ' 12. Полный runbook: docs/deployment/day0-bootstrap.md'
+          ' 12. Полный runbook: docs/day0-bootstrap.md'
 
   garage-velero-guide:
     desc: Print the manual Garage bootstrap sequence for Velero cutover
@@ -65,7 +65,7 @@ tasks:
           ' 10. Получите secret: kubectl -n garage exec garage-0 -- /garage key info velero --show-secret' \
           ' 11. Обновите secret/platform/velero/s3 в OpenBao.' \
           ' 12. После этого переключайте Velero на garage-s3.garage.svc.cluster.local:3900.' \
-          ' 13. Runbook: docs/configuration/garage-velero.md'
+          ' 13. Runbook: docs/garage-velero.md'
 
   garage-status:
     desc: Show raw Garage status from the running pod
@@ -161,7 +161,7 @@ tasks:
   day1-guide:
     desc: Print the day-1 operations runbook location
     cmds:
-      - "printf '%s\\n' 'Day-1 operations runbook: docs/configuration/day1-operations.md'"
+      - "printf '%s\\n' 'Day-1 operations runbook: docs/day1-operations.md'"
 
   generate-runtime-secret-puts:
     desc: Print complete bao kv put commands for runtime secrets

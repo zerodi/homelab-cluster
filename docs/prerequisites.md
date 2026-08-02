@@ -7,7 +7,7 @@
 Без этих инструментов основной путь репозитория не работает:
 
 - `tofu`
-  Нужен для `bootstrap/` и `infrastructure/`.
+  Нужен для `cluster/` и `infrastructure/`.
 - `kubectl`
   Нужен для readiness checks, GitOps bootstrap и day-0 operator actions.
 - `talosctl`

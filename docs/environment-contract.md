@@ -1,7 +1,7 @@
 # Environment contract
 
-[`envs/homelab.yaml`](../../envs/homelab.yaml) — базовый non-secret contract.
-[`envs/homelab.override.yaml`](../../envs/homelab.override.yaml) содержит
+[`envs/homelab.yaml`](../envs/homelab.yaml) — базовый non-secret contract.
+[`envs/homelab.override.yaml`](../envs/homelab.override.yaml) содержит
 tracked environment-specific отличия и рекурсивно накладывается поверх базы.
 
 В нём хранятся:
@@ -18,7 +18,7 @@ tracked environment-specific отличия и рекурсивно наклад
 - пароли, tokens и private keys
 - OpenBao secret values
 - day-0 Terraform credentials
-- версии Helm charts — они находятся в [`versions.yaml`](../../versions.yaml)
+- версии Helm charts — они находятся в [`versions.yaml`](../versions.yaml)
 
 ## Изменение contract
 
@@ -26,7 +26,7 @@ tracked environment-specific отличия и рекурсивно наклад
 2. Для значения конкретного окружения измените `envs/homelab.override.yaml`,
    оставляя в нём только отличающиеся keys. Example используется как шаблон для
    нового окружения.
-3. Consumers в `bootstrap/` и `infrastructure/` читают effective contract
+3. Consumers в `cluster/` и `infrastructure/` читают effective contract
    напрямую; tracked mirrors в `argocd/` обновите командой синхронизации.
 4. Выполните:
 

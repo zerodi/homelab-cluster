@@ -39,8 +39,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes shellcheck
 
-      - name: Task init bootstrap
-        run: task bootstrap:init -- -backend=false
+      - name: Task init cluster
+        run: task cluster:init -- -backend=false
 
       - name: Task init infrastructure
         run: task infra:init -- -backend=false

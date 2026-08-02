@@ -1,13 +1,13 @@
 version: "3"
 
 tasks:
-  bootstrap-isolation:
-    desc: Verify that bootstrap does not own platform or runtime resources
+  cluster-isolation:
+    desc: Verify that cluster does not own platform or runtime resources
     cmds:
-      - python3 ./scripts/check-bootstrap-isolation.py
+      - python3 ./scripts/check-cluster-isolation.py
 
   infrastructure-isolation:
-    desc: Verify infrastructure ownership and its required bootstrap state contract
+    desc: Verify infrastructure ownership and its required cluster state contract
     cmds:
       - python3 ./scripts/check-infrastructure-isolation.py
 
@@ -46,13 +46,13 @@ tasks:
   tofu-fmt:
     desc: Run tofu fmt -check recursively
     cmds:
-      - tofu -chdir=bootstrap fmt -check
+      - tofu -chdir=cluster fmt -check
       - tofu -chdir=infrastructure fmt -check
 
-  tofu-validate-bootstrap:
-    desc: Run tofu validate for bootstrap/
+  tofu-validate-cluster:
+    desc: Run tofu validate for cluster/
     cmds:
-      - tofu -chdir=bootstrap validate
+      - tofu -chdir=cluster validate
 
   tofu-validate-infrastructure:
     desc: Run tofu validate for infrastructure/
@@ -92,14 +92,14 @@ tasks:
   validate:
     desc: Run the local validation baseline used by CI and pre-commit
     cmds:
-      - task check:bootstrap-isolation
+      - task check:cluster-isolation
       - task check:infrastructure-isolation
       - task check:chart-versions
       - task check:documentation
       - task check:env-contract
       - task check:runtime-secret-contract
       - task check:tofu-fmt
-      - task check:tofu-validate-bootstrap
+      - task check:tofu-validate-cluster
       - task check:tofu-validate-infrastructure
       - task check:yamllint
       - task check:shellcheck

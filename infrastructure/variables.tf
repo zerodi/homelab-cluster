@@ -2,10 +2,10 @@
 # Configuration sources
 ###
 
-variable "bootstrap_state_path" {
-  description = "Path to bootstrap local state used to discover kubeconfig and worker nodes."
+variable "cluster_state_path" {
+  description = "Path to cluster local state used to discover kubeconfig and worker nodes."
   type        = string
-  default     = "../bootstrap/terraform.tfstate"
+  default     = "../cluster/terraform.tfstate"
 }
 
 variable "environment_contract_path" {
@@ -15,7 +15,7 @@ variable "environment_contract_path" {
 }
 
 ###
-# Bootstrap state overrides
+# Cluster state overrides
 ###
 
 variable "kubeconfig_path" {

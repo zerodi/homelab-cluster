@@ -5,7 +5,7 @@
 ## Health
 
 ```bash
-task bootstrap:health
+task cluster:health
 task infra:health
 task ops:post-argocd-check
 kubectl -n argocd get applications

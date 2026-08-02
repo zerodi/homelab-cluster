@@ -2,50 +2,50 @@ version: "3"
 
 vars:
   TALOSCONFIG_PATH:
-    sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"talosconfig_path"' || exit 0; p="$(tofu output -raw talosconfig_path 2>/dev/null || true)"; [ -z "$p" ] || realpath "$p" 2>/dev/null || printf '%s\n' "$p"; }
+    sh: cd cluster && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"talosconfig_path"' || exit 0; p="$(tofu output -raw talosconfig_path 2>/dev/null || true)"; [ -z "$p" ] || realpath "$p" 2>/dev/null || printf '%s\n' "$p"; }
   KUBECONFIG_PATH:
-    sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"kubeconfig_path"' || exit 0; p="$(tofu output -raw kubeconfig_path 2>/dev/null || true)"; [ -z "$p" ] || realpath "$p" 2>/dev/null || printf '%s\n' "$p"; }
+    sh: cd cluster && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"kubeconfig_path"' || exit 0; p="$(tofu output -raw kubeconfig_path 2>/dev/null || true)"; [ -z "$p" ] || realpath "$p" 2>/dev/null || printf '%s\n' "$p"; }
   CONTROLPLANE_IPS:
-    sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"controlplane_ips_csv"' || exit 0; tofu output -raw controlplane_ips_csv 2>/dev/null || true; }
+    sh: cd cluster && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"controlplane_ips_csv"' || exit 0; tofu output -raw controlplane_ips_csv 2>/dev/null || true; }
   WORKER_IPS:
-    sh: cd bootstrap && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"worker_ips_csv"' || exit 0; tofu output -raw worker_ips_csv 2>/dev/null || true; }
-  BOOTSTRAP_CONTROLPLANE_IP:
+    sh: cd cluster && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"worker_ips_csv"' || exit 0; tofu output -raw worker_ips_csv 2>/dev/null || true; }
+  PRIMARY_CONTROLPLANE_IP:
     sh: echo "{{.CONTROLPLANE_IPS}}" | cut -d, -f1
 
 tasks:
   init:
-    desc: Initialize the bootstrap OpenTofu entrypoint
+    desc: Initialize the cluster OpenTofu entrypoint
     cmds:
-      - tofu -chdir=bootstrap init {{.CLI_ARGS}}
+      - tofu -chdir=cluster init {{.CLI_ARGS}}
 
   plan:
-    desc: Plan the bootstrap OpenTofu entrypoint
+    desc: Plan the cluster OpenTofu entrypoint
     aliases:
       - plan
     cmds:
-      - tofu -chdir=bootstrap plan -var-file=../terraform.tfvars
+      - tofu -chdir=cluster plan -var-file=../terraform.tfvars
 
   apply:
-    desc: Apply the bootstrap OpenTofu entrypoint
+    desc: Apply the cluster OpenTofu entrypoint
     aliases:
       - apply
     cmds:
-      - tofu -chdir=bootstrap apply -var-file=../terraform.tfvars
+      - tofu -chdir=cluster apply -var-file=../terraform.tfvars
 
   destroy:
-    desc: Destroy the bootstrap entrypoint without refresh
+    desc: Destroy the cluster entrypoint without refresh
     cmds:
-      - tofu -chdir=bootstrap destroy -var-file=../terraform.tfvars -refresh=false
+      - tofu -chdir=cluster destroy -var-file=../terraform.tfvars -refresh=false
 
   health:
-    desc: Run local cluster bootstrap health checks using talosctl and kubectl
+    desc: Run local cluster health checks using talosctl and kubectl
     cmds:
       - test -n "{{.CONTROLPLANE_IPS}}"
       - test -n "{{.WORKER_IPS}}"
-      - test -n "{{.BOOTSTRAP_CONTROLPLANE_IP}}"
+      - test -n "{{.PRIMARY_CONTROLPLANE_IP}}"
       - test -f "{{.TALOSCONFIG_PATH}}"
       - test -f "{{.KUBECONFIG_PATH}}"
-      - TALOSCONFIG="{{.TALOSCONFIG_PATH}}" talosctl -e "{{.BOOTSTRAP_CONTROLPLANE_IP}}" -n "{{.BOOTSTRAP_CONTROLPLANE_IP}}" version
+      - TALOSCONFIG="{{.TALOSCONFIG_PATH}}" talosctl -e "{{.PRIMARY_CONTROLPLANE_IP}}" -n "{{.PRIMARY_CONTROLPLANE_IP}}" version
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl wait --for=condition=Ready node --all --timeout=10m
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl -n kube-system rollout status daemonset/cilium --timeout=10m
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl -n kube-system rollout status deployment/cilium-operator --timeout=10m

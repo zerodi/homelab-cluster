@@ -10,7 +10,7 @@ Greenfield-развёртывание кластера и platform bootstrap:
 Основная последовательность:
 
 ```text
-bootstrap/ -> infrastructure/ -> OpenBao init/unseal -> GitOps bootstrap
+cluster/ -> infrastructure/ -> OpenBao init/unseal -> GitOps bootstrap
 ```
 
 ## Настройка и эксплуатация

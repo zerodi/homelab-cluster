@@ -34,7 +34,7 @@ tasks:
 
   ### 0. Prepare stage ###
   init:
-    desc: Initialize bootstrap and infrastructure entrypoints
+    desc: Initialize cluster and infrastructure entrypoints
     cmds:
       - task cluster:init
       - task infra:init
@@ -162,7 +162,7 @@ tasks:
       - task ops:day0-guide
 
   destroy:
-    desc: Destroy infrastructure, then bootstrap
+    desc: Destroy infrastructure, then cluster
     cmds:
       - task infra:destroy
       - task cluster:destroy

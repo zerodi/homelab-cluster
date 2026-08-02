@@ -41,7 +41,7 @@ class ArgoConsumer:
 
 
 TERRAFORM_CONSUMERS = (
-    TerraformConsumer("cilium", "bootstrap/talos.tf", "cilium"),
+    TerraformConsumer("cilium", "cluster/talos.tf", "cilium"),
     TerraformConsumer("argo_cd", "infrastructure/argocd.tf", "argo-cd"),
     TerraformConsumer(
         "cert_manager",
@@ -153,7 +153,7 @@ def discover_argo_consumers(root: Path) -> set[tuple[str, str]]:
 
 def discover_terraform_consumers(root: Path) -> set[tuple[str, str]]:
     discovered: set[tuple[str, str]] = set()
-    for subtree in ("bootstrap", "infrastructure"):
+    for subtree in ("cluster", "infrastructure"):
         for path in sorted((root / subtree).glob("*.tf")):
             text = path.read_text(encoding="utf-8")
             for chart in re.findall(r'(?m)^\s*chart\s*=\s*"([^"]+)"\s*$', text):

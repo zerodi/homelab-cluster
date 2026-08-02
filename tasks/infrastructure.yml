@@ -14,7 +14,7 @@ vars:
     sh: >-
       { p="${TF_VAR_kubeconfig_path:-${KUBECONFIG:-}}";
       if [ -z "$p" ]; then
-      p="$(tofu -chdir=bootstrap output -raw kubeconfig_path 2>/dev/null || true)";
+      p="$(tofu -chdir=cluster output -raw kubeconfig_path 2>/dev/null || true)";
       fi;
       [ -z "$p" ] || realpath "$p" 2>/dev/null || printf '%s\n' "$p"; }
   PIRAEUS_NAMESPACE:
@@ -44,7 +44,7 @@ vars:
       if [ -n "$value" ]; then
       printf '%s' "$value" | yq eval -p=json -r 'join(" ")' -;
       else
-      json="$(tofu -chdir=bootstrap output -json worker_hostnames 2>/dev/null || true)";
+      json="$(tofu -chdir=cluster output -json worker_hostnames 2>/dev/null || true)";
       [ -z "$json" ] || printf '%s' "$json" |
       yq eval -p=json -r 'join(" ")' -;
       fi; }
@@ -86,7 +86,7 @@ tasks:
     cmds:
       - |
         test -n "{{.KUBECONFIG_PATH}}" || {
-          echo "Missing kubeconfig. Complete bootstrap or set KUBECONFIG/TF_VAR_kubeconfig_path." >&2
+          echo "Missing kubeconfig. Complete cluster apply or set KUBECONFIG/TF_VAR_kubeconfig_path." >&2
           exit 1
         }
       - |
@@ -106,7 +106,7 @@ tasks:
         }
       - |
         test -n "{{.PIRAEUS_NODES}}" || {
-          echo "Missing bootstrap worker_hostnames output." >&2
+          echo "Missing cluster worker_hostnames output." >&2
           exit 1
         }
       - |

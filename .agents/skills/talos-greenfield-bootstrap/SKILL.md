@@ -1,17 +1,17 @@
 ---
 name: talos-greenfield-bootstrap
-description: Plan, implement, or review a greenfield Talos-on-Proxmox bootstrap in this repository. Use for changes to bootstrap/, infrastructure/, Talos VM or image lifecycle, Cilium bootstrap, platform operators, OpenBao day-0 setup, or the from-scratch task sequence; do not use for app-level runtime manifests under argocd/.
+description: Plan, implement, or review a greenfield Talos-on-Proxmox bootstrap in this repository. Use for changes to cluster/, infrastructure/, Talos VM or image lifecycle, Cilium bootstrap, platform operators, OpenBao day-0 setup, or the from-scratch task sequence; do not use for app-level runtime manifests under argocd/.
 ---
 
 # Talos Greenfield Bootstrap
 
 Treat an empty state and a new cluster as the default. Read `README.md` and
-`docs/deployment/day0-bootstrap.md` before making significant changes.
+`docs/day0-bootstrap.md` before making significant changes.
 
 ## Classify ownership
 
 - Put Talos images, Proxmox VMs, machine configuration, cluster bootstrap,
-  `out/kubeconfig`, `out/talosconfig`, and minimum Cilium in `bootstrap/`.
+  `out/kubeconfig`, `out/talosconfig`, and minimum Cilium in `cluster/`.
 - Put cert-manager, trust-manager, OpenBao, External Secrets Operator, Piraeus
   and LINSTOR bootstrap, Argo CD, and their readiness resources in
   `infrastructure/`.
@@ -27,7 +27,7 @@ objects.
 
 1. Inspect the relevant Taskfile tasks and existing dependency/readiness chain.
 2. Preserve this order:
-   `task bootstrap:apply-cluster` -> `task infra:apply-bootstrap` -> manual
+   `task cluster:apply` -> `task infra:apply` -> manual
    OpenBao init/unseal -> `task ops:openbao-day0` -> separate GitOps bootstrap.
 3. Assume no existing namespaces, CRDs, secrets, or runtime resources unless a
    task explicitly concerns migration, recovery, or partial reconciliation.
@@ -42,9 +42,9 @@ objects.
 Run the narrowest checks first, then the repository baseline when practical:
 
 ```bash
-tofu -chdir=bootstrap fmt -check
+tofu -chdir=cluster fmt -check
 tofu -chdir=infrastructure fmt -check
-tofu -chdir=bootstrap validate
+tofu -chdir=cluster validate
 tofu -chdir=infrastructure validate
 task check:validate
 ```
