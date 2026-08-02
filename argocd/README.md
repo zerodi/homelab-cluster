@@ -94,6 +94,12 @@ task gitops:apply-bootstrap
 - repository Secret
 - `Application/root-ssh`
 
+После развёртывания Forgejo переведите Argo CD с временного SSH server на
+постоянный repository по отдельному
+[cutover runbook](../docs/forgejo-argocd-cutover.md). Он описывает создание
+repository, read-only token, доставку credential через OpenBao/ESO, настройку
+внутреннего CA и безопасную замену `root-ssh` на `root`.
+
 ## Проверка результата
 
 ```bash

@@ -6,7 +6,7 @@ metadata:
 spec:
   description: Platform workloads managed by ArgoCD
   sourceRepos:
-    - https://git.example.net/platform/gitops.git
+    - https://git.lab.zerodi.ru/platform/gitops.git
     - https://charts.goauthentik.io
     - code.forgejo.org/forgejo-helm
     - ghcr.io/woodpecker-ci/helm

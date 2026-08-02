@@ -54,6 +54,10 @@ Loopback-адреса запрещены: `127.0.0.1` внутри Argo CD pod �
 task gitops:test-ssh-stop
 ```
 
+Последовательность создания постоянного repository в Forgejo, настройки
+Argo CD credentials и безопасного переключения `root-ssh` приведена в
+[Forgejo cutover runbook](../docs/forgejo-argocd-cutover.md).
+
 ## Подготовка
 
 Ручной вариант подготовки стенда:

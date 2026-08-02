@@ -212,7 +212,7 @@ task gitops:apply-bootstrap
 | Интеграция | Статус | Действие оператора |
 |---|---|---|
 | Forgejo -> Woodpecker OAuth | Вручную | Создать OAuth application, записать client ID/secret в OpenBao и выполнить первый login |
-| Cutover с test-ssh-git | Вручную | Создать постоянный repository, перенести GitOps tree и обновить Argo CD repository/Application sources |
+| Cutover с test-ssh-git | Вручную | Выполнить [Forgejo cutover runbook](forgejo-argocd-cutover.md): создать repository, настроить OpenBao/ESO credential и переключить root Application |
 | Garage layout | Частично | Получить node ID и выполнить команды, напечатанные `task ops:garage-velero-bootstrap` |
 | Garage bucket и S3 key | Частично | Выполнить напечатанные команды и безопасно получить credentials |
 | Velero credentials | Вручную | Перезаписать `secret/platform/velero/s3` в OpenBao |

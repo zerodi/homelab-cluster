@@ -1,0 +1,33 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: forgejo-gitops-repository
+  namespace: argocd
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: openbao
+  target:
+    name: forgejo-gitops-repository
+    creationPolicy: Owner
+    template:
+      engineVersion: v2
+      metadata:
+        labels:
+          argocd.argoproj.io/secret-type: repository
+      data:
+        type: git
+        name: forgejo-gitops
+        url: https://git.lab.zerodi.ru/platform/gitops.git
+        username: "{{ .username }}"
+        password: "{{ .token }}"
+  data:
+    - secretKey: username
+      remoteRef:
+        key: platform/argocd/repository
+        property: username
+    - secretKey: token
+      remoteRef:
+        key: platform/argocd/repository
+        property: token

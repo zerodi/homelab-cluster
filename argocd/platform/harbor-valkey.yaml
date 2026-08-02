@@ -15,7 +15,7 @@ spec:
         releaseName: harbor-valkey
         valueFiles:
           - $values/platform/harbor/valkey/values.yaml
-    - repoURL: https://git.example.net/platform/gitops.git
+    - repoURL: https://git.lab.zerodi.ru/platform/gitops.git
       targetRevision: main
       ref: values
   destination:

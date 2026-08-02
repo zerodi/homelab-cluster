@@ -471,9 +471,11 @@ task gitops:test-ssh-bootstrap
 доступен из Argo CD pods. Держите test server запущенным до завершения sync или
 до перевода Applications на постоянный Git repository.
 
-После создания постоянного repository перенесите в него GitOps tree, обновите
-Argo CD repository/Application sources и только затем остановите временный
-сервер командой `task gitops:test-ssh-stop`.
+После создания Forgejo перенесите GitOps tree и переключите Argo CD по
+[cutover runbook](forgejo-argocd-cutover.md). Он сохраняет token в OpenBao,
+доставляет repository Secret через ESO и предотвращает конфликт между
+`root-ssh` и каноническим `root`. Только после успешного cutover остановите
+временный сервер командой `task gitops:test-ssh-stop`.
 
 Если постоянный repository доступен до первого sync, используйте обычный путь:
 
