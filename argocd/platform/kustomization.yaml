@@ -10,6 +10,7 @@ resources:
   - harbor-valkey.yaml
   - harbor.yaml
   - hubble.yaml
+  - reloader.yaml
   - velero-prereqs.yaml
   - velero.yaml
   - kyverno-prereqs.yaml

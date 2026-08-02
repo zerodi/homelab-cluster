@@ -1,143 +1,149 @@
-# ArgoCD GitOps Scaffold
+# Argo CD runtime deployment
 
-Этот каталог содержит каркас GitOps-репозитория для ArgoCD.
+Этот runbook описывает развёртывание runtime/GitOps слоя после завершения
+`cluster/` и `infrastructure/`.
 
-Структура:
+## Предварительные условия
 
-- `bootstrap/`: root `Application` и базовые `AppProject`
-- `platform/`: prereqs, runtime и bootstrap для `authentik`, `forgejo`, `harbor`, `woodpecker`, observability, `velero` и `kyverno`
-- `apps/`: demo `echo`
+Перед запуском должны быть готовы:
 
-В `platform/` теперь также лежат отдельные runtime data services:
+- `cert-manager`
+- `trust-manager`
+- `OpenBao`
+- `External Secrets Operator`
+- `Piraeus` / LINSTOR storage class
+- `Argo CD`
 
-- `authentik-postgresql`
-- `authentik-redis`
-- `forgejo-postgresql`
-- `forgejo-valkey`
-- `harbor-postgresql`
-- `harbor-valkey`
-- `victoria-metrics`
-- `loki`
-- `tempo`
-- `grafana`
-- `otel-collector`
-- `hubble`
-- `velero`
-- `kyverno`
-- `kyverno-policies`
-
-Observability baseline сейчас такой:
-
-- `OTel Collector` принимает OTLP и одновременно скрапит собственные метрики, `VictoriaMetrics`, `Loki` и `Tempo`
-- `OTel Collector` также скрапит `hubble-metrics` из `kube-system`
-- `OTel Collector` также скрапит базовые metrics endpoints у `Velero` и `Kyverno`
-- `Grafana` получает заранее provisioned datasources, dashboards и базовые alert rules
-- `Tempo` работает через `tempo-distributed`, а datasource и collector идут через `tempo-gateway`
-
-Backup/policy baseline теперь такой:
-
-- `Velero` даёт declarative backup/restore foundation с S3-compatible `BackupStorageLocation` и примерными `Schedule`
-- `Kyverno` даёт audit-first baseline policies для app workloads, не затрагивая platform/system namespaces на первом шаге
-
-И runtime network foundation:
-
-- `gateway` application с `GatewayClass` и базовыми `Gateway`
-
-Они считаются частью runtime/GitOps слоя и не должны возвращаться в `infrastructure/`.
-
-Текущий baseline такой:
-
-- `authentik`, `echo`, `forgejo`, `grafana`, `harbor` и `woodpecker` уже переведены на namespaced `Gateway` + `HTTPRoute`
-- `hubble` опубликован через shared `internal` gateway как cluster-observability endpoint
-- shared `gateway` application даёт только общий HTTP foundation и `GatewayClass`
-- Gateway API теперь является реальным runtime path, а не только foundation
-
-Текущая policy-модель такая:
-
-- shared gateways в `platform/gateway` не владеют app-specific TLS secret или hostname routing
-- app-owned routing и TLS termination живут в namespace самого приложения
-- для `authentik`, `echo`, `forgejo` и `grafana` это выражено через namespaced `Gateway` + `HTTPRoute`
-
-`echo` теперь служит reference manifest для минимального runtime baseline:
-
-- явные `resources`
-- `livenessProbe` / `readinessProbe`
-- pod-level `seccompProfile`
-- минимальный `NetworkPolicy`
-- namespaced `Gateway`
-- `HTTPRoute` c HTTP -> HTTPS redirect
-
-По умолчанию каркас использует намеренно невалидный `repoURL`:
-
-```text
-https://git.example.invalid/replace-me/gitops.git
-```
-
-Перед использованием обязательно замените:
-
-- значения в [envs/homelab.yaml](/home/zerodi/code/talos-proxmox-no-ssh/envs/homelab.yaml)
-- `repoURL` во всех `Application`
-- `sourceRepos` в `AppProject`
-- домены `*.home.arpa`
-- значения в `values.yaml`
-- `authentik_host` и blueprint contents в `platform/authentik/prereqs/forgejo-sso-configmap.yaml`
-- hostnames и values/secrets contracts для `platform/harbor/*` и `platform/woodpecker/*`
-
-Mapping того, какие файлы нужно обновить после изменения environment contract, описан в [docs/environment-contract.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/environment-contract.md).
-
-Пока эти значения не заменены, bootstrap применять нельзя.
-
-Базовый bootstrap после замены значений:
+Проверьте platform bootstrap:
 
 ```bash
-kubectl apply -n argocd -f argocd/bootstrap/root-application.yaml
+task infra:health
 ```
 
-Initial admin password для входа в Argo CD:
+## Настройка окружения
+
+Замените scaffold-значения в [envs/homelab.yaml](../envs/homelab.yaml) либо
+environment-specific `envs/homelab.override.yaml`, затем обновите их consumers в
+`argocd/`:
+
+- repository URL, `repoURL` и `sourceRepos`
+- `*.home.arpa`
+- storage class и адреса Gateway
+- OAuth/OIDC coordinates
+
+Краткий порядок синхронизации consumers приведён в
+[environment contract](../docs/environment-contract.md).
+
+Проверьте согласованность:
 
 ```bash
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo
+task sync-env-contract
+task check:env-contract
+task check:chart-versions
 ```
 
-Локальный SSH-стенд для тестов вынесен в `test-ssh-git/`. Он не является частью tracked GitOps source of truth и не должен влиять на содержимое манифестов в `argocd/`.
+## Runtime secrets
 
-Если `argocd/` всё ещё содержит placeholder `repoURL`, но подготовлен и запущен `test-ssh-git/`, то `task gitops:apply-bootstrap` автоматически переключается в test mode:
-
-- применяет `argocd-ssh-known-hosts-cm` из `test-ssh-git/keys/known_hosts`
-- применяет repository secret из `test-ssh-git/templates/argocd-repository-secret.yaml`
-- применяет `Application/root-ssh` из `test-ssh-git/templates/root-application-ssh.yaml`
-
-Это позволяет тестировать bootstrap по SSH без изменения tracked manifests в `argocd/`.
-
-## Harbor и Woodpecker
-
-`Harbor` и `Woodpecker` тоже считаются runtime-сервисами этого слоя.
-
-Для `Harbor` перед первым sync должны существовать:
-
-- `secret/platform/harbor/runtime`
-- `secret/platform/harbor/postgresql`
-- `secret/platform/harbor/valkey`
-
-Важно:
-
-- `registry_htpasswd` в `secret/platform/harbor/runtime` должен быть bcrypt htpasswd-строкой
-- chart использует external PostgreSQL и external Valkey в namespace `harbor`
-
-Для `Woodpecker` перед первым sync должны существовать:
-
-- `secret/platform/woodpecker/runtime`
-
-И ещё до первого логина нужно вручную создать OAuth application в Forgejo:
-
-- callback URL: `https://ci.home.arpa/authorize`
-- значения должны быть записаны в `forgejo_client` и `forgejo_secret`
-
-Быстрая post-sync проверка:
+Runtime secrets должны быть записаны в OpenBao до применения root application.
+Создать только отсутствующие paths и выполнить preflight можно так:
 
 ```bash
-kubectl -n harbor get secret harbor-runtime harbor-postgresql-auth harbor-valkey-auth
-kubectl -n woodpecker get secret woodpecker-runtime
-kubectl -n harbor get pods
-kubectl -n woodpecker get pods
+task ops:seed-runtime-secrets
+task gitops:preflight
 ```
+
+Команда не перезаписывает существующие paths. Для аудита полного набора
+`bao kv put` без записи используйте `task ops:generate-runtime-secret-puts`.
+Сгенерированные Woodpecker OAuth и Velero S3 credentials являются временными:
+после появления Forgejo OAuth application и S3 key замените соответствующие
+значения в OpenBao и удалите marker `bootstrap_provisional`, записав path
+целиком через `bao kv put`. Финальная проверка:
+
+```bash
+task ops:openbao-runtime-preflight-final
+```
+
+`task gitops:preflight` проверяет environment contract и обязательные
+OpenBao paths/keys, не печатая secret values.
+
+## Применение
+
+Для первичного развёртывания через временный локальный Git-over-SSH repository:
+
+```bash
+export TEST_SSH_GIT_HOSTNAME='192.168.100.10'
+task gitops:test-ssh-bootstrap
+```
+
+Команда собирает `test-ssh-git`, запускает сервер, регистрирует repository в
+Argo CD и ждёт `Application/root-ssh` в состояниях `Synced` и `Healthy`.
+
+Для уже доступного постоянного Git repository:
+
+```bash
+task gitops:apply-bootstrap
+```
+
+Команда проверяет readiness Argo CD, повторяет preflight, применяет
+`argocd/bootstrap/root-application.yaml` и ждёт `Application/root` в состояниях
+`Synced` и `Healthy`.
+
+Явный test bootstrap создаёт:
+
+- `argocd-ssh-known-hosts-cm`
+- repository Secret
+- `Application/root-ssh`
+
+## Проверка результата
+
+```bash
+task ops:post-argocd-check
+kubectl -n argocd get applications
+```
+
+## Первичный доступ к Argo CD
+
+Основной URL публикуется через Ingress и берётся из effective environment
+contract. После `task infra:apply` его можно получить из Terraform output:
+
+```bash
+tofu -chdir=infrastructure output -raw argocd_url && echo
+kubectl -n argocd get ingress argocd-server
+```
+
+Настройте DNS для выведенного hostname на адрес Ingress. Сертификат подписан
+внутренним homelab CA; экспортировать CA для добавления в trust store клиентской
+машины можно командой:
+
+```bash
+task ops:hosts-entries
+task ops:export-root-ca
+```
+
+Первая команда читает фактически назначенные LoadBalancer IP из Kubernetes
+status и выводит полный набор строк `IP hostname` для клиентского `/etc/hosts`.
+Если хотя бы один адрес ещё не назначен, команда перечислит Pending-ресурсы и
+не напечатает неполный набор. Проверьте вывод и добавьте нужные строки в
+hosts-файл клиентской машины.
+
+Для первого входа используйте логин `admin`. Сгенерированный Helm chart пароль
+хранится только в Kubernetes Secret и выводится так:
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 -d && echo
+```
+
+Если DNS или доверие CA ещё не настроены, откройте временный локальный доступ:
+
+```bash
+kubectl -n argocd port-forward svc/argocd-server 8080:80
+```
+
+Затем откройте `http://127.0.0.1:8080` и войдите как `admin`. После первого
+входа смените пароль в `User Info -> Update Password`. Secret
+`argocd-initial-admin-secret` предназначен только для начального доступа и
+может быть удалён после проверки нового пароля.
+
+Day-1 проверки собраны в
+[коротком operations runbook](../docs/day1-operations.md).

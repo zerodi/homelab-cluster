@@ -6,7 +6,7 @@ metadata:
 spec:
   description: Application workloads managed by ArgoCD
   sourceRepos:
-    - https://git.example.invalid/replace-me/gitops.git
+    - https://git.example.net/platform/gitops.git
   destinations:
     - namespace: argocd
       server: https://kubernetes.default.svc

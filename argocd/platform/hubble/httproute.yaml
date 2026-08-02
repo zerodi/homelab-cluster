@@ -8,7 +8,7 @@ spec:
     - name: internal
       namespace: gateway
   hostnames:
-    - hubble.home.arpa
+    - hubble.lab.zerodi.ru
   rules:
     - matches:
         - path:

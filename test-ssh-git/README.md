@@ -18,7 +18,45 @@
   - ArgoCD repository secret
   - root application с `repoURL` по SSH
 
+## Автоматизированный bootstrap
+
+Укажите адрес этой машины, доступный из pod Argo CD, в `.env`:
+
+```bash
+TEST_SSH_GIT_HOSTNAME='192.168.100.10'
+TEST_SSH_GIT_PORT='2222'
+```
+
+Затем выполните:
+
+```bash
+task gitops:test-ssh-bootstrap
+```
+
+Сценарий автоматически:
+
+1. генерирует SSH host/client keys и Argo CD manifests;
+2. создаёт bare `gitops.git` из текущего `argocd/`;
+3. заменяет tracked GitOps repository URL на test SSH URL внутри seed;
+4. собирает и запускает контейнер;
+5. проверяет репозиторий через `git ls-remote`;
+6. создаёт known-hosts ConfigMap и repository Secret в Argo CD;
+7. применяет `Application/root-ssh`;
+8. ждёт состояний `Synced` и `Healthy`.
+
+Loopback-адреса запрещены: `127.0.0.1` внутри Argo CD pod указывает на сам pod,
+а не на машину с Docker. Сервер должен работать до завершения первичного sync
+или до перевода Applications на постоянный Git repository.
+
+Остановка после cutover:
+
+```bash
+task gitops:test-ssh-stop
+```
+
 ## Подготовка
+
+Ручной вариант подготовки стенда:
 
 ```bash
 cd test-ssh-git
@@ -39,7 +77,7 @@ cd test-ssh-git
 docker compose up -d --build
 ```
 
-По умолчанию сервер слушает `2222/tcp` и использует URL:
+При ручном запуске без переменных сервер слушает `2222/tcp` и использует URL:
 
 ```text
 ssh://git@git.localtest.me:2222/home/git/repos/gitops.git

@@ -15,7 +15,7 @@ spec:
         releaseName: kyverno
         valueFiles:
           - $values/platform/kyverno/values.yaml
-    - repoURL: https://git.example.invalid/replace-me/gitops.git
+    - repoURL: https://git.example.net/platform/gitops.git
       targetRevision: main
       ref: values
   destination:

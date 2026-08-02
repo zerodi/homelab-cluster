@@ -445,30 +445,86 @@ task ops:openbao-runtime-preflight-final
 2. запустите `task sync-env-contract`, чтобы обновить repository coordinates,
    домены и остальные tracked mirrors в `argocd/`
 3. запустите `task check:env-contract`, чтобы проверить результат
-4. запустите preflight
-5. примените root application
+4. укажите адрес машины с Docker, доступный из Argo CD pods
+5. соберите test-ssh-git и примените root application из него
+
+```bash
+export TEST_SSH_GIT_HOSTNAME='192.168.100.10'
+task gitops:test-ssh-bootstrap
+```
+
+Этот сценарий:
+
+- запускает scaffold effective contract validation против `argocd/`
+- валидирует наличие required runtime secret paths/keys в `OpenBao`
+- не печатает secret values
+- создаёт seed repository из текущего `argocd/` и переписывает его Git source
+  URL на локальный SSH endpoint
+- собирает и запускает `test-ssh-git` в Docker
+- проверяет repository через `git ls-remote`
+- проверяет readiness `argocd`
+- создаёт known-hosts ConfigMap и repository Secret
+- применяет сгенерированный `Application/root-ssh`
+- ждёт `Application/root-ssh` в состояниях `Synced` и `Healthy`
+
+`TEST_SSH_GIT_HOSTNAME` не может быть loopback-адресом: endpoint должен быть
+доступен из Argo CD pods. Держите test server запущенным до завершения sync или
+до перевода Applications на постоянный Git repository.
+
+После создания постоянного repository перенесите в него GitOps tree, обновите
+Argo CD repository/Application sources и только затем остановите временный
+сервер командой `task gitops:test-ssh-stop`.
+
+Если постоянный repository доступен до первого sync, используйте обычный путь:
 
 ```bash
 task gitops:preflight
-```
-
-Этот helper:
-
-- запускает strict effective contract validation против `argocd/`
-- валидирует наличие required runtime secret paths/keys в `OpenBao`
-- не печатает secret values
-- падает до применения Argo CD root app, если contract или secrets ещё не готовы
-
-```bash
 task gitops:apply-bootstrap
 ```
 
-Этот helper:
+#### Первичный вход в Argo CD
 
-- проверяет readiness `argocd`
-- повторно запускает `task gitops:preflight`
-- применяет `argocd/bootstrap/root-application.yaml`
-- ждёт `Application/root` в состояниях `Synced` и `Healthy`
+Получите опубликованный URL и состояние Ingress:
+
+```bash
+tofu -chdir=infrastructure output -raw argocd_url && echo
+kubectl -n argocd get ingress argocd-server
+```
+
+Hostname должен разрешаться в адрес Ingress. Для доверия выпущенному внутренним
+CA TLS-сертификату экспортируйте homelab CA командой `task ops:export-root-ca`
+и добавьте `out/homelab-root-ca.crt` в trust store клиентской машины.
+
+Полный набор строк для клиентского `/etc/hosts` по фактически назначенным
+LoadBalancer IP из Kubernetes status выводится командой:
+
+```bash
+task ops:hosts-entries
+```
+
+Если хотя бы один Ingress или Gateway ещё не получил адрес, команда перечислит
+Pending-ресурсы и не выведет неполный набор.
+
+Начальный логин — `admin`. Пароль хранится в Kubernetes Secret:
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 -d && echo
+```
+
+До настройки DNS и CA можно использовать локальный доступ:
+
+```bash
+kubectl -n argocd port-forward svc/argocd-server 8080:80
+```
+
+Откройте `http://127.0.0.1:8080`, войдите как `admin`, затем смените пароль в
+`User Info -> Update Password`. После проверки нового пароля initial Secret
+можно удалить:
+
+```bash
+kubectl -n argocd delete secret argocd-initial-admin-secret
+```
 
 После этого можно проверить, что ESO начал синхронизацию:
 

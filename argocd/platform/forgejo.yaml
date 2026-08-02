@@ -15,10 +15,10 @@ spec:
         releaseName: forgejo
         valueFiles:
           - $values/platform/forgejo/values.yaml
-    - repoURL: https://git.example.invalid/replace-me/gitops.git
+    - repoURL: https://git.example.net/platform/gitops.git
       targetRevision: main
       ref: values
-    - repoURL: https://git.example.invalid/replace-me/gitops.git
+    - repoURL: https://git.example.net/platform/gitops.git
       targetRevision: main
       path: platform/forgejo/sso
   destination:

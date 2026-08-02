@@ -1,9 +1,7 @@
 fullnameOverride: velero
-
 image:
   repository: docker.io/velero/velero
   tag: v1.18.0
-
 initContainers:
   - name: velero-plugin-for-aws
     image: docker.io/velero/velero-plugin-for-aws:v1.13.1
@@ -11,7 +9,6 @@ initContainers:
     volumeMounts:
       - name: plugins
         mountPath: /target
-
 resources:
   requests:
     cpu: 100m
@@ -19,7 +16,6 @@ resources:
   limits:
     cpu: 500m
     memory: 512Mi
-
 containerSecurityContext:
   allowPrivilegeEscalation: false
   capabilities:
@@ -31,14 +27,11 @@ containerSecurityContext:
   runAsUser: 1001
   seccompProfile:
     type: RuntimeDefault
-
 metrics:
   enabled: true
-
 credentials:
   useSecret: true
   existingSecret: velero-credentials
-
 configuration:
   backupStorageLocation:
     - name: default
@@ -52,7 +45,7 @@ configuration:
       config:
         region: us-east-1
         s3ForcePathStyle: "true"
-        s3Url: https://minio.home.arpa
+        s3Url: "https://minio.lab.zerodi.ru"
   volumeSnapshotLocation: []
   uploaderType: kopia
   backupSyncPeriod: 1m
@@ -61,11 +54,9 @@ configuration:
   defaultItemOperationTimeout: 4h
   storeValidationFrequency: 1m
   garbageCollectionFrequency: 1h
-
 backupsEnabled: true
 snapshotsEnabled: false
 deployNodeAgent: true
-
 nodeAgent:
   resources:
     requests:
@@ -74,7 +65,6 @@ nodeAgent:
     limits:
       cpu: 500m
       memory: 512Mi
-
 schedules:
   cluster-daily:
     disabled: false

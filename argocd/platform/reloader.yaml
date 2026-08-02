@@ -1,19 +1,24 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: gateway
+  name: reloader
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/sync-wave: "7"
 spec:
   project: platform
   source:
-    repoURL: https://git.example.net/platform/gitops.git
-    targetRevision: main
-    path: platform/gateway
+    repoURL: https://stakater.github.io/stakater-charts
+    chart: reloader
+    targetRevision: 2.2.0
+    helm:
+      releaseName: reloader
+      parameters:
+        - name: reloader.autoReloadAll
+          value: "false"
   destination:
     server: https://kubernetes.default.svc
-    namespace: gateway
+    namespace: reloader
   syncPolicy:
     automated:
       prune: true

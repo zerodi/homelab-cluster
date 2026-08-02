@@ -37,13 +37,18 @@ task ops:openbao-port-forward-start
 export BAO_TOKEN='...'
 task ops:openbao-day0
 task ops:seed-runtime-secrets
-task gitops:preflight
-task gitops:apply-bootstrap
+export TEST_SSH_GIT_HOSTNAME='192.168.100.10'
+task gitops:test-ssh-bootstrap
 # создайте Forgejo OAuth application и S3 key, затем обновите OpenBao
 task ops:openbao-runtime-preflight-final
 task ops:post-argocd-check
 task ops:openbao-port-forward-stop
 ```
+
+`gitops:test-ssh-bootstrap` собирает локальный Git-over-SSH repository из
+`argocd/`, запускает его в Docker и выполняет первичный Argo CD sync из него.
+Если постоянный внешний Git repository уже доступен, используйте вместо этого
+`task gitops:preflight` и `task gitops:apply-bootstrap`.
 
 `seed-runtime-secrets` создаёт только отсутствующие OpenBao paths и не
 перезаписывает существующие credentials. Временные Woodpecker OAuth и Velero S3

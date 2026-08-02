@@ -28,7 +28,7 @@ data:
           refresh_token_validity: "days=30"
           redirect_uris:
             - matching_mode: strict
-              url: "https://git.home.arpa/user/oauth2/authentik/callback"
+              url: "https://git.lab.zerodi.ru/user/oauth2/authentik/callback"
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
@@ -44,5 +44,5 @@ data:
           slug: "forgejo"
           policy_engine_mode: any
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, "Authentik"]]
-          meta_launch_url: "https://git.home.arpa/"
+          meta_launch_url: "https://git.lab.zerodi.ru/"
           open_in_new_tab: true

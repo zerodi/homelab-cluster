@@ -7,19 +7,19 @@ spec:
   gatewayClassName: cilium
   infrastructure:
     annotations:
-      io.cilium/lb-ipam-ips: 192.168.100.244
+      io.cilium/lb-ipam-ips: 192.168.100.234
   listeners:
     - name: http
       protocol: HTTP
       port: 80
-      hostname: git.home.arpa
+      hostname: git.lab.zerodi.ru
       allowedRoutes:
         namespaces:
           from: Same
     - name: https
       protocol: HTTPS
       port: 443
-      hostname: git.home.arpa
+      hostname: git.lab.zerodi.ru
       tls:
         certificateRefs:
           - group: ""

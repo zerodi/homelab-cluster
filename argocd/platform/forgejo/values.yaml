@@ -49,10 +49,10 @@ gitea:
         secretName: forgejo-runtime-config
   admin:
     existingSecret: forgejo-admin-secret
-    email: forgejo@home.arpa
+    email: forgejo@lab.zerodi.ru
   config:
     server:
-      ROOT_URL: https://git.home.arpa/
+      ROOT_URL: https://git.lab.zerodi.ru/
   livenessProbe:
     enabled: true
     initialDelaySeconds: 60

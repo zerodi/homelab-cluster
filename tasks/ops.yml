@@ -101,62 +101,14 @@ tasks:
         ./scripts/garage-velero-helper.sh --kubeconfig "{{.KUBECONFIG_PATH}}" print-bootstrap
 
   hosts-entries:
-    desc: Print IP/domain pairs from the effective environment contract
+    desc: Print all actual LoadBalancer IP/domain pairs for the client hosts file
+    silent: true
     cmds:
-      - |
-        awk '
-          BEGIN {
-            in_hosts = 0
-            in_addresses = 0
-          }
-          /^hosts:$/ {
-            in_hosts = 1
-            in_addresses = 0
-            next
-          }
-          /^platform:$/ {
-            in_hosts = 0
-            next
-          }
-          in_hosts && $0 ~ /^  [a-z_]+: / {
-            key = $1
-            sub(/:$/, "", key)
-            value = $2
-            gsub(/"/, "", value)
-            hosts[key] = value
-            next
-          }
-          /^[[:space:]]+addresses:$/ {
-            in_addresses = 1
-            next
-          }
-          in_addresses && $0 ~ /^      [a-z_]+: [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ {
-            key = $1
-            sub(/:$/, "", key)
-            value = $2
-            gsub(/"/, "", value)
-            ips[key] = value
-            next
-          }
-          in_addresses && $0 !~ /^[[:space:]]{6,}[a-z_]+:/ {
-            in_addresses = 0
-          }
-          END {
-            order[1] = "authentik"
-            order[2] = "forgejo"
-            order[3] = "echo"
-            order[4] = "grafana"
-            order[5] = "hubble"
-            order[6] = "garage"
-
-            for (i = 1; i <= 6; i++) {
-              key = order[i]
-              if ((key in hosts) && (key in ips)) {
-                printf "%s %s\n", ips[key], hosts[key]
-              }
-            }
-          }
-        ' "{{.ENVIRONMENT_CONTRACT_PATH}}"
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - >-
+        ./scripts/hosts-entries.sh
+        --kubeconfig "{{.KUBECONFIG_PATH}}"
+        --contract "{{.ENVIRONMENT_CONTRACT_PATH}}"
 
   day1-guide:
     desc: Print the day-1 operations runbook location

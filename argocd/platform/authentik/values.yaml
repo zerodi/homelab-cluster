@@ -1,12 +1,12 @@
 authentik:
   existingSecret:
     secretName: authentik-runtime
-  host: https://auth.home.arpa
+  host: https://auth.lab.zerodi.ru
   error_reporting:
     enabled: false
   outposts:
-    authentik_host: https://auth.home.arpa
-    authentik_host_browser: https://auth.home.arpa
+    authentik_host: https://auth.lab.zerodi.ru
+    authentik_host_browser: https://auth.lab.zerodi.ru
   postgresql:
     host: authentik-postgresql.authentik.svc.cluster.local
     name: authentik

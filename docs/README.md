@@ -5,6 +5,7 @@
 Greenfield-развёртывание кластера и platform bootstrap:
 
 - [Требования к окружению](prerequisites.md)
+- [Карта этапов развёртывания](deployment-map.md)
 - [Day-0 bootstrap](day0-bootstrap.md)
 
 Основная последовательность:

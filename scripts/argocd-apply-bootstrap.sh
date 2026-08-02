@@ -12,6 +12,7 @@ Usage:
   apply-bootstrap.sh \
     --kubeconfig <path> \
     [--root-manifest <path>] \
+    [--test-ssh-git] \
     [--timeout <duration>]
 EOF
 }
@@ -20,6 +21,7 @@ kubeconfig=""
 root_manifest="argocd/bootstrap/root-application.yaml"
 timeout="10m"
 test_ssh_git_dir="test-ssh-git"
+force_test_ssh_git=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -34,6 +36,10 @@ while [[ $# -gt 0 ]]; do
     --timeout)
       timeout="$2"
       shift 2
+      ;;
+    --test-ssh-git)
+      force_test_ssh_git=true
+      shift
       ;;
     -h|--help)
       usage
@@ -110,10 +116,10 @@ kubectl get namespace argocd >/dev/null
 kubectl wait --for=condition=Established --timeout="$timeout" crd/applications.argoproj.io
 kubectl -n argocd rollout status --timeout="$timeout" deploy/argocd-server
 
-log "Checking for placeholder repoURL values in argocd/"
-if rg -n 'git\.example\.invalid/replace-me/gitops\.git' argocd >/dev/null; then
+log "Selecting the GitOps source"
+if [[ "$force_test_ssh_git" == "true" ]] || rg -n 'git\.example\.invalid/replace-me/gitops\.git' argocd >/dev/null; then
   if [[ -f "$test_known_hosts" && -f "$test_repo_secret_manifest" && -f "$test_root_manifest" ]]; then
-    log "Placeholder repoURL values detected, switching to test-ssh-git bootstrap mode"
+    log "Using test-ssh-git bootstrap mode"
     kubectl -n argocd create configmap argocd-ssh-known-hosts-cm \
       --from-file=ssh_known_hosts="$test_known_hosts" \
       -o yaml \

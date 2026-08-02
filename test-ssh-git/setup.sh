@@ -8,10 +8,36 @@ TEMPLATE_DIR="$ROOT_DIR/templates"
 REPO_DIR="$ROOT_DIR/repo-data/gitops.git"
 ARGOCD_DIR="$PROJECT_ROOT/argocd"
 CLIENT_KEY="$KEY_DIR/argocd_test_client_ed25519"
-SERVER_HOSTNAME="${SERVER_HOSTNAME:-git.localtest.me}"
-SERVER_PORT="${SERVER_PORT:-2222}"
+SERVER_HOSTNAME="${TEST_SSH_GIT_HOSTNAME:-${SERVER_HOSTNAME:-git.localtest.me}}"
+SERVER_PORT="${TEST_SSH_GIT_PORT:-${SERVER_PORT:-2222}}"
 REPO_URL="ssh://git@${SERVER_HOSTNAME}:${SERVER_PORT}/home/git/repos/gitops.git"
 PLACEHOLDER_REPO_URL="https://git.example.invalid/replace-me/gitops.git"
+SOURCE_REPO_URL="${SOURCE_REPO_URL:-}"
+
+rewrite_repo_url() {
+  local source_url="$1"
+  local manifest
+
+  while IFS= read -r -d '' manifest; do
+    awk -v source_url="$source_url" -v repo_url="$REPO_URL" '
+      {
+        line = $0
+        rewritten = ""
+        while ((position = index(line, source_url)) != 0) {
+          rewritten = rewritten substr(line, 1, position - 1) repo_url
+          line = substr(line, position + length(source_url))
+        }
+        print rewritten line
+      }
+    ' "$manifest" > "${manifest}.tmp"
+    mv "${manifest}.tmp" "$manifest"
+  done < <(find "$WORKTREE_DIR" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0)
+}
+
+if [ -z "$SOURCE_REPO_URL" ]; then
+  SOURCE_REPO_URL="$(sed -n 's/^[[:space:]]*repoURL:[[:space:]]*//p' \
+    "$ARGOCD_DIR/bootstrap/root-application.yaml" | head -n 1 | tr -d '\"')"
+fi
 
 mkdir -p "$KEY_DIR" "$TEMPLATE_DIR" "$ROOT_DIR/repo-data"
 
@@ -39,7 +65,10 @@ cp -R "$ARGOCD_DIR/bootstrap" "$WORKTREE_DIR/"
 cp -R "$ARGOCD_DIR/platform" "$WORKTREE_DIR/"
 cp -R "$ARGOCD_DIR/apps" "$WORKTREE_DIR/"
 cp "$ARGOCD_DIR/README.md" "$WORKTREE_DIR/README.md"
-find "$WORKTREE_DIR" -type f \( -name '*.yaml' -o -name '*.yml' \) -exec sed -i "s#${PLACEHOLDER_REPO_URL}#${REPO_URL}#g" {} +
+rewrite_repo_url "$PLACEHOLDER_REPO_URL"
+if [ -n "$SOURCE_REPO_URL" ] && [ "$SOURCE_REPO_URL" != "$PLACEHOLDER_REPO_URL" ]; then
+  rewrite_repo_url "$SOURCE_REPO_URL"
+fi
 
 git init --bare "$REPO_DIR" >/dev/null
 git -C "$REPO_DIR" symbolic-ref HEAD refs/heads/main
@@ -127,6 +156,9 @@ Seeded GitOps content:
 
 The seeded GitOps tree has all placeholder repo URLs rewritten to:
   $REPO_URL
+
+Tracked GitOps source URL replaced in the seed:
+  ${SOURCE_REPO_URL:-<not detected>}
 
 Next steps:
   1. cd $ROOT_DIR && docker compose up -d --build

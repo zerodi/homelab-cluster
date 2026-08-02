@@ -17,12 +17,12 @@ data:
         prometheus :9153
 
         hosts {
-            192.168.100.241 auth.home.arpa
-            192.168.100.242 echo.home.arpa
-            192.168.100.243 grafana.home.arpa
-            192.168.100.244 git.home.arpa
-            192.168.100.246 hubble.home.arpa
-            192.168.100.247 garage.home.arpa
+            192.168.100.231 auth.lab.zerodi.ru
+            192.168.100.232 echo.lab.zerodi.ru
+            192.168.100.233 grafana.lab.zerodi.ru
+            192.168.100.234 git.lab.zerodi.ru
+            192.168.100.236 hubble.lab.zerodi.ru
+            192.168.100.237 garage.lab.zerodi.ru
             fallthrough
         }
 

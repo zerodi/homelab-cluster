@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: authentik-tls
   dnsNames:
-    - auth.home.arpa
+    - auth.lab.zerodi.ru
   issuerRef:
     name: homelab-ca
     kind: ClusterIssuer
