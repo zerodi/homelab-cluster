@@ -4,8 +4,8 @@
 
 Greenfield-развёртывание кластера и platform bootstrap:
 
-- [Требования к окружению](deployment/prerequisites.md)
-- [Day-0 bootstrap](deployment/day0-bootstrap.md)
+- [Требования к окружению](prerequisites.md)
+- [Day-0 bootstrap](day0-bootstrap.md)
 
 Основная последовательность:
 
@@ -17,13 +17,13 @@ bootstrap/ -> infrastructure/ -> OpenBao init/unseal -> GitOps bootstrap
 
 Короткие практические runbook:
 
-- [Day-1 operations](configuration/day1-operations.md)
-- [Environment contract](configuration/environment-contract.md)
-- [Версии компонентов](configuration/chart-versions.md)
-- [Renovate](configuration/renovate.md)
-- [Backup и restore](configuration/backup-restore.md)
-- [Garage и Velero](configuration/garage-velero.md)
-- [Kyverno policies](configuration/kyverno-policies.md)
+- [Day-1 operations](day1-operations.md)
+- [Environment contract](environment-contract.md)
+- [Версии компонентов](chart-versions.md)
+- [Renovate](renovate.md)
+- [Backup и restore](backup-restore.md)
+- [Garage и Velero](garage-velero.md)
+- [Kyverno policies](kyverno-policies.md)
 
 Аналитические документы, audit snapshots и планы развития в документацию не
 включены.

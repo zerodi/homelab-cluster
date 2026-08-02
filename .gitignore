@@ -1,3 +1,4 @@
+__pycache__/
 .terraform/
 .terraform.lock.hcl
 terraform.tfvars
@@ -12,6 +13,8 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+*.override.yaml
+*.override.yml
 tfplan
 .env
 # Local ArgoCD SSH test stand
@@ -20,5 +23,3 @@ test-ssh-git/keys/
 test-ssh-git/repo-data/
 test-ssh-git/templates/
 .codex
-
-__pycache__/

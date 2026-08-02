@@ -1,6 +1,6 @@
 # Версии компонентов
 
-[`versions.yaml`](../../versions.yaml) — единый source of truth для Helm chart
+[`versions.yaml`](../versions.yaml) — единый source of truth для Helm chart
 pins и связанных release versions.
 
 Argo CD `targetRevision` — проверяемые mirrors, а не независимые значения.

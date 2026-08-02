@@ -1,6 +1,6 @@
 # Renovate
 
-Root [`renovate.json`](../../renovate.json) управляет автоматическими
+Root [`renovate.json`](../renovate.json) управляет автоматическими
 обновлениями.
 
 Включены:

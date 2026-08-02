@@ -27,7 +27,7 @@ velero backup describe platform-manual --details
 ```
 
 Declarative schedules находятся в
-[`argocd/platform/velero/values.yaml`](../../argocd/platform/velero/values.yaml).
+[`argocd/platform/velero/values.yaml`](../argocd/platform/velero/values.yaml).
 
 ## Проверка restore
 

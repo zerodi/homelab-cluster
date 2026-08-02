@@ -27,7 +27,7 @@
 После установки toolchain используйте:
 
 1. [Day-0 bootstrap](day0-bootstrap.md) для greenfield bootstrap path.
-2. [Day-1 operations](../configuration/day1-operations.md) после завершения
+2. [Day-1 operations](day1-operations.md) после завершения
    развёртывания.
 
 ## Notes
