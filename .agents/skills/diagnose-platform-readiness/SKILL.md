@@ -11,8 +11,8 @@ read-only inspection when it is available; otherwise use read-only `task`,
 
 ## Establish the failed layer
 
-Read `docs/day0-bootstrap.md`, `docs/day1-operations.md`, and
-`docs/runtime-dependency-matrix.md` as needed. Then trace in order:
+Read `docs/deployment/day0-bootstrap.md` and
+`docs/configuration/day1-operations.md` as needed. Then trace in order:
 
 1. Proxmox VM and Talos node/API health.
 2. Cilium networking and Kubernetes node readiness.

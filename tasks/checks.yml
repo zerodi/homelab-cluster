@@ -22,10 +22,26 @@ tasks:
       - ./scripts/check-chart-versions.py --write
       - ./scripts/check-chart-versions.py
 
+  documentation:
+    desc: Verify documentation layout and local Markdown links
+    cmds:
+      - ./scripts/check-documentation.py
+
   env-contract:
-    desc: Validate that envs/homelab.yaml stays in sync with argocd/ consumers
+    desc: Validate that the effective environment contract stays in sync with argocd/ consumers
     cmds:
       - ./scripts/validate-env-contract.py --mode scaffold
+
+  env-contract-sync:
+    desc: Synchronize argocd/ consumers from the effective environment contract
+    cmds:
+      - ./scripts/validate-env-contract.py --mode scaffold --write
+      - ./scripts/validate-env-contract.py --mode scaffold
+
+  runtime-secret-contract:
+    desc: Verify OpenBao seed paths and keys against ExternalSecret manifests
+    cmds:
+      - ./scripts/openbao-runtime-preflight.py --contract-only
 
   tofu-fmt:
     desc: Run tofu fmt -check recursively
@@ -79,7 +95,9 @@ tasks:
       - task check:bootstrap-isolation
       - task check:infrastructure-isolation
       - task check:chart-versions
+      - task check:documentation
       - task check:env-contract
+      - task check:runtime-secret-contract
       - task check:tofu-fmt
       - task check:tofu-validate-bootstrap
       - task check:tofu-validate-infrastructure

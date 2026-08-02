@@ -10,8 +10,7 @@ resource "helm_release" "cert_manager" {
   chart            = "cert-manager"
   namespace        = "cert-manager"
   create_namespace = true
-  # renovate: datasource=helm depName=cert-manager registryUrl=https://charts.jetstack.io
-  version = "v1.20.1"
+  version          = local.chart_versions["cert_manager"]
 
   timeout = 900
   wait    = true

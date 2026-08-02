@@ -34,7 +34,7 @@ resource "helm_release" "piraeus_operator" {
 
   repository = "oci://ghcr.io/piraeusdatastore/piraeus-operator"
   chart      = "piraeus"
-  version    = "2.10.5"
+  version    = local.chart_versions["piraeus"]
 
   timeout = 900
   wait    = true

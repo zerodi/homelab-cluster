@@ -5,7 +5,7 @@ resource "helm_release" "openbao" {
 
   repository = "https://openbao.github.io/openbao-helm"
   chart      = "openbao"
-  version    = "0.26.2"
+  version    = local.chart_versions["openbao"]
 
   timeout = 900
   wait    = true
@@ -45,7 +45,7 @@ resource "helm_release" "external_secrets" {
 
   repository = "https://charts.external-secrets.io"
   chart      = "external-secrets"
-  version    = "2.2.0"
+  version    = local.chart_versions["external_secrets"]
 
   timeout = 900
   wait    = true

@@ -1,32 +1,13 @@
 # Talos on Proxmox VE via Terraform/OpenTofu
 
-Репозиторий поднимает Kubernetes-кластер на Talos поверх Proxmox и доводит его до минимального platform bootstrap.
+Репозиторий разворачивает Kubernetes-кластер на Talos поверх Proxmox и
+доводит его до готового platform bootstrap.
 
-## Architecture
-
-Слои разделены жёстко:
-
-- `bootstrap/`
-  отвечает за Talos image import, VM lifecycle, machine config/secrets, control plane bootstrap, локальные `out/kubeconfig` и `out/talosconfig`, минимальный Cilium bootstrap
-- `infrastructure/`
-  отвечает за bootstrap operators и readiness chain: `cert-manager`, `trust-manager`, `openbao`, `external-secrets`, `piraeus-operator`, `argocd`
-- `argocd/`
-  отвечает за runtime/GitOps manifests: `authentik`, `forgejo`, `harbor`, `woodpecker`, `garage`, observability stack, `velero`, `kyverno`, demo `echo`
-- root
-  не является Terraform/OpenTofu entrypoint и хранит examples, `envs/homelab.yaml`, единый `versions.yaml`, документацию и общие orchestration/validation helpers в `scripts/`
-
-## Secret Model
-
-- `OpenBao` это source of truth для runtime secrets
-- `External Secrets Operator` доставляет runtime secrets в Kubernetes
-- `SOPS/age` используется только для day-0 Terraform secrets
-- runtime secrets не должны попадать в git, `terraform.tfvars`, `values.yaml` или Terraform state
-
-## Quick Start
+## Greenfield deployment
 
 ### 1. Tooling
 
-Минимальный toolchain описан в [docs/prerequisites.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/prerequisites.md).
+Минимальный toolchain описан в [docs/deployment/prerequisites.md](docs/deployment/prerequisites.md).
 
 ### 2. Bootstrap cluster
 
@@ -47,18 +28,41 @@ task infra:health
 
 ### 4. Day-0 OpenBao and GitOps
 
+Инициализируйте и разлочьте OpenBao вручную, затем держите активным
+port-forward из day-0 runbook:
+
 ```bash
 task ops:day0-guide
+task ops:openbao-port-forward-start
 export BAO_TOKEN='...'
 task ops:openbao-day0
+task ops:seed-runtime-secrets
 task gitops:preflight
 task gitops:apply-bootstrap
+# создайте Forgejo OAuth application и S3 key, затем обновите OpenBao
+task ops:openbao-runtime-preflight-final
 task ops:post-argocd-check
+task ops:openbao-port-forward-stop
+```
+
+`seed-runtime-secrets` создаёт только отсутствующие OpenBao paths и не
+перезаписывает существующие credentials. Временные Woodpecker OAuth и Velero S3
+credentials замените реальными после создания соответствующих внешних
+ресурсов. Они помечаются `bootstrap_provisional=true`: обычный GitOps preflight
+разрешает bootstrap, а `openbao-runtime-preflight-final` требует их ротации.
+
+`envs/homelab.override.yaml` — tracked environment-specific non-secret overlay
+поверх `envs/homelab.yaml`. Task-команды используют их merged effective
+contract.
+Для обновления tracked GitOps mirrors выполните:
+
+```bash
+task sync-env-contract
 ```
 
 `task gitops:preflight` проверяет:
 
-- strict environment contract против `envs/homelab.yaml` и `argocd/`
+- strict effective environment contract против `argocd/`
 - required runtime secret paths и keys в `OpenBao`
 
 ## Validation
@@ -76,6 +80,7 @@ task check:bootstrap-isolation
 task check:infrastructure-isolation
 task check:chart-versions
 task check:env-contract
+task check:runtime-secret-contract
 task ops:openbao-runtime-preflight
 task ops:post-argocd-check
 ```
@@ -91,34 +96,8 @@ task bootstrap:init -- -backend=false
 task infra:init -- -backend=false
 ```
 
-## Teardown
+## Подробный runbook
 
-```bash
-task infra:destroy
-task bootstrap:destroy
-```
-
-`task infra:destroy` выполняет staged destroy, чтобы teardown не падал на CRD-backed resources после удаления операторов.
-
-## Key Files
-
-- [terraform.tfvars.example](/home/zerodi/code/talos-proxmox-no-ssh/terraform.tfvars.example)
-- [secrets.sops.tfvars.example](/home/zerodi/code/talos-proxmox-no-ssh/secrets.sops.tfvars.example)
-- [envs/homelab.yaml](/home/zerodi/code/talos-proxmox-no-ssh/envs/homelab.yaml)
-- [versions.yaml](/home/zerodi/code/talos-proxmox-no-ssh/versions.yaml)
-- [argocd/README.md](/home/zerodi/code/talos-proxmox-no-ssh/argocd/README.md)
-
-## Docs
-
-- [docs/prerequisites.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/prerequisites.md)
-- [docs/day0-bootstrap.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/day0-bootstrap.md)
-- [docs/day1-operations.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/day1-operations.md)
-- [docs/environment-contract.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/environment-contract.md)
-- [docs/chart-versions.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/chart-versions.md)
-- [docs/runtime-dependency-matrix.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/runtime-dependency-matrix.md)
-- [docs/runtime-recovery-boundaries.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/runtime-recovery-boundaries.md)
-- [docs/backup-restore.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/backup-restore.md)
-- [docs/kyverno-policies.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/kyverno-policies.md)
-
-## To Add
-Stalwart - https://stalw.art/
+- [Требования к окружению](docs/deployment/prerequisites.md)
+- [Day-0 bootstrap](docs/deployment/day0-bootstrap.md)
+- [Настройка и эксплуатация](docs/README.md)

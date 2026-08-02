@@ -215,12 +215,12 @@ run_check "kyverno admission controller ready" kubectl -n kyverno rollout status
 run_check "kyverno background controller ready" kubectl -n kyverno rollout status deployment/kyverno-background-controller --timeout=240s >/dev/null || failed=1
 run_check "kyverno cleanup controller ready" kubectl -n kyverno rollout status deployment/kyverno-cleanup-controller --timeout=240s >/dev/null || failed=1
 run_check "kyverno reports controller ready" kubectl -n kyverno rollout status deployment/kyverno-reports-controller --timeout=240s >/dev/null || failed=1
-run_check "kyverno cluster policies listable" kubectl get cpol >/dev/null || failed=1
-run_check "kyverno disallow-latest policy exists" kubectl get cpol disallow-latest-tag >/dev/null || failed=1
-run_check "kyverno resource policy exists" kubectl get cpol require-resource-requests-and-limits >/dev/null || failed=1
-run_check "kyverno security policy exists" kubectl get cpol require-basic-security-context >/dev/null || failed=1
-run_check "kyverno privileged policy exists" kubectl get cpol disallow-privileged-containers >/dev/null || failed=1
-run_check "kyverno hostpath policy exists" kubectl get cpol disallow-hostpath-volumes >/dev/null || failed=1
+run_check "kyverno validating policies listable" kubectl get validatingpolicies.policies.kyverno.io >/dev/null || failed=1
+run_check "kyverno disallow-latest policy exists" kubectl get validatingpolicy.policies.kyverno.io disallow-latest-tag >/dev/null || failed=1
+run_check "kyverno resource policy exists" kubectl get validatingpolicy.policies.kyverno.io require-resource-requests-and-limits >/dev/null || failed=1
+run_check "kyverno security policy exists" kubectl get validatingpolicy.policies.kyverno.io require-basic-security-context >/dev/null || failed=1
+run_check "kyverno privileged policy exists" kubectl get validatingpolicy.policies.kyverno.io disallow-privileged-containers >/dev/null || failed=1
+run_check "kyverno hostpath policy exists" kubectl get validatingpolicy.policies.kyverno.io disallow-hostpath-volumes >/dev/null || failed=1
 
 run_check "ingresses listable" kubectl get ingress -A >/dev/null || failed=1
 run_check "gatewayclasses listable" kubectl get gatewayclass >/dev/null || failed=1

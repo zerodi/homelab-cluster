@@ -18,14 +18,14 @@ tasks:
     cmds:
       - tofu -chdir=bootstrap init {{.CLI_ARGS}}
 
-  plan-cluster:
+  plan:
     desc: Plan the bootstrap OpenTofu entrypoint
     aliases:
       - plan
     cmds:
       - tofu -chdir=bootstrap plan -var-file=../terraform.tfvars
 
-  apply-cluster:
+  apply:
     desc: Apply the bootstrap OpenTofu entrypoint
     aliases:
       - apply

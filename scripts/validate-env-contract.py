@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -38,13 +39,40 @@ def get_path(data: Any, *parts: Any) -> Any:
     return current
 
 
+def set_path(data: Any, parts: tuple[Any, ...], value: Any) -> None:
+    current = data
+    for part in parts[:-1]:
+        current = current[part]
+    current[parts[-1]] = value
+
+
+def yq_path(parts: tuple[Any, ...]) -> str:
+    expression = "."
+    for part in parts:
+        if isinstance(part, int):
+            expression += f"[{part}]"
+        else:
+            expression += f"[{json.dumps(part)}]"
+    return expression
+
+
 class Validator:
-    def __init__(self, root: Path, mode: str) -> None:
+    def __init__(
+        self,
+        root: Path,
+        mode: str,
+        contract_path: Path,
+        write: bool = False,
+    ) -> None:
         self.root = root
         self.mode = mode
+        self.contract_path = contract_path
+        self.write = write
         self.errors: list[str] = []
         self.yaml_cache: dict[Path, Any] = {}
         self.text_cache: dict[Path, str] = {}
+        self.yaml_updates: dict[Path, dict[tuple[Any, ...], Any]] = {}
+        self.changed_text_files: set[Path] = set()
 
     def yaml(self, relpath: str) -> Any:
         path = self.root / relpath
@@ -68,6 +96,12 @@ class Validator:
             self.error(f"{label}: missing path {parts!r} in {relpath}: {exc}")
             return
         if actual != expected:
+            if self.write:
+                path = self.root / relpath
+                update_parts = tuple(parts)
+                self.yaml_updates.setdefault(path, {})[update_parts] = expected
+                set_path(self.yaml_cache[path], update_parts, expected)
+                return
             self.error(
                 f"{label}: {relpath} has {actual!r}, expected {expected!r}"
             )
@@ -82,8 +116,203 @@ class Validator:
         if re.search(pattern, actual, flags=re.MULTILINE) is None:
             self.error(f"{label}: {relpath} does not match /{pattern}/")
 
+    def queue_yaml_update(
+        self,
+        path: Path,
+        parts: tuple[Any, ...],
+        expected: Any,
+    ) -> None:
+        data = self.yaml(str(path))
+        try:
+            actual = get_path(data, *parts)
+        except Exception as exc:
+            self.error(
+                f"{path.relative_to(self.root)}: missing path {parts!r}: {exc}"
+            )
+            return
+        if actual == expected:
+            return
+        self.yaml_updates.setdefault(path, {})[parts] = expected
+        set_path(data, parts, expected)
+
+    def sync_text_mirrors(self, env: dict[str, Any]) -> None:
+        base = load_yaml(self.root / "envs/homelab.yaml")
+        replacements: dict[str, str] = {}
+
+        def add_replacement(old: Any, new: Any) -> None:
+            if isinstance(old, (str, int)) and isinstance(new, (str, int)):
+                old_text = str(old)
+                new_text = str(new)
+                if old_text and old_text != new_text:
+                    replacements[old_text] = new_text
+
+        def add_yaml_replacement(
+            relpath: str,
+            parts: tuple[Any, ...],
+            new: Any,
+        ) -> None:
+            try:
+                old = get_path(self.yaml(relpath), *parts)
+            except Exception as exc:
+                self.error(
+                    f"{relpath}: cannot read current mirror {parts!r}: {exc}"
+                )
+                return
+            add_replacement(old, new)
+
+        add_replacement(base["gitops"]["repo_url"], env["gitops"]["repo_url"])
+        add_yaml_replacement(
+            "argocd/bootstrap/root-application.yaml",
+            ("spec", "source", "repoURL"),
+            env["gitops"]["repo_url"],
+        )
+
+        hostname_mirrors = {
+            "authentik": (
+                "argocd/platform/authentik/prereqs/certificate.yaml",
+                ("spec", "dnsNames", 0),
+            ),
+            "forgejo": (
+                "argocd/platform/forgejo/prereqs/certificate.yaml",
+                ("spec", "dnsNames", 0),
+            ),
+            "garage": (
+                "argocd/platform/garage/prereqs/certificate.yaml",
+                ("spec", "dnsNames", 0),
+            ),
+            "harbor": (
+                "argocd/platform/harbor/prereqs/certificate.yaml",
+                ("spec", "dnsNames", 0),
+            ),
+            "woodpecker": (
+                "argocd/platform/woodpecker/prereqs/certificate.yaml",
+                ("spec", "dnsNames", 0),
+            ),
+            "echo": (
+                "argocd/apps/echo/resources/certificate.yaml",
+                ("spec", "dnsNames", 0),
+            ),
+            "grafana": (
+                "argocd/platform/observability/prereqs/certificate.yaml",
+                ("spec", "dnsNames", 0),
+            ),
+            "hubble": (
+                "argocd/platform/hubble/httproute.yaml",
+                ("spec", "hostnames", 0),
+            ),
+        }
+        for key, old_value in base["hosts"].items():
+            add_replacement(old_value, env["hosts"][key])
+            if key in hostname_mirrors:
+                relpath, parts = hostname_mirrors[key]
+                add_yaml_replacement(relpath, parts, env["hosts"][key])
+
+        address_mirrors = {
+            "authentik": "argocd/platform/authentik/prereqs/gateway.yaml",
+            "echo": "argocd/apps/echo/resources/gateway.yaml",
+            "grafana": "argocd/platform/observability/prereqs/gateway.yaml",
+            "forgejo": "argocd/platform/forgejo/prereqs/gateway.yaml",
+            "external": "argocd/platform/gateway/external-gateway.yaml",
+            "internal": "argocd/platform/gateway/internal-gateway.yaml",
+            "garage": "argocd/platform/garage/prereqs/gateway.yaml",
+            "harbor": "argocd/platform/harbor/prereqs/gateway.yaml",
+            "woodpecker": "argocd/platform/woodpecker/prereqs/gateway.yaml",
+        }
+        for key, old_value in base["platform"]["gateway"]["addresses"].items():
+            add_replacement(
+                old_value,
+                env["platform"]["gateway"]["addresses"][key],
+            )
+            if key in address_mirrors:
+                add_yaml_replacement(
+                    address_mirrors[key],
+                    (
+                        "spec",
+                        "infrastructure",
+                        "annotations",
+                        "io.cilium/lb-ipam-ips",
+                    ),
+                    env["platform"]["gateway"]["addresses"][key],
+                )
+        add_replacement(
+            base["storage"]["piraeus"]["storage_class"],
+            env["storage"]["piraeus"]["storage_class"],
+        )
+        add_yaml_replacement(
+            "argocd/platform/authentik/postgresql/values.yaml",
+            ("primary", "persistence", "storageClass"),
+            env["storage"]["piraeus"]["storage_class"],
+        )
+        add_replacement(
+            base["platform"]["forgejo"]["admin_email"],
+            env["platform"]["forgejo"]["admin_email"],
+        )
+        add_yaml_replacement(
+            "argocd/platform/forgejo/values.yaml",
+            ("gitea", "admin", "email"),
+            env["platform"]["forgejo"]["admin_email"],
+        )
+
+        if self.errors or not replacements:
+            return
+
+        for path in sorted((self.root / "argocd").rglob("*")):
+            if not path.is_file() or path.suffix.lower() not in {
+                ".md",
+                ".yaml",
+                ".yml",
+            }:
+                continue
+            original = path.read_text(encoding="utf-8")
+            updated = original
+            for old, new in sorted(
+                replacements.items(),
+                key=lambda item: len(item[0]),
+                reverse=True,
+            ):
+                updated = updated.replace(old, new)
+            if updated != original:
+                path.write_text(updated, encoding="utf-8")
+                self.changed_text_files.add(path)
+                self.text_cache.pop(path, None)
+                self.yaml_cache.pop(path, None)
+
+    def flush_yaml_updates(self) -> None:
+        for path, updates in sorted(
+            self.yaml_updates.items(),
+            key=lambda item: str(item[0]),
+        ):
+            for parts, value in updates.items():
+                environment = os.environ.copy()
+                environment["ENV_CONTRACT_SYNC_VALUE"] = json.dumps(value)
+                subprocess.run(
+                    [
+                        "yq",
+                        "eval",
+                        "-i",
+                        (
+                            f"{yq_path(parts)} = "
+                            '(strenv(ENV_CONTRACT_SYNC_VALUE) | from_json)'
+                        ),
+                        str(path),
+                    ],
+                    check=True,
+                    env=environment,
+                )
+
+    def report_errors(self) -> int:
+        print("[env-contract] validation failed", file=sys.stderr)
+        for issue in self.errors:
+            print(f"  - {issue}", file=sys.stderr)
+        print(file=sys.stderr)
+        print(
+            "Next actions: update envs/homelab.yaml or envs/homelab.override.yaml, then run task sync-env-contract.",
+            file=sys.stderr,
+        )
+        return 1
+
     def validate(self) -> int:
-        env = self.yaml("envs/homelab.yaml")
+        env = self.yaml(str(self.contract_path))
         hosts = env["hosts"]
         base_domain = env["cluster"]["base_domain"]
         gitops_repo = env["gitops"]["repo_url"]
@@ -145,6 +374,11 @@ class Validator:
         if env["apps"]["echo"]["host"] != hosts["echo"]:
             self.error("apps.echo.host must match hosts.echo")
 
+        if self.write:
+            if self.errors:
+                return self.report_errors()
+            self.sync_text_mirrors(env)
+
         for path in sorted(self.root.glob("argocd/**/*.[Yy][Aa][Mm][Ll]")):
             relpath = path.relative_to(self.root)
             data = load_yaml(path)
@@ -156,35 +390,70 @@ class Validator:
                 source = spec.get("source")
                 if isinstance(source, dict) and source.get("path"):
                     if source.get("repoURL") != gitops_repo:
-                        self.error(
-                            f"gitops.repo_url: {relpath} has {source.get('repoURL')!r}, expected {gitops_repo!r}"
-                        )
+                        if self.write:
+                            self.queue_yaml_update(
+                                path,
+                                ("spec", "source", "repoURL"),
+                                gitops_repo,
+                            )
+                        else:
+                            self.error(
+                                f"gitops.repo_url: {relpath} has {source.get('repoURL')!r}, expected {gitops_repo!r}"
+                            )
                     if source.get("targetRevision") != gitops_revision:
-                        self.error(
-                            f"gitops.revision: {relpath} has {source.get('targetRevision')!r}, expected {gitops_revision!r}"
-                        )
+                        if self.write:
+                            self.queue_yaml_update(
+                                path,
+                                ("spec", "source", "targetRevision"),
+                                gitops_revision,
+                            )
+                        else:
+                            self.error(
+                                f"gitops.revision: {relpath} has {source.get('targetRevision')!r}, expected {gitops_revision!r}"
+                            )
 
-                for item in spec.get("sources", []):
+                for index, item in enumerate(spec.get("sources", [])):
                     if not isinstance(item, dict):
                         continue
                     if item.get("ref") == "values" or item.get("path"):
                         if item.get("repoURL") != gitops_repo:
-                            self.error(
-                                f"gitops.repo_url: {relpath} has {item.get('repoURL')!r}, expected {gitops_repo!r}"
-                            )
+                            if self.write:
+                                self.queue_yaml_update(
+                                    path,
+                                    ("spec", "sources", index, "repoURL"),
+                                    gitops_repo,
+                                )
+                            else:
+                                self.error(
+                                    f"gitops.repo_url: {relpath} has {item.get('repoURL')!r}, expected {gitops_repo!r}"
+                                )
                         if item.get("targetRevision") != gitops_revision:
-                            self.error(
-                                f"gitops.revision: {relpath} has {item.get('targetRevision')!r}, expected {gitops_revision!r}"
-                            )
+                            if self.write:
+                                self.queue_yaml_update(
+                                    path,
+                                    ("spec", "sources", index, "targetRevision"),
+                                    gitops_revision,
+                                )
+                            else:
+                                self.error(
+                                    f"gitops.revision: {relpath} has {item.get('targetRevision')!r}, expected {gitops_revision!r}"
+                                )
 
             if data.get("kind") == "AppProject":
                 source_repos = data.get("spec", {}).get("sourceRepos", [])
                 if gitops_repo not in source_repos:
-                    self.error(
-                        f"gitops.repo_url: {relpath} sourceRepos does not include {gitops_repo!r}"
-                    )
+                    if self.write and source_repos:
+                        self.queue_yaml_update(
+                            path,
+                            ("spec", "sourceRepos", 0),
+                            gitops_repo,
+                        )
+                    else:
+                        self.error(
+                            f"gitops.repo_url: {relpath} sourceRepos does not include {gitops_repo!r}"
+                        )
 
-        if gitops_repo != PLACEHOLDER_REPO_URL:
+        if not self.write and gitops_repo != PLACEHOLDER_REPO_URL:
             leftover_repo = run_allow_failure(
                 "rg",
                 "-n",
@@ -200,16 +469,21 @@ class Validator:
                     )
                 )
 
-        if base_domain != DEFAULT_BASE_DOMAIN:
+        if not self.write and base_domain != DEFAULT_BASE_DOMAIN:
+            base_contract = load_yaml(self.root / "envs/homelab.yaml")
+            scaffold_literals = [
+                *base_contract["hosts"].values(),
+                base_contract["platform"]["forgejo"]["admin_email"],
+            ]
             home_arpa_hits = run_allow_failure(
                 "rg",
                 "-n",
-                r"home\.arpa|@home\.arpa",
+                "|".join(re.escape(value) for value in scaffold_literals),
                 str(self.root / "argocd"),
             )
             if home_arpa_hits.returncode == 0 and home_arpa_hits.stdout.strip():
                 self.error(
-                    "leftover scaffold home.arpa literals still exist under argocd/:\n"
+                    "leftover scaffold hostname/email literals still exist under argocd/:\n"
                     + "\n".join(
                         line.replace(f"{self.root}/", "")
                         for line in home_arpa_hits.stdout.splitlines()
@@ -738,25 +1012,30 @@ class Validator:
             self.expect_equal(label, expected, relpath, *parts)
 
         if self.errors:
-            print("[env-contract] validation failed", file=sys.stderr)
-            for issue in self.errors:
-                print(f"  - {issue}", file=sys.stderr)
-            print(file=sys.stderr)
-            print(
-                "Next actions: update envs/homelab.yaml first, then bring argocd/ manifests back in sync with docs/environment-contract.md.",
-                file=sys.stderr,
-            )
-            return 1
+            return self.report_errors()
+
+        if self.write:
+            self.flush_yaml_updates()
+            changed_paths = self.changed_text_files | set(self.yaml_updates)
+            for path in sorted(changed_paths):
+                print(
+                    f"[env-contract] synchronized {path.relative_to(self.root)}"
+                )
+            return Validator(
+                root=self.root,
+                mode=self.mode,
+                contract_path=self.contract_path,
+            ).validate()
 
         print(
-            f"[env-contract] validation passed in {self.mode} mode for envs/homelab.yaml and argocd/",
+            f"[env-contract] validation passed in {self.mode} mode for {self.contract_path} and argocd/",
         )
         return 0
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate envs/homelab.yaml against argocd/ consumers.",
+        description="Validate the effective homelab environment contract against argocd/ consumers.",
     )
     parser.add_argument(
         "--mode",
@@ -764,13 +1043,60 @@ def parse_args() -> argparse.Namespace:
         default="scaffold",
         help="scaffold checks mapping consistency; strict additionally fails on shipped placeholder defaults.",
     )
+    parser.add_argument(
+        "--contract",
+        type=Path,
+        default=None,
+        help="Use an explicit effective contract instead of rendering the base and optional override.",
+    )
+    parser.add_argument(
+        "--write",
+        action="store_true",
+        help="Synchronize mapped argocd/ consumers before validating them.",
+    )
     return parser.parse_args()
+
+
+def resolve_explicit_contract(root: Path, raw_path: Path) -> Path:
+    if raw_path.is_absolute():
+        return raw_path
+
+    root_candidate = root / raw_path
+    if root_candidate.is_file():
+        return root_candidate.resolve()
+
+    infrastructure_candidate = root / "infrastructure" / raw_path
+    return infrastructure_candidate.resolve()
 
 
 def main() -> int:
     args = parse_args()
     root = Path(__file__).resolve().parents[1]
-    return Validator(root=root, mode=args.mode).validate()
+    configured_path = args.contract
+    if configured_path is None:
+        env_path = os.environ.get("TF_VAR_environment_contract_path")
+        if env_path:
+            configured_path = Path(env_path)
+
+    if configured_path is not None:
+        contract_path = resolve_explicit_contract(root, configured_path)
+    else:
+        rendered_path = run(str(root / "scripts/render-environment-contract.sh"))
+        contract_path = Path(rendered_path.strip()).resolve()
+
+    if not contract_path.is_file():
+        print(
+            f"[env-contract] effective contract not found: {contract_path}",
+            file=sys.stderr,
+        )
+        return 1
+
+    return Validator(
+        root=root,
+        mode=args.mode,
+        contract_path=contract_path,
+        write=args.write,
+    ).validate()
 
 
 if __name__ == "__main__":

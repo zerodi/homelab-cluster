@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from collections import defaultdict
@@ -88,6 +89,10 @@ EXPECTED_CONTRACT: dict[str, dict[str, Any]] = {
     },
 }
 
+BCRYPT_HTPASSWD_PATTERN = re.compile(
+    r"^[^:\r\n]+:\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$"
+)
+
 
 def run(cmd: list[str], *, allow_failure: bool = False) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, check=not allow_failure, capture_output=True, text=True)
@@ -102,12 +107,52 @@ def validate_property_shape(path: str, key: str, value: Any, validator: str) -> 
     if validator == "nonempty":
         if value is None or (isinstance(value, str) and value.strip() == ""):
             return "is empty"
+        if isinstance(value, str) and value.strip().startswith("REPLACE_WITH_"):
+            return "still contains a REPLACE_WITH_* placeholder"
         return None
     if validator == "bcrypt_htpasswd":
-        if not isinstance(value, str) or not value.startswith("$2"):
-            return "does not look like a bcrypt htpasswd line"
+        if isinstance(value, str) and value.strip().startswith("REPLACE_WITH_"):
+            return "still contains a REPLACE_WITH_* placeholder"
+        if not isinstance(value, str) or BCRYPT_HTPASSWD_PATTERN.fullmatch(
+            value.strip()
+        ) is None:
+            return "does not look like a username:bcrypt htpasswd line"
         return None
     return None
+
+
+def validate_internal_shape_contract() -> list[str]:
+    issues: list[str] = []
+    bcrypt_payload = "A" * 53
+
+    for variant in ("a", "b", "y"):
+        value = f"harbor_registry_user:$2{variant}$10${bcrypt_payload}"
+        error = validate_property_shape(
+            "platform/harbor/runtime",
+            "registry_htpasswd",
+            value,
+            "bcrypt_htpasswd",
+        )
+        if error:
+            issues.append(f"valid $2{variant}$ htpasswd line rejected: {error}")
+
+    for label, value in {
+        "hash without username": f"$2y$10${bcrypt_payload}",
+        "unsupported bcrypt variant": (
+            f"harbor_registry_user:$2x$10${bcrypt_payload}"
+        ),
+        "placeholder": "REPLACE_WITH_BCRYPT_HTPASSWD_LINE",
+    }.items():
+        error = validate_property_shape(
+            "platform/harbor/runtime",
+            "registry_htpasswd",
+            value,
+            "bcrypt_htpasswd",
+        )
+        if error is None:
+            issues.append(f"invalid {label} accepted")
+
+    return issues
 
 
 def collect_manifest_contract(root: Path) -> dict[str, set[str]]:
@@ -142,6 +187,16 @@ def parse_args() -> argparse.Namespace:
         default=os.environ.get("BAO_ADDR", "http://127.0.0.1:8200"),
         help="OpenBao address. Defaults to BAO_ADDR or http://127.0.0.1:8200.",
     )
+    parser.add_argument(
+        "--require-final",
+        action="store_true",
+        help="Fail when a path still carries bootstrap_provisional=true.",
+    )
+    parser.add_argument(
+        "--contract-only",
+        action="store_true",
+        help="Validate generator and ExternalSecret contract without contacting OpenBao.",
+    )
     return parser.parse_args()
 
 
@@ -149,12 +204,11 @@ def main() -> int:
     args = parse_args()
     root = Path(__file__).resolve().parents[1]
 
-    if not os.environ.get("BAO_TOKEN"):
-        print("BAO_TOKEN is required for OpenBao runtime preflight.", file=sys.stderr)
-        return 1
-
     manifest_contract = collect_manifest_contract(root)
-    manifest_drift: list[str] = []
+    manifest_drift = [
+        f"internal shape contract: {issue}"
+        for issue in validate_internal_shape_contract()
+    ]
     for secret_path, meta in EXPECTED_CONTRACT.items():
         expected_props = set(meta["properties"].keys())
         actual_props = manifest_contract.get(secret_path, set())
@@ -164,10 +218,58 @@ def main() -> int:
                 f"{secret_path}: ExternalSecret manifests do not consume required properties {', '.join(missing_props)}"
             )
 
+    generator_result = run(
+        [
+            "bash",
+            str(root / "scripts/generate-runtime-secret-puts.sh"),
+            "--list-contract",
+        ]
+    )
+    generator_contract: dict[str, set[str]] = {}
+    for line in generator_result.stdout.splitlines():
+        if not line.strip():
+            continue
+        secret_path, raw_properties = line.strip().split(":", 1)
+        generator_contract[secret_path] = set(raw_properties.split(","))
+
+    generator_paths = set(generator_contract)
+    expected_paths = set(EXPECTED_CONTRACT)
+    for secret_path in sorted(expected_paths - generator_paths):
+        manifest_drift.append(
+            f"{secret_path}: runtime secret seed generator does not create this path"
+        )
+    for secret_path in sorted(generator_paths - expected_paths):
+        manifest_drift.append(
+            f"{secret_path}: runtime secret seed generator path is not in the expected contract"
+        )
+    for secret_path in sorted(expected_paths & generator_paths):
+        expected_props = set(EXPECTED_CONTRACT[secret_path]["properties"])
+        generated_props = generator_contract[secret_path]
+        missing_props = sorted(expected_props - generated_props)
+        extra_props = sorted(generated_props - expected_props)
+        if missing_props:
+            manifest_drift.append(
+                f"{secret_path}: runtime secret seed generator omits properties {', '.join(missing_props)}"
+            )
+        if extra_props:
+            manifest_drift.append(
+                f"{secret_path}: runtime secret seed generator has unexpected properties {', '.join(extra_props)}"
+            )
+
     if manifest_drift:
         print("[openbao-preflight] manifest contract drift detected", file=sys.stderr)
         for issue in manifest_drift:
             print(f"  - {issue}", file=sys.stderr)
+        return 1
+
+    if args.contract_only:
+        print(
+            "[openbao-preflight] generator, expected keys, and ExternalSecret manifests are consistent"
+        )
+        return 0
+
+    if not os.environ.get("BAO_TOKEN"):
+        print("BAO_TOKEN is required for OpenBao runtime preflight.", file=sys.stderr)
         return 1
 
     status = run(["bao", "status", "-format=json"], allow_failure=True)
@@ -186,6 +288,7 @@ def main() -> int:
     missing_paths: list[str] = []
     missing_keys: list[str] = []
     shape_errors: list[str] = []
+    provisional_paths: list[str] = []
     ok_paths: list[str] = []
 
     for secret_path, meta in EXPECTED_CONTRACT.items():
@@ -197,6 +300,8 @@ def main() -> int:
 
         payload = json.loads(result.stdout)
         data = payload.get("data", {}).get("data", {})
+        if str(data.get("bootstrap_provisional", "")).lower() == "true":
+            provisional_paths.append(bao_path)
         current_missing_keys: list[str] = []
         current_shape_errors: list[str] = []
         for key, validator in meta["properties"].items():
@@ -220,6 +325,7 @@ def main() -> int:
     print(f"  missing paths: {len(missing_paths)}")
     print(f"  missing keys: {len(missing_keys)}")
     print(f"  shape errors: {len(shape_errors)}")
+    print(f"  provisional paths: {len(provisional_paths)}")
 
     for group_name, issues in [
         ("missing path", missing_paths),
@@ -229,13 +335,29 @@ def main() -> int:
         for issue in issues:
             print(f"  - {group_name}: {issue}")
 
-    if missing_paths or missing_keys or shape_errors:
+    for issue in provisional_paths:
+        print(f"  - provisional bootstrap credentials: {issue}")
+
+    if missing_paths or missing_keys or shape_errors or (
+        args.require_final and provisional_paths
+    ):
         print(file=sys.stderr)
-        print(
-            "Next actions: use task ops:generate-runtime-secret-puts, then populate the missing secret/platform/* entries documented in docs/day0-bootstrap.md and docs/backup-restore.md.",
-            file=sys.stderr,
-        )
+        if args.require_final and provisional_paths:
+            print(
+                "Next actions: replace provisional Woodpecker OAuth and Velero S3 paths with final credentials.",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                "Next actions: use task ops:seed-runtime-secrets, then populate any incomplete secret/platform/* entries documented in docs/deployment/day0-bootstrap.md.",
+                file=sys.stderr,
+            )
         return 1
+
+    if provisional_paths:
+        print(
+            "[openbao-preflight] bootstrap may continue, but provisional integration credentials must be rotated before final readiness"
+        )
 
     apps = sorted({meta["app"] for meta in EXPECTED_CONTRACT.values()})
     print("  covered apps: " + ", ".join(apps))

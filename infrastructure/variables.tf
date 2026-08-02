@@ -1,77 +1,82 @@
-variable "argocd_enabled" {
-  type        = bool
-  description = "Deploy Argo CD into the cluster"
-  default     = null
-  nullable    = true
-}
-
-variable "argocd_host" {
-  type        = string
-  description = "Ingress hostname for Argo CD"
-  default     = null
-  nullable    = true
-}
-
-variable "trust_manager_enabled" {
-  type        = bool
-  description = "Deploy trust-manager and distribute the internal CA bundle into selected namespaces"
-  default     = null
-  nullable    = true
-}
+###
+# Configuration sources
+###
 
 variable "bootstrap_state_path" {
+  description = "Path to bootstrap local state used to discover kubeconfig and worker nodes."
   type        = string
-  description = "Path to the bootstrap state file used to discover non-secret infrastructure inputs"
   default     = "../bootstrap/terraform.tfstate"
 }
 
+variable "environment_contract_path" {
+  description = "Path to the effective non-secret environment contract used for platform naming. Task renders it from homelab.yaml plus the optional local override."
+  type        = string
+  default     = "../envs/homelab.yaml"
+}
+
+###
+# Bootstrap state overrides
+###
+
 variable "kubeconfig_path" {
+  description = "Optional kubeconfig override for recovery or non-standard state layouts."
   type        = string
-  description = "Path to kubeconfig used by local kubectl-based orchestration steps"
-  default     = null
-  nullable    = true
-}
-
-variable "piraeus_namespace" {
-  type     = string
-  default  = null
-  nullable = true
-}
-
-variable "piraeus_storage_device" {
-  type        = string
-  description = "Raw block device for LINSTOR storage pool, e.g. /dev/sdb"
   default     = null
   nullable    = true
 }
 
 variable "piraeus_storage_nodes" {
+  description = "Optional worker hostname override for LINSTOR storage pools."
   type        = list(string)
-  description = "Kubernetes node names where LINSTOR device pools should be created; if unset, values are discovered from bootstrap state"
+  default     = null
+  nullable    = true
+}
+
+###
+# Environment contract overrides
+###
+
+variable "argocd_host" {
+  description = "Optional Argo CD hostname override. Defaults to hosts.argocd in the environment contract."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "piraeus_namespace" {
+  description = "Optional Piraeus namespace override."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "piraeus_storage_device" {
+  description = "Optional raw block device override used for LINSTOR storage pools."
+  type        = string
   default     = null
   nullable    = true
 }
 
 variable "piraeus_storage_pool_name" {
-  type     = string
-  default  = null
-  nullable = true
+  description = "Optional LINSTOR storage pool name override."
+  type        = string
+  default     = null
+  nullable    = true
 }
 
 variable "piraeus_replica_count" {
-  type     = number
-  default  = null
-  nullable = true
+  description = "Optional LINSTOR replica count override."
+  type        = number
+  default     = null
+  nullable    = true
 }
 
-variable "worker_nodes" {
-  type        = map(any)
-  description = "Compatibility fallback for deriving worker hostnames when bootstrap state outputs are unavailable"
-  default     = {}
-}
+###
+# Staged apply control
+###
 
 variable "crd_backed_resources_enabled" {
+  description = "Create manifests whose CRDs must already be registered in API discovery."
   type        = bool
-  description = "Create resources that require CRDs to already exist in the cluster API discovery"
   default     = true
 }

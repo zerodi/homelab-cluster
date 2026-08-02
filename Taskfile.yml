@@ -4,8 +4,8 @@ dotenv:
   - .env
 
 includes:
-  bootstrap:
-    taskfile: ./tasks/bootstrap.yml
+  cluster:
+    taskfile: ./tasks/cluster.yml
     dir: .
   infra:
     taskfile: ./tasks/infrastructure.yml
@@ -21,6 +21,7 @@ includes:
     dir: .
 
 tasks:
+  ### INFO ###
   default:
     desc: Show available task commands
     cmds:
@@ -31,10 +32,11 @@ tasks:
     cmds:
       - task --list
 
+  ### 0. Prepare stage ###
   init:
     desc: Initialize bootstrap and infrastructure entrypoints
     cmds:
-      - task bootstrap:init
+      - task cluster:init
       - task infra:init
 
   fmt:
@@ -52,55 +54,15 @@ tasks:
     cmds:
       - task check:chart-versions-sync
 
-  plan:
-    desc: Alias for bootstrap:plan-cluster
+  render-env-contract:
+    desc: Merge homelab.yaml with the tracked environment override
     cmds:
-      - task bootstrap:plan-cluster
+      - ./scripts/render-environment-contract.sh
 
-  apply:
-    desc: Alias for bootstrap:apply-cluster
+  sync-env-contract:
+    desc: Synchronize tracked Argo CD consumers from the effective environment contract
     cmds:
-      - task bootstrap:apply-cluster
-
-  plan-cluster:
-    desc: Alias for bootstrap:plan-cluster
-    cmds:
-      - task bootstrap:plan-cluster
-
-  apply-cluster:
-    desc: Alias for bootstrap:apply-cluster
-    cmds:
-      - task bootstrap:apply-cluster
-
-  plan-platform-bootstrap:
-    desc: Alias for infra:plan-bootstrap
-    cmds:
-      - task infra:plan-bootstrap
-
-  apply-platform-bootstrap:
-    desc: Alias for infra:apply-bootstrap
-    cmds:
-      - task infra:apply-bootstrap
-
-  wait-platform-crds:
-    desc: Alias for infra:wait-crds
-    cmds:
-      - task infra:wait-crds
-
-  health-cluster:
-    desc: Alias for bootstrap:health
-    cmds:
-      - task bootstrap:health
-
-  health-platform-bootstrap:
-    desc: Alias for infra:health
-    cmds:
-      - task infra:health
-
-  bootstrap-piraeus-storage:
-    desc: Alias for infra:bootstrap-piraeus-storage
-    cmds:
-      - task infra:bootstrap-piraeus-storage
+      - task check:env-contract-sync
 
   day0-guide:
     desc: Alias for ops:day0-guide
@@ -142,10 +104,35 @@ tasks:
     cmds:
       - task ops:openbao-day0
 
+  openbao-port-forward-start:
+    desc: Alias for ops:openbao-port-forward-start
+    cmds:
+      - task ops:openbao-port-forward-start
+
+  openbao-port-forward-stop:
+    desc: Alias for ops:openbao-port-forward-stop
+    cmds:
+      - task ops:openbao-port-forward-stop
+
+  openbao-port-forward-status:
+    desc: Alias for ops:openbao-port-forward-status
+    cmds:
+      - task ops:openbao-port-forward-status
+
+  seed-runtime-secrets:
+    desc: Alias for ops:seed-runtime-secrets
+    cmds:
+      - task ops:seed-runtime-secrets
+
   openbao-runtime-preflight:
     desc: Alias for ops:openbao-runtime-preflight
     cmds:
       - task ops:openbao-runtime-preflight
+
+  openbao-runtime-preflight-final:
+    desc: Alias for ops:openbao-runtime-preflight-final
+    cmds:
+      - task ops:openbao-runtime-preflight-final
 
   post-argocd-check:
     desc: Alias for ops:post-argocd-check
@@ -170,22 +157,12 @@ tasks:
   from-scratch:
     desc: Run greenfield cluster bootstrap, platform bootstrap, then print day-0 guide
     cmds:
-      - task bootstrap:apply-cluster
-      - task infra:apply-bootstrap
+      - task cluster:apply
+      - task infra:apply
       - task ops:day0-guide
-
-  destroy-infrastructure:
-    desc: Alias for infra:destroy
-    cmds:
-      - task infra:destroy
-
-  destroy-bootstrap:
-    desc: Alias for bootstrap:destroy
-    cmds:
-      - task bootstrap:destroy
 
   destroy:
     desc: Destroy infrastructure, then bootstrap
     cmds:
       - task infra:destroy
-      - task bootstrap:destroy
+      - task cluster:destroy

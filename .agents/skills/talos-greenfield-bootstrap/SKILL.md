@@ -6,7 +6,7 @@ description: Plan, implement, or review a greenfield Talos-on-Proxmox bootstrap 
 # Talos Greenfield Bootstrap
 
 Treat an empty state and a new cluster as the default. Read `README.md` and
-`docs/day0-bootstrap.md` before making significant changes.
+`docs/deployment/day0-bootstrap.md` before making significant changes.
 
 ## Classify ownership
 

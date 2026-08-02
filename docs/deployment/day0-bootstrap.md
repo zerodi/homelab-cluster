@@ -1,8 +1,13 @@
 # Day-0 Bootstrap
 
-Этот документ описывает только сценарий развёртывания кластера и platform-layer с нуля.
+Этот документ описывает только сценарий развёртывания кластера и
+platform-layer с нуля.
 
-Day-1 operator actions после bootstrap вынесены в [docs/day1-operations.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/day1-operations.md).
+Когда использовать:
+
+- первый bootstrap с пустого состояния
+- проверка day-0 secret contract
+- ручной OpenBao init/unseal и запуск GitOps bootstrap
 
 ## Что нужно заранее
 
@@ -43,10 +48,14 @@ Day-1 operator actions после bootstrap вынесены в [docs/day1-opera
 ```bash
 task init
 cp terraform.tfvars.example terraform.tfvars
+cp .env.example .env
 # заполните terraform.tfvars только несекретными значениями
+# заполните .env локальными credentials; Taskfile загружает его автоматически
+# оставьте в tracked homelab.override.yaml только environment-specific
+# non-secret отличия
 ```
 
-`task init` теперь инициализирует оба entrypoint:
+`task init` инициализирует оба entrypoint:
 
 - `bootstrap/`
 - `infrastructure/`
@@ -65,10 +74,12 @@ export TF_VAR_proxmox_api_token='terraform@pve!talos=...'
 cp secrets.sops.tfvars.example secrets.sops.tfvars
 # заполните файл и зашифруйте его
 sops -e -i secrets.sops.tfvars
-sops -d secrets.sops.tfvars > secrets.auto.tfvars
+sops -d secrets.sops.tfvars > bootstrap/secrets.auto.tfvars
 ```
 
-`secrets.auto.tfvars` должен оставаться только локальным рабочим файлом.
+`bootstrap/secrets.auto.tfvars` должен оставаться только локальным рабочим
+файлом. Он создаётся внутри фактического OpenTofu entrypoint, поэтому
+автоматически загружается командами `task bootstrap:*`.
 
 ### 2. Bootstrap кластера
 
@@ -88,7 +99,6 @@ task bootstrap:apply-cluster
 task bootstrap:health
 ```
 
-`bootstrap/` требует `write_configs_to_files = true`, потому что platform bootstrap использует локальный `out/kubeconfig`.
 Platform bootstrap выполняется из отдельного entrypoint `infrastructure/`, который читает не-секретные входы из `bootstrap/terraform.tfstate`.
 
 ### 3. Bootstrap platform operators
@@ -117,7 +127,14 @@ task infra:health
 
 Во время `task infra:apply-bootstrap` сначала поэтапно ставятся CRD-delivering releases и CRD-backed manifests, затем LINSTOR device pools создаются отдельным helper-скриптом вне Terraform graph, и только после этого выполняется финальный `infrastructure` apply.
 
-Для обратного teardown используйте `task infra:destroy` перед `task bootstrap:destroy`. Этот helper сначала удаляет CRD-backed manifests при живых CRD, а если какие-то CRD уже отсутствуют, вычищает только соответствующие адреса из `infrastructure` state и завершает `tofu destroy -refresh=false`.
+Параметры LINSTOR helper получает до финального apply:
+
+- namespace, pool name и device — из effective contract
+  (`envs/homelab.yaml` + optional `envs/homelab.override.yaml`)
+- worker nodes — из `bootstrap.worker_hostnames`
+- kubeconfig — из root `.env` (`KUBECONFIG`), recovery override или bootstrap state
+
+Helper не зависит от outputs незавершённого `infrastructure` apply.
 
 Первая стадия запускается с отключёнными `crd_backed_resources`, чтобы `tofu plan/apply` не пытался резолвить `ClusterIssuer`, `Certificate`, `Bundle` и `Linstor*` до появления их CRD в API discovery.
 
@@ -134,7 +151,8 @@ task infra:health
 task ops:day0-guide
 ```
 
-После `init + unseal` можно автоматизировать post-init настройку:
+После `init + unseal` и запуска port-forward из шага 4.1 можно автоматизировать
+post-init настройку:
 
 ```bash
 export BAO_TOKEN='...'
@@ -149,15 +167,19 @@ task ops:openbao-day0
 - создаёт policy `external-secrets`
 - создаёт role `external-secrets`
 
-Ниже остаётся практический сценарий и расшифровка действий helper-скрипта.
+Ниже приведён практический сценарий и расшифровка действий helper-скрипта.
 
 #### 4.1. Подключение к OpenBao
 
-Откройте локальный port-forward:
+Откройте управляемый локальный port-forward:
 
 ```bash
-kubectl -n openbao port-forward svc/openbao 8200:8200
+task ops:openbao-port-forward-start
+task ops:openbao-port-forward-status
 ```
+
+Он слушает только `127.0.0.1:8200`. PID и лог сохраняются в
+`out/openbao-port-forward.pid` и `out/openbao-port-forward.log`.
 
 В другом терминале:
 
@@ -240,12 +262,11 @@ bao secrets list
 
 #### 4.6. Включение Kubernetes auth
 
-Получите service account token и CA из кластера:
+Получите CA текущего кластера из kubeconfig:
 
 ```bash
-SA_SECRET_NAME="$(kubectl -n external-secrets get sa external-secrets -o jsonpath='{.secrets[0].name}')"
-SA_JWT_TOKEN="$(kubectl -n external-secrets get secret "$SA_SECRET_NAME" -o jsonpath='{.data.token}' | base64 -d)"
-KUBE_CA_CRT="$(kubectl -n external-secrets get secret "$SA_SECRET_NAME" -o jsonpath='{.data.ca\.crt}' | base64 -d)"
+KUBE_CA_CRT="$(kubectl config view --raw --minify --flatten \
+  -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d)"
 ```
 
 Включите auth method:
@@ -260,10 +281,12 @@ bao auth enable kubernetes
 
 ```bash
 bao write auth/kubernetes/config \
-  token_reviewer_jwt="$SA_JWT_TOKEN" \
   kubernetes_host="https://kubernetes.default.svc" \
   kubernetes_ca_cert="$KUBE_CA_CRT"
 ```
+
+OpenBao использует JWT аутентифицирующегося service account для TokenReview;
+одноразовый reviewer JWT в конфигурации не сохраняется.
 
 #### 4.7. Policy для ESO
 
@@ -363,130 +386,78 @@ bao policy read external-secrets
 
 Практические команды:
 
-Сгенерировать starter snippet можно так:
+Безопасно создать только отсутствующие paths можно так:
+
+```bash
+task ops:seed-runtime-secrets
+```
+
+Команда:
+
+- не перезаписывает существующие OpenBao paths
+- генерирует все локально управляемые credentials
+- создаёт согласованные `registry_password` и bcrypt `registry_htpasswd`
+- добавляет обязательный `platform/garage/runtime`
+- создаёт временные Woodpecker OAuth и Velero S3 credentials для завершения
+  greenfield bootstrap
+
+Временные paths содержат дополнительный marker
+`bootstrap_provisional=true`. Если реальные credentials уже существуют,
+передайте обе пары через environment:
+
+```bash
+export WOODPECKER_FORGEJO_CLIENT='...'
+export WOODPECKER_FORGEJO_SECRET='...'
+export VELERO_S3_ACCESS_KEY_ID='...'
+export VELERO_S3_SECRET_ACCESS_KEY='...'
+task ops:seed-runtime-secrets
+```
+
+Просмотреть полный набор команд без записи:
 
 ```bash
 task ops:generate-runtime-secret-puts
 ```
 
-Helper печатает только `bao kv put secret/platform/...` команды:
+Helper печатает `bao kv put secret/platform/...` команды со всеми обязательными
+keys и без `REPLACE_WITH_*`. Не сохраняйте вывод в repo.
 
-- случайные значения генерируются для локально управляемых паролей и `secret_key`
-- поля, которые должны совпадать с внешними системами, остаются с `REPLACE_WITH_*`
+После появления реальных внешних ресурсов обязательно замените:
 
-```bash
-bao kv put secret/platform/authentik/runtime \
-  secret_key='REPLACE_WITH_LONG_RANDOM_VALUE'
-```
+- `platform/woodpecker/runtime` — `forgejo_client` и `forgejo_secret` из
+  Forgejo OAuth application
+- `platform/velero/s3` — `access_key_id` и `secret_access_key` созданного S3 key
 
-```bash
-bao kv put secret/platform/authentik/postgresql \
-  password='REPLACE_WITH_LONG_RANDOM_VALUE'
-```
+ESO обновит Kubernetes Secrets после изменения OpenBao.
+
+Финальная проверка отклоняет оставшиеся provisional paths:
 
 ```bash
-bao kv put secret/platform/authentik/redis \
-  password='REPLACE_WITH_LONG_RANDOM_VALUE'
-```
-
-```bash
-bao kv put secret/platform/forgejo/admin \
-  username='forgejo' \
-  password='REPLACE_WITH_LONG_RANDOM_VALUE'
-```
-
-```bash
-bao kv put secret/platform/forgejo/postgresql \
-  password='REPLACE_WITH_LONG_RANDOM_VALUE'
-```
-
-```bash
-bao kv put secret/platform/forgejo/valkey \
-  password='REPLACE_WITH_LONG_RANDOM_VALUE'
-```
-
-```bash
-bao kv put secret/platform/forgejo/oidc \
-  client_id='REPLACE_WITH_CLIENT_ID' \
-  client_secret='REPLACE_WITH_CLIENT_SECRET'
-```
-
-```bash
-bao kv put secret/platform/harbor/runtime \
-  admin_password='REPLACE_WITH_LONG_RANDOM_VALUE' \
-  secret_key='REPLACE_WITH_16_CHAR_VALUE' \
-  core_secret='REPLACE_WITH_16_CHAR_VALUE' \
-  xsrf_key='REPLACE_WITH_32_CHAR_VALUE' \
-  jobservice_secret='REPLACE_WITH_16_CHAR_VALUE' \
-  registry_http_secret='REPLACE_WITH_16_CHAR_VALUE' \
-  registry_password='REPLACE_WITH_LONG_RANDOM_VALUE' \
-  registry_htpasswd='REPLACE_WITH_BCRYPT_HTPASSWD_LINE'
-```
-
-```bash
-bao kv put secret/platform/harbor/postgresql \
-  password='REPLACE_WITH_LONG_RANDOM_VALUE'
-```
-
-```bash
-bao kv put secret/platform/harbor/valkey \
-  password='REPLACE_WITH_LONG_RANDOM_VALUE'
-```
-
-```bash
-bao kv put secret/platform/observability/grafana \
-  username='admin' \
-  password='REPLACE_WITH_LONG_RANDOM_VALUE'
-```
-
-```bash
-bao kv put secret/platform/woodpecker/runtime \
-  agent_secret='REPLACE_WITH_LONG_RANDOM_VALUE' \
-  forgejo_client='REPLACE_WITH_FORGEJO_OAUTH_CLIENT_ID' \
-  forgejo_secret='REPLACE_WITH_FORGEJO_OAUTH_CLIENT_SECRET'
-```
-
-```bash
-bao kv put secret/platform/garage/runtime \
-  rpc_secret='REPLACE_WITH_LONG_RANDOM_VALUE' \
-  admin_token='REPLACE_WITH_LONG_RANDOM_VALUE' \
-  metrics_token='REPLACE_WITH_LONG_RANDOM_VALUE'
-```
-
-```bash
-bao kv put secret/platform/velero/s3 \
-  access_key_id='REPLACE_WITH_ACCESS_KEY_ID' \
-  secret_access_key='REPLACE_WITH_SECRET_ACCESS_KEY'
-```
-
-Проверка:
-
-```bash
-bao kv get secret/platform/authentik/runtime
-bao kv get secret/platform/authentik/postgresql
-bao kv get secret/platform/authentik/redis
-bao kv get secret/platform/forgejo/admin
-bao kv get secret/platform/forgejo/postgresql
-bao kv get secret/platform/forgejo/valkey
-bao kv get secret/platform/forgejo/oidc
-bao kv get secret/platform/harbor/runtime
-bao kv get secret/platform/harbor/postgresql
-bao kv get secret/platform/harbor/valkey
-bao kv get secret/platform/observability/grafana
-bao kv get secret/platform/woodpecker/runtime
-bao kv get secret/platform/garage/runtime
-bao kv get secret/platform/velero/s3
+task ops:openbao-runtime-preflight-final
 ```
 
 ### 6. GitOps bootstrap
 
 После записи runtime secrets:
 
-1. сначала обновите [envs/homelab.yaml](/home/zerodi/code/talos-proxmox-no-ssh/envs/homelab.yaml)
-2. замените placeholder `repoURL` и `sourceRepos` в `argocd/`
-3. замените домены `*.home.arpa`, если они отличаются от целевых
-4. сверьтесь с [docs/environment-contract.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/environment-contract.md), чтобы обновить все затронутые manifests
+1. обновите [envs/homelab.yaml](../../envs/homelab.yaml) или environment-specific
+   `envs/homelab.override.yaml`
+2. запустите `task sync-env-contract`, чтобы обновить repository coordinates,
+   домены и остальные tracked mirrors в `argocd/`
+3. запустите `task check:env-contract`, чтобы проверить результат
+4. запустите preflight
 5. примените root application
+
+```bash
+task gitops:preflight
+```
+
+Этот helper:
+
+- запускает strict effective contract validation против `argocd/`
+- валидирует наличие required runtime secret paths/keys в `OpenBao`
+- не печатает secret values
+- падает до применения Argo CD root app, если contract или secrets ещё не готовы
 
 ```bash
 task gitops:apply-bootstrap
@@ -495,7 +466,7 @@ task gitops:apply-bootstrap
 Этот helper:
 
 - проверяет readiness `argocd`
-- валидирует отсутствие `https://git.example.invalid/replace-me/gitops.git`
+- повторно запускает `task gitops:preflight`
 - применяет `argocd/bootstrap/root-application.yaml`
 - ждёт `Application/root` в состояниях `Synced` и `Healthy`
 
@@ -527,34 +498,20 @@ kubectl -n harbor get secret harbor-runtime -o jsonpath='{.data.HARBOR_ADMIN_PAS
 Woodpecker:
 
 - до первого входа должен существовать OAuth application в Forgejo
-- callback URL должен быть `https://ci.home.arpa/authorize`
+- callback URL должен быть `https://ci.lab.zerodi.ru/authorize`
 - `forgejo_client` и `forgejo_secret` в `secret/platform/woodpecker/runtime` должны совпадать с этой application
-- после sync полезно открыть `https://ci.home.arpa/` и завершить OAuth login через Forgejo
+- после sync полезно открыть `https://ci.lab.zerodi.ru/` и завершить OAuth login через Forgejo
 
 Authentik:
 
 - отдельный admin `Secret` в Kubernetes не создаётся
-- на первом входе используйте initial setup flow в `https://auth.home.arpa`
-- если инстанс уже инициализирован и нужен recovery/reset, выполните:
+- на первом входе используйте initial setup flow в `https://auth.lab.zerodi.ru`
+
+После завершения day-0 операций закройте port-forward:
 
 ```bash
-kubectl -n authentik exec deploy/authentik-server -- ak shell -c "python /manage.py createsuperuser"
-kubectl -n authentik exec deploy/authentik-server -- ak shell -c "python /manage.py changepassword <username>"
+task ops:openbao-port-forward-stop
 ```
-
-### 6. Отдельный runtime/GitOps запуск
-
-После bootstrap `OpenBao` и записи секретов runtime-слой больше не поднимается через Terraform bootstrap entrypoint.
-Используйте manifests из [argocd/](/home/zerodi/code/talos-proxmox-no-ssh/argocd) и их отдельный bootstrap/apply.
-
-Перед этим проверьте:
-
-- что bootstrap из `argocd/` уже применён и `ClusterSecretStore openbao` создан
-- что `external-secrets` controller запущен
-- что OpenBao unsealed
-- что пути `secret/platform/...` реально существуют
-- что для `Harbor` уже записаны `runtime`, `postgresql` и `valkey` secrets
-- что для `Woodpecker` уже записан runtime secret и создан Forgejo OAuth application
 
 ## Что пока остаётся bootstrap-исключением
 
@@ -564,11 +521,14 @@ kubectl -n authentik exec deploy/authentik-server -- ak shell -c "python /manage
 - `kubeconfig` и `talosconfig`
 - `OpenBao init/unseal` и recovery material
 
-## Дальше
+## Критерий завершения
 
-- экспортировать корневой CA `homelab-root-ca`: `task ops:export-root-ca`
-- импортировать экспортированный CA в локальный trust store
-- проверить ESO-синхронизацию секретов
-- проверить SSO и связку Forgejo + Argo CD по README
-- проверить вход в `Harbor` и `Woodpecker`
-- если используете `Garage` для `Velero`, выполнить ручной bootstrap bucket/key по [docs/garage-velero-plan.md](/home/zerodi/code/talos-proxmox-no-ssh/docs/garage-velero-plan.md)
+Развёртывание завершено, когда:
+
+- `task bootstrap:health` и `task infra:health` проходят
+- OpenBao инициализирован и unsealed
+- `task gitops:preflight` проходит
+- root application имеет состояния `Synced` и `Healthy`
+- обязательные `ExternalSecret` создали целевые Kubernetes Secrets
+- после настройки внешних интеграций проходит
+  `task ops:openbao-runtime-preflight-final`

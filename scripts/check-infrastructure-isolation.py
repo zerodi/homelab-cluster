@@ -12,6 +12,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INFRASTRUCTURE_DIR = PROJECT_ROOT / "infrastructure"
+INFRASTRUCTURE_TASKFILE = PROJECT_ROOT / "tasks" / "infrastructure.yml"
 
 APPROVED_RESOURCES = {
     ("helm_release", "argocd"),
@@ -412,6 +413,54 @@ def scan_bootstrap_contract(
     return violations
 
 
+def scan_task_contract(text: str, display_path: Path) -> list[Violation]:
+    violations: list[Violation] = []
+    required_patterns = (
+        (
+            r"render-environment-contract\.sh",
+            "infrastructure tasks must resolve the effective root environment contract",
+        ),
+        (
+            r"\.storage\.piraeus\.namespace",
+            "Piraeus namespace must come from the root environment contract",
+        ),
+        (
+            r"\.storage\.piraeus\.pool_name",
+            "Piraeus pool name must come from the root environment contract",
+        ),
+        (
+            r"\.storage\.piraeus\.device",
+            "Piraeus device must come from the root environment contract",
+        ),
+        (
+            r"tofu -chdir=bootstrap output -json worker_hostnames",
+            "Piraeus nodes must come from completed bootstrap state",
+        ),
+    )
+    for pattern, message in required_patterns:
+        if re.search(pattern, text) is None:
+            violations.append(Violation(display_path, 1, message))
+
+    stale_output = re.search(
+        r"(?s)(?:cd infrastructure.*?tofu output|"
+        r"tofu -chdir=infrastructure output).*?"
+        r"piraeus_(?:namespace|storage_device|storage_pool_name|"
+        r"storage_nodes_csv)",
+        text,
+    )
+    if stale_output:
+        violations.append(
+            Violation(
+                display_path,
+                line_number(text, stale_output.start()),
+                "storage bootstrap must not depend on outputs from an "
+                "unfinished infrastructure apply",
+            )
+        )
+
+    return violations
+
+
 def run_checks(infrastructure_dir: Path, display_root: Path) -> list[Violation]:
     violations: list[Violation] = []
     terraform_files = sorted(infrastructure_dir.glob("*.tf"))
@@ -450,6 +499,14 @@ def run_checks(infrastructure_dir: Path, display_root: Path) -> list[Violation]:
                     "helper scripts must live in the repository root scripts/",
                 )
             )
+
+    if infrastructure_dir == DEFAULT_INFRASTRUCTURE_DIR:
+        violations.extend(
+            scan_task_contract(
+                INFRASTRUCTURE_TASKFILE.read_text(encoding="utf-8"),
+                INFRASTRUCTURE_TASKFILE.relative_to(display_root),
+            )
+        )
 
     return sorted(
         set(violations),
@@ -524,6 +581,32 @@ locals {
     )
     if not any('output "controlplane_ips"' in item.message for item in violations):
         failures.append("did not reject an unapproved bootstrap output")
+
+    valid_task_contract = '''
+ENVIRONMENT_CONTRACT_PATH:
+  sh: ./scripts/render-environment-contract.sh
+PIRAEUS_NAMESPACE:
+  sh: yq eval '.storage.piraeus.namespace' "{{.ENVIRONMENT_CONTRACT_PATH}}"
+PIRAEUS_POOL_NAME:
+  sh: yq eval '.storage.piraeus.pool_name' "{{.ENVIRONMENT_CONTRACT_PATH}}"
+PIRAEUS_DEVICE:
+  sh: yq eval '.storage.piraeus.device' "{{.ENVIRONMENT_CONTRACT_PATH}}"
+PIRAEUS_NODES:
+  sh: tofu -chdir=bootstrap output -json worker_hostnames
+'''
+    if scan_task_contract(valid_task_contract, Path("tasks/infrastructure.yml")):
+        failures.append("rejected the root env/bootstrap task contract")
+
+    stale_task_contract = valid_task_contract + '''
+PIRAEUS_NAMESPACE:
+  sh: tofu -chdir=infrastructure output -raw piraeus_namespace
+'''
+    violations = scan_task_contract(
+        stale_task_contract,
+        Path("tasks/infrastructure.yml"),
+    )
+    if not any("unfinished infrastructure apply" in item.message for item in violations):
+        failures.append("did not reject infrastructure output task dependency")
 
     if failures:
         for failure in failures:

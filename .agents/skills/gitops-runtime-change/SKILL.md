@@ -5,17 +5,19 @@ description: Implement or review application and runtime GitOps changes in this 
 
 # GitOps Runtime Change
 
-Read `argocd/README.md` and the relevant sections of
-`docs/environment-contract.md` and `docs/runtime-dependency-matrix.md` before a
-significant runtime change.
+Read `argocd/README.md` and the relevant deployment sections of
+`docs/deployment/day0-bootstrap.md`. For environment changes, also read
+`docs/configuration/environment-contract.md` before a significant runtime
+change.
 
 ## Preserve runtime ownership
 
 - Keep runtime applications, app namespaces, app-level ExternalSecrets,
   routing, certificates, policies, and Argo CD Applications under `argocd/`.
-- Use `envs/homelab.yaml` only for non-secret environment contracts. Update all
-  mapped consumers when changing hostnames, repository coordinates, storage
-  names, chart pins, or runtime naming.
+- Use `envs/homelab.yaml` plus optional `envs/homelab.override.yaml` only for
+  non-secret environment contracts. Update all mapped consumers when changing
+  hostnames, repository coordinates, storage names, chart pins, or runtime
+  naming.
 - Keep OpenBao as the runtime secret source of truth and ESO as delivery. Add
   only secret paths and key references to manifests; never add values to Git,
   tfvars, Terraform outputs, or `values.yaml`.

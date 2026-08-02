@@ -1,13 +1,11 @@
 resource "helm_release" "trust_manager" {
-  count = local.effective_trust_manager_enabled ? 1 : 0
-
   name             = "trust-manager"
   namespace        = "cert-manager"
   create_namespace = false
 
   repository = "https://charts.jetstack.io"
   chart      = "trust-manager"
-  version    = "0.20.3"
+  version    = local.chart_versions["trust_manager"]
 
   timeout = 900
   wait    = true
@@ -16,8 +14,6 @@ resource "helm_release" "trust_manager" {
 }
 
 resource "kubernetes_labels" "trusted_namespace_cert_manager" {
-  count = local.effective_trust_manager_enabled ? 1 : 0
-
   api_version = "v1"
   kind        = "Namespace"
 
@@ -35,8 +31,6 @@ resource "kubernetes_labels" "trusted_namespace_cert_manager" {
 }
 
 resource "kubernetes_labels" "trusted_namespace_argocd" {
-  count = local.effective_trust_manager_enabled && local.effective_argocd_enabled ? 1 : 0
-
   api_version = "v1"
   kind        = "Namespace"
 
@@ -54,7 +48,7 @@ resource "kubernetes_labels" "trusted_namespace_argocd" {
 }
 
 resource "kubernetes_manifest" "homelab_trust_bundle" {
-  count = local.effective_trust_manager_enabled && var.crd_backed_resources_enabled ? 1 : 0
+  count = var.crd_backed_resources_enabled ? 1 : 0
 
   manifest = {
     apiVersion = "trust.cert-manager.io/v1alpha1"

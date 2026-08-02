@@ -1,5 +1,4 @@
 resource "helm_release" "argocd" {
-  count = local.effective_argocd_enabled && var.crd_backed_resources_enabled ? 1 : 0
 
   name             = "argocd"
   namespace        = "argocd"
@@ -7,7 +6,7 @@ resource "helm_release" "argocd" {
 
   repository = "https://argoproj.github.io/argo-helm"
   chart      = "argo-cd"
-  version    = "9.4.17"
+  version    = local.chart_versions["argo_cd"]
 
   timeout = 900
   wait    = true
@@ -119,10 +118,8 @@ resource "helm_release" "argocd" {
 }
 
 resource "terraform_data" "argocd_ready" {
-  count = local.effective_argocd_enabled && var.crd_backed_resources_enabled ? 1 : 0
-
   triggers_replace = [
-    helm_release.argocd[0].id,
+    helm_release.argocd.id,
     local.effective_kubeconfig_path,
     local.effective_argocd_host,
   ]

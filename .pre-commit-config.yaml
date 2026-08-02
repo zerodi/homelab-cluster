@@ -27,7 +27,28 @@ repos:
         entry: task check:chart-versions
         language: system
         pass_filenames: false
-        files: ^(versions\.yaml|renovate\.json|(bootstrap|infrastructure|argocd)/|scripts/check-chart-versions\.py|tasks/checks\.yml|Taskfile\.yml|\.pre-commit-config\.yaml)
+        files: ^(versions\.yaml|(bootstrap|infrastructure|argocd)/|scripts/check-chart-versions\.py|tasks/checks\.yml|Taskfile\.yml|\.pre-commit-config\.yaml)
+
+      - id: environment-contract
+        name: task check:env-contract
+        entry: task check:env-contract
+        language: system
+        pass_filenames: false
+        files: ^(envs/|argocd/|scripts/(render-environment-contract\.sh|validate-env-contract\.py)|tasks/checks\.yml|Taskfile\.yml|\.pre-commit-config\.yaml)
+
+      - id: runtime-secret-contract
+        name: task check:runtime-secret-contract
+        entry: task check:runtime-secret-contract
+        language: system
+        pass_filenames: false
+        files: ^(argocd/platform/|scripts/.*runtime.*|tasks/(checks|ops)\.yml|Taskfile\.yml|\.pre-commit-config\.yaml)
+
+      - id: documentation
+        name: task check:documentation
+        entry: task check:documentation
+        language: system
+        pass_filenames: false
+        files: ^(README\.md|AGENTS\.md|docs/|argocd/README\.md|scripts/check-documentation\.py|tasks/checks\.yml|\.pre-commit-config\.yaml)
 
       - id: tofu-fmt-check
         name: task check:tofu-fmt

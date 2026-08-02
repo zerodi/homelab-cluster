@@ -1,37 +1,56 @@
 version: "3"
 
 vars:
+  ENVIRONMENT_CONTRACT_PATH:
+    sh: >-
+      { p="${TF_VAR_environment_contract_path:-}";
+      if [ -n "$p" ]; then
+      case "$p" in /*) ;; *) p="infrastructure/$p";; esac;
+      realpath "$p";
+      else
+      ./scripts/render-environment-contract.sh;
+      fi; }
   KUBECONFIG_PATH:
     sh: >-
-      cd bootstrap &&
-      { json="$(tofu output -json 2>/dev/null || true)";
-      printf '%s' "$json" | grep -q '"kubeconfig_path"' || exit 0;
-      p="$(tofu output -raw kubeconfig_path 2>/dev/null || true)";
+      { p="${TF_VAR_kubeconfig_path:-${KUBECONFIG:-}}";
+      if [ -z "$p" ]; then
+      p="$(tofu -chdir=bootstrap output -raw kubeconfig_path 2>/dev/null || true)";
+      fi;
       [ -z "$p" ] || realpath "$p" 2>/dev/null || printf '%s\n' "$p"; }
   PIRAEUS_NAMESPACE:
     sh: >-
-      cd infrastructure &&
-      { json="$(tofu output -json 2>/dev/null || true)";
-      printf '%s' "$json" | grep -q '"piraeus_namespace"' || exit 0;
-      tofu output -raw piraeus_namespace 2>/dev/null || true; }
+      { value="${TF_VAR_piraeus_namespace:-}";
+      if [ -z "$value" ]; then
+      value="$(yq eval -r '.storage.piraeus.namespace // ""' "{{.ENVIRONMENT_CONTRACT_PATH}}")";
+      fi;
+      printf '%s\n' "$value"; }
   PIRAEUS_POOL_NAME:
     sh: >-
-      cd infrastructure &&
-      { json="$(tofu output -json 2>/dev/null || true)";
-      printf '%s' "$json" | grep -q '"piraeus_storage_pool_name"' || exit 0;
-      tofu output -raw piraeus_storage_pool_name 2>/dev/null || true; }
+      { value="${TF_VAR_piraeus_storage_pool_name:-}";
+      if [ -z "$value" ]; then
+      value="$(yq eval -r '.storage.piraeus.pool_name // ""' "{{.ENVIRONMENT_CONTRACT_PATH}}")";
+      fi;
+      printf '%s\n' "$value"; }
   PIRAEUS_DEVICE:
     sh: >-
-      cd infrastructure &&
-      { json="$(tofu output -json 2>/dev/null || true)";
-      printf '%s' "$json" | grep -q '"piraeus_storage_device"' || exit 0;
-      tofu output -raw piraeus_storage_device 2>/dev/null || true; }
+      { value="${TF_VAR_piraeus_storage_device:-}";
+      if [ -z "$value" ]; then
+      value="$(yq eval -r '.storage.piraeus.device // ""' "{{.ENVIRONMENT_CONTRACT_PATH}}")";
+      fi;
+      printf '%s\n' "$value"; }
   PIRAEUS_NODES:
     sh: >-
-      cd infrastructure &&
-      { json="$(tofu output -json 2>/dev/null || true)";
-      printf '%s' "$json" | grep -q '"piraeus_storage_nodes_csv"' || exit 0;
-      tofu output -raw piraeus_storage_nodes_csv 2>/dev/null || true; }
+      { value="${TF_VAR_piraeus_storage_nodes:-}";
+      if [ -n "$value" ]; then
+      printf '%s' "$value" | yq eval -p=json -r 'join(" ")' -;
+      else
+      json="$(tofu -chdir=bootstrap output -json worker_hostnames 2>/dev/null || true)";
+      [ -z "$json" ] || printf '%s' "$json" |
+      yq eval -p=json -r 'join(" ")' -;
+      fi; }
+
+env:
+  TF_VAR_environment_contract_path: "{{.ENVIRONMENT_CONTRACT_PATH}}"
 
 tasks:
   init:
@@ -39,7 +58,7 @@ tasks:
     cmds:
       - tofu -chdir=infrastructure init {{.CLI_ARGS}}
 
-  plan-bootstrap:
+  plan:
     desc: Plan the first infrastructure bootstrap stage without CRD-backed manifests
     cmds:
       - |
@@ -65,11 +84,31 @@ tasks:
   bootstrap-piraeus-storage:
     desc: Create LINSTOR device pools outside the Terraform graph
     cmds:
-      - test -n "{{.KUBECONFIG_PATH}}"
-      - test -n "{{.PIRAEUS_NAMESPACE}}"
-      - test -n "{{.PIRAEUS_POOL_NAME}}"
-      - test -n "{{.PIRAEUS_DEVICE}}"
-      - test -n "{{.PIRAEUS_NODES}}"
+      - |
+        test -n "{{.KUBECONFIG_PATH}}" || {
+          echo "Missing kubeconfig. Complete bootstrap or set KUBECONFIG/TF_VAR_kubeconfig_path." >&2
+          exit 1
+        }
+      - |
+        test -n "{{.PIRAEUS_NAMESPACE}}" || {
+          echo "Missing storage.piraeus.namespace in the effective environment contract." >&2
+          exit 1
+        }
+      - |
+        test -n "{{.PIRAEUS_POOL_NAME}}" || {
+          echo "Missing storage.piraeus.pool_name in the effective environment contract." >&2
+          exit 1
+        }
+      - |
+        test -n "{{.PIRAEUS_DEVICE}}" || {
+          echo "Missing storage.piraeus.device in the effective environment contract." >&2
+          exit 1
+        }
+      - |
+        test -n "{{.PIRAEUS_NODES}}" || {
+          echo "Missing bootstrap worker_hostnames output." >&2
+          exit 1
+        }
       - |
         ./scripts/bootstrap-linstor-storage.sh \
           --kubeconfig "{{.KUBECONFIG_PATH}}" \
@@ -78,7 +117,7 @@ tasks:
           --device "{{.PIRAEUS_DEVICE}}" \
           --nodes "{{.PIRAEUS_NODES}}"
 
-  apply-bootstrap:
+  apply:
     desc: Apply infrastructure in stages, including CRD readiness and LINSTOR storage bootstrap
     cmds:
       - |

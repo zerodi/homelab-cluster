@@ -3,6 +3,9 @@
   "manifest": {
     "schema-version": "1.12.0",
     "install": {
+      "apache-httpd": {
+        "pkg-path": "apacheHttpd"
+      },
       "cilium-cli": {
         "pkg-path": "cilium-cli"
       },
@@ -51,6 +54,146 @@
     "options": {}
   },
   "packages": [
+    {
+      "attr_path": "apacheHttpd",
+      "broken": false,
+      "derivation": "/nix/store/vsjmszqxli8vza865kmbi0zaxpxscimx-apache-httpd-2.4.68.drv",
+      "description": "Apache HTTPD, the world's most popular web server",
+      "install_id": "apache-httpd",
+      "license": "Apache-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=567a49d1913ce81ac6e9582e3553dd90a955875f",
+      "name": "apache-httpd-2.4.68",
+      "pname": "apacheHttpd",
+      "rev": "567a49d1913ce81ac6e9582e3553dd90a955875f",
+      "rev_count": 1017464,
+      "rev_date": "2026-06-16T02:33:49Z",
+      "scrape_date": "2026-06-17T03:13:13.550757Z",
+      "stabilities": [
+        "stable",
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.4.68",
+      "outputs_to_install": [
+        "man",
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/ss4sxxmm336pl3zskqjk3nc4a2fyabsv-apache-httpd-2.4.68-dev",
+        "doc": "/nix/store/23pf3vd9x1q15sv21iq7vm5i9cgsphiw-apache-httpd-2.4.68-doc",
+        "man": "/nix/store/r96ih4brji0m130ci15g1876rjjfli98-apache-httpd-2.4.68-man",
+        "out": "/nix/store/439wd6rdiiy7bwhkfaai9b9jfs0ywy81-apache-httpd-2.4.68"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "apacheHttpd",
+      "broken": false,
+      "derivation": "/nix/store/97wvm7qp04q4cm9d6qpz6wxfx0hy0c38-apache-httpd-2.4.68.drv",
+      "description": "Apache HTTPD, the world's most popular web server",
+      "install_id": "apache-httpd",
+      "license": "Apache-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=567a49d1913ce81ac6e9582e3553dd90a955875f",
+      "name": "apache-httpd-2.4.68",
+      "pname": "apacheHttpd",
+      "rev": "567a49d1913ce81ac6e9582e3553dd90a955875f",
+      "rev_count": 1017464,
+      "rev_date": "2026-06-16T02:33:49Z",
+      "scrape_date": "2026-06-17T03:44:07.834474Z",
+      "stabilities": [
+        "stable",
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.4.68",
+      "outputs_to_install": [
+        "man",
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/gprkz6i7ajiy3dlzk4i0kg2s8gmj8n0a-apache-httpd-2.4.68-dev",
+        "doc": "/nix/store/rz9bslk5cm51qpbi1yl7rq0wdymrd545-apache-httpd-2.4.68-doc",
+        "man": "/nix/store/88h6javyz4zvlk0nk07fl4xz6hyvrb18-apache-httpd-2.4.68-man",
+        "out": "/nix/store/7hn9n69w6dn57yrhz7mbqgrz60jpbl2s-apache-httpd-2.4.68"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "apacheHttpd",
+      "broken": false,
+      "derivation": "/nix/store/p9iv500k68khlbap8kwk7s0vk8av4dx4-apache-httpd-2.4.68.drv",
+      "description": "Apache HTTPD, the world's most popular web server",
+      "install_id": "apache-httpd",
+      "license": "Apache-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=567a49d1913ce81ac6e9582e3553dd90a955875f",
+      "name": "apache-httpd-2.4.68",
+      "pname": "apacheHttpd",
+      "rev": "567a49d1913ce81ac6e9582e3553dd90a955875f",
+      "rev_count": 1017464,
+      "rev_date": "2026-06-16T02:33:49Z",
+      "scrape_date": "2026-06-17T04:13:05.802582Z",
+      "stabilities": [
+        "stable",
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.4.68",
+      "outputs_to_install": [
+        "man",
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/sb70w2ccz0wdy7grn6pdjr7ciha5my0q-apache-httpd-2.4.68-dev",
+        "doc": "/nix/store/v1ns514kvyz53w0p972p5wv5i0bnizds-apache-httpd-2.4.68-doc",
+        "man": "/nix/store/9p1sg9pd6hnicyclkbg6ap9ymgiyjc5p-apache-httpd-2.4.68-man",
+        "out": "/nix/store/f4lsn0sdc3p4cka6qhn3lqxx5s832ig5-apache-httpd-2.4.68"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "apacheHttpd",
+      "broken": false,
+      "derivation": "/nix/store/w3036zvkj8sb21bgxgfhyb90s0c7z215-apache-httpd-2.4.68.drv",
+      "description": "Apache HTTPD, the world's most popular web server",
+      "install_id": "apache-httpd",
+      "license": "Apache-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=567a49d1913ce81ac6e9582e3553dd90a955875f",
+      "name": "apache-httpd-2.4.68",
+      "pname": "apacheHttpd",
+      "rev": "567a49d1913ce81ac6e9582e3553dd90a955875f",
+      "rev_count": 1017464,
+      "rev_date": "2026-06-16T02:33:49Z",
+      "scrape_date": "2026-06-17T04:47:03.811488Z",
+      "stabilities": [
+        "stable",
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.4.68",
+      "outputs_to_install": [
+        "man",
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/h8y983wbx4zayv7d8axi5qbdcwfkxdq2-apache-httpd-2.4.68-dev",
+        "doc": "/nix/store/zf53wy2r071r7h9z7kvadnhjqn8mdcnk-apache-httpd-2.4.68-doc",
+        "man": "/nix/store/ywryzpgnw4j1rb27kz4g76lygqqr0pd7-apache-httpd-2.4.68-man",
+        "out": "/nix/store/4frm0bxxg3h62dx0dr35v9h72g0qm9cs-apache-httpd-2.4.68"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
     {
       "attr_path": "cilium-cli",
       "broken": false,

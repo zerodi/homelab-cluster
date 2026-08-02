@@ -1,0 +1,14 @@
+# Copy to envs/homelab.override.yaml and keep only values that differ from
+# envs/homelab.yaml. Maps are merged recursively.
+cluster:
+  base_domain: lab.example.net
+
+gitops:
+  repo_url: https://git.example.net/platform/gitops.git
+
+hosts:
+  argocd: argocd.lab.example.net
+
+storage:
+  piraeus:
+    device: /dev/sdc
