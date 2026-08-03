@@ -61,6 +61,7 @@ runtime_secret_contract=(
   "platform/harbor/runtime:admin_password,secret_key,core_secret,xsrf_key,jobservice_secret,registry_http_secret,registry_password,registry_htpasswd"
   "platform/harbor/postgresql:password"
   "platform/harbor/valkey:password"
+  "platform/stalwart/runtime:recovery_admin_password"
   "platform/observability/grafana:username,password"
   "platform/woodpecker/runtime:agent_secret,forgejo_client,forgejo_secret"
   "platform/garage/runtime:rpc_secret,admin_token,metrics_token"
@@ -205,6 +206,7 @@ harbor_registry_htpasswd="$(
   htpasswd -nbBC 10 harbor_registry_user "$harbor_registry_password" |
     tr -d '\n'
 )"
+stalwart_recovery_admin_password="$(rand_alnum 40)"
 grafana_password="$(rand_b64ish 32)"
 woodpecker_agent_secret="$(rand_b64ish 64)"
 garage_rpc_secret="$(rand_hex 64)"
@@ -278,6 +280,8 @@ write_entry "$mount_path/platform/harbor/postgresql" \
   "password=$harbor_postgresql_password"
 write_entry "$mount_path/platform/harbor/valkey" \
   "password=$harbor_valkey_password"
+write_entry "$mount_path/platform/stalwart/runtime" \
+  "recovery_admin_password=$stalwart_recovery_admin_password"
 write_entry "$mount_path/platform/observability/grafana" \
   "username=admin" \
   "password=$grafana_password"

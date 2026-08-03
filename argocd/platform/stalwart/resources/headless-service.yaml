@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stalwart-headless
+  namespace: stalwart
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: stalwart
+  ports:
+    - name: management
+      port: 8080
+      targetPort: management

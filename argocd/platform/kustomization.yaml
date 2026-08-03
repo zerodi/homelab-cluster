@@ -1,33 +1,4 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - authentik-prereqs.yaml
-  - gateway.yaml
-  - garage-prereqs.yaml
-  - garage.yaml
-  - harbor-prereqs.yaml
-  - harbor-postgresql.yaml
-  - harbor-valkey.yaml
-  - harbor.yaml
-  - hubble.yaml
-  - reloader.yaml
-  - velero-prereqs.yaml
-  - velero.yaml
-  - kyverno-prereqs.yaml
-  - kyverno.yaml
-  - kyverno-policies.yaml
-  - authentik-postgresql.yaml
-  - authentik-redis.yaml
-  - authentik.yaml
-  - forgejo-postgresql.yaml
-  - forgejo-valkey.yaml
-  - forgejo-prereqs.yaml
-  - forgejo.yaml
-  - observability-prereqs.yaml
-  - victoria-metrics.yaml
-  - loki.yaml
-  - tempo.yaml
-  - otel-collector.yaml
-  - grafana.yaml
-  - woodpecker-prereqs.yaml
-  - woodpecker.yaml
+  - applications

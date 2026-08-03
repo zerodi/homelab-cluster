@@ -200,6 +200,14 @@ class Validator:
                 "argocd/platform/hubble/httproute.yaml",
                 ("spec", "hostnames", 0),
             ),
+            "stalwart": (
+                "argocd/platform/gateway/stalwart-admin-certificate.yaml",
+                ("spec", "dnsNames", 0),
+            ),
+            "mail": (
+                "argocd/platform/stalwart/prereqs/mail-certificate.yaml",
+                ("spec", "dnsNames", 0),
+            ),
         }
         for key, old_value in base["hosts"].items():
             add_replacement(old_value, env["hosts"][key])
@@ -234,6 +242,15 @@ class Validator:
                     ),
                     env["platform"]["gateway"]["addresses"][key],
                 )
+        add_replacement(
+            base["platform"]["stalwart"]["mail_load_balancer_ip"],
+            env["platform"]["stalwart"]["mail_load_balancer_ip"],
+        )
+        add_yaml_replacement(
+            "argocd/platform/stalwart/resources/mail-service.yaml",
+            ("metadata", "annotations", "lbipam.cilium.io/ips"),
+            env["platform"]["stalwart"]["mail_load_balancer_ip"],
+        )
         add_replacement(
             base["storage"]["piraeus"]["storage_class"],
             env["storage"]["piraeus"]["storage_class"],
@@ -363,6 +380,12 @@ class Validator:
             self.error("platform.harbor.host must match hosts.harbor")
         if env["platform"]["harbor"]["external_url"] != harbor_url:
             self.error("platform.harbor.external_url must match hosts.harbor")
+        if env["platform"]["stalwart"]["admin_host"] != hosts["stalwart"]:
+            self.error("platform.stalwart.admin_host must match hosts.stalwart")
+        if env["platform"]["stalwart"]["mail_host"] != hosts["mail"]:
+            self.error("platform.stalwart.mail_host must match hosts.mail")
+        if env["platform"]["stalwart"]["public_url"] != f"https://{hosts['stalwart']}":
+            self.error("platform.stalwart.public_url must match hosts.stalwart")
         if env["platform"]["woodpecker"]["host"] != hosts["woodpecker"]:
             self.error("platform.woodpecker.host must match hosts.woodpecker")
         if env["platform"]["woodpecker"]["forgejo_url"] != forgejo_url:
@@ -531,12 +554,18 @@ class Validator:
             "forgejo": "forgejo",
             "hubble": "internal",
             "garage": "garage",
+            "stalwart": "external",
         }.items():
             self.expect_contains(
                 f"coredns host override for {app_name}",
                 coredns_path,
                 f"{env['platform']['gateway']['addresses'][address_key]} {hosts[app_name]}",
             )
+        self.expect_contains(
+            "coredns host override for mail",
+            coredns_path,
+            f"{env['platform']['stalwart']['mail_load_balancer_ip']} {hosts['mail']}",
+        )
 
         storage_class = env["storage"]["piraeus"]["storage_class"]
         for relpath, parts in [
@@ -594,6 +623,73 @@ class Validator:
             "containers",
             0,
             "image",
+        )
+        self.expect_equal(
+            "stalwart image",
+            f"{env['platform']['stalwart']['image']}:{env['platform']['stalwart']['image_tag']}",
+            "argocd/platform/stalwart/resources/statefulset.yaml",
+            "spec",
+            "template",
+            "spec",
+            "containers",
+            0,
+            "image",
+        )
+        self.expect_equal(
+            "stalwart storage class",
+            env["platform"]["stalwart"]["storage_class"],
+            "argocd/platform/stalwart/resources/statefulset.yaml",
+            "spec",
+            "volumeClaimTemplates",
+            0,
+            "spec",
+            "storageClassName",
+        )
+        self.expect_equal(
+            "stalwart storage size",
+            env["platform"]["stalwart"]["storage_size"],
+            "argocd/platform/stalwart/resources/statefulset.yaml",
+            "spec",
+            "volumeClaimTemplates",
+            0,
+            "spec",
+            "resources",
+            "requests",
+            "storage",
+        )
+        self.expect_equal(
+            "stalwart mail load balancer address",
+            env["platform"]["stalwart"]["mail_load_balancer_ip"],
+            "argocd/platform/stalwart/resources/mail-service.yaml",
+            "metadata",
+            "annotations",
+            "lbipam.cilium.io/ips",
+        )
+        self.expect_equal(
+            "stalwart mail hostname",
+            env["platform"]["stalwart"]["mail_host"],
+            "argocd/platform/stalwart/resources/statefulset.yaml",
+            "spec",
+            "template",
+            "spec",
+            "containers",
+            0,
+            "env",
+            0,
+            "value",
+        )
+        self.expect_equal(
+            "stalwart public url",
+            env["platform"]["stalwart"]["public_url"],
+            "argocd/platform/stalwart/resources/statefulset.yaml",
+            "spec",
+            "template",
+            "spec",
+            "containers",
+            0,
+            "env",
+            1,
+            "value",
         )
         self.expect_equal(
             "garage secret name",
@@ -952,6 +1048,9 @@ class Validator:
             ("echo gateway", hosts["echo"], "argocd/apps/echo/resources/gateway.yaml", ("spec", "listeners", 0, "hostname")),
             ("echo https gateway", hosts["echo"], "argocd/apps/echo/resources/gateway.yaml", ("spec", "listeners", 1, "hostname")),
             ("hubble route", hosts["hubble"], "argocd/platform/hubble/httproute.yaml", ("spec", "hostnames", 0)),
+            ("stalwart admin certificate", hosts["stalwart"], "argocd/platform/gateway/stalwart-admin-certificate.yaml", ("spec", "dnsNames", 0)),
+            ("stalwart gateway listener", hosts["stalwart"], "argocd/platform/gateway/external-gateway.yaml", ("spec", "listeners", 1, "hostname")),
+            ("stalwart mail certificate", hosts["mail"], "argocd/platform/stalwart/prereqs/mail-certificate.yaml", ("spec", "dnsNames", 0)),
         ]
         for label, expected, relpath, parts in hostname_checks:
             self.expect_equal(label, expected, relpath, *parts)
@@ -971,6 +1070,8 @@ class Validator:
             ("argocd/platform/observability/prereqs/redirect-httproute.yaml", hosts["grafana"]),
             ("argocd/apps/echo/resources/httproute.yaml", hosts["echo"]),
             ("argocd/apps/echo/resources/redirect-httproute.yaml", hosts["echo"]),
+            ("argocd/platform/stalwart/resources/httproute.yaml", hosts["stalwart"]),
+            ("argocd/platform/stalwart/resources/redirect-httproute.yaml", hosts["stalwart"]),
         ]:
             self.expect_equal("route hostname", hostname, relpath, "spec", "hostnames", 0)
 
@@ -1040,6 +1141,8 @@ class Validator:
             ("harbor runtime secret name", env["platform"]["harbor"]["runtime_secret_name"], "argocd/platform/harbor/prereqs/runtime-external-secret.yaml", ("metadata", "name")),
             ("harbor postgresql auth secret name", env["platform"]["harbor"]["postgresql_auth_secret_name"], "argocd/platform/harbor/prereqs/postgresql-auth-external-secret.yaml", ("metadata", "name")),
             ("harbor valkey auth secret name", env["platform"]["harbor"]["valkey_auth_secret_name"], "argocd/platform/harbor/prereqs/valkey-auth-external-secret.yaml", ("metadata", "name")),
+            ("stalwart runtime secret name", env["platform"]["stalwart"]["runtime_secret_name"], "argocd/platform/stalwart/prereqs/runtime-external-secret.yaml", ("metadata", "name")),
+            ("stalwart runtime secret target", env["platform"]["stalwart"]["runtime_secret_name"], "argocd/platform/stalwart/prereqs/runtime-external-secret.yaml", ("spec", "target", "name")),
             ("woodpecker runtime secret name", env["platform"]["woodpecker"]["runtime_secret_name"], "argocd/platform/woodpecker/prereqs/runtime-external-secret.yaml", ("metadata", "name")),
             ("grafana admin secret name", env["platform"]["observability"]["grafana"]["admin_secret_name"], "argocd/platform/observability/prereqs/grafana-admin-external-secret.yaml", ("metadata", "name")),
             ("garage runtime secret name", env["platform"]["garage"]["runtime_secret_name"], "argocd/platform/garage/prereqs/runtime-external-secret.yaml", ("metadata", "name")),

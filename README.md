@@ -70,6 +70,11 @@ task sync-env-contract
 - strict effective environment contract против `argocd/`
 - required runtime secret paths и keys в `OpenBao`
 
+Runtime-приложения, включая Stalwart Mail Server, остаются в `argocd/` и
+разворачиваются только после готовности platform bootstrap. Схема адресов,
+первичный доступ и DNS-требования Stalwart описаны в
+[отдельном runbook](docs/stalwart.md).
+
 ## Validation
 
 Локальный baseline:

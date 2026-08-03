@@ -84,6 +84,8 @@ resources=(
   'forgejo|Service|forgejo|cilium-gateway-forgejo'
   'garage|Service|garage|cilium-gateway-garage'
   'harbor|Service|harbor|cilium-gateway-harbor'
+  'stalwart|Service|gateway|cilium-gateway-external'
+  'mail|Service|stalwart|stalwart-mail'
   'woodpecker|Service|woodpecker|cilium-gateway-woodpecker'
   'echo|Service|echo|cilium-gateway-echo'
   'grafana|Service|observability|cilium-gateway-grafana'

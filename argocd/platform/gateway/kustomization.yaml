@@ -5,4 +5,5 @@ resources:
   - gateway-class.yaml
   - internal-gateway.yaml
   - external-gateway.yaml
+  - stalwart-admin-certificate.yaml
   - coredns-home-arpa-overrides.yaml

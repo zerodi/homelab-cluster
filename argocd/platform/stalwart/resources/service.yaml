@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stalwart
+  namespace: stalwart
+spec:
+  selector:
+    app.kubernetes.io/name: stalwart
+  ports:
+    - name: management
+      port: 8080
+      targetPort: management

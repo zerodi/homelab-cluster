@@ -21,7 +21,7 @@ controlplane_vip     = "192.168.10.110"
 # cluster_endpoint = "https://192.168.10.110:6443"
 kubernetes_version   = "1.35.0"
 cilium_lb_pool_start = "192.168.10.120"
-cilium_lb_pool_stop  = "192.168.10.129"
+cilium_lb_pool_stop  = "192.168.10.130"
 
 # Platform naming, including the Argo CD host and Piraeus settings, lives in
 # envs/homelab.yaml and is consumed by infrastructure/.

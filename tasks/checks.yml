@@ -11,6 +11,11 @@ tasks:
     cmds:
       - python3 ./scripts/check-infrastructure-isolation.py
 
+  platform-layout:
+    desc: Verify the Argo CD platform orchestration and payload boundary
+    cmds:
+      - python3 ./scripts/check-platform-layout.py
+
   chart-versions:
     desc: Verify all Helm chart pins against versions.yaml
     cmds:
@@ -94,6 +99,7 @@ tasks:
     cmds:
       - task check:cluster-isolation
       - task check:infrastructure-isolation
+      - task check:platform-layout
       - task check:chart-versions
       - task check:documentation
       - task check:env-contract

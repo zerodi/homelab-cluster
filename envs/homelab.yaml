@@ -16,6 +16,8 @@ hosts:
   echo: echo.home.arpa
   grafana: grafana.home.arpa
   hubble: hubble.home.arpa
+  stalwart: stalwart.home.arpa
+  mail: mail.home.arpa
 
 storage:
   piraeus:
@@ -86,6 +88,17 @@ platform:
       user: harbor
     valkey:
       addr: harbor-valkey-primary.harbor.svc.cluster.local:6379
+  stalwart:
+    namespace: stalwart
+    runtime_secret_name: stalwart-runtime
+    admin_host: stalwart.home.arpa
+    mail_host: mail.home.arpa
+    public_url: https://stalwart.home.arpa
+    image: stalwartlabs/stalwart
+    image_tag: v0.16
+    storage_class: linstor-pool1-r1
+    storage_size: 20Gi
+    mail_load_balancer_ip: 192.168.100.250
   woodpecker:
     namespace: woodpecker
     runtime_secret_name: woodpecker-runtime

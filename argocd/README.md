@@ -3,6 +3,19 @@
 Этот runbook описывает развёртывание runtime/GitOps слоя после завершения
 `cluster/` и `infrastructure/`.
 
+## Структура platform
+
+`platform/` разделён на orchestration и payload:
+
+- `platform/applications/` содержит только дочерние Argo CD Applications;
+- `platform/<component>/` содержит Helm values или Kustomize payload этого
+  компонента;
+- `platform/kustomization.yaml` подключает только application index, поэтому
+  root Application не становится совладельцем runtime-ресурсов дочерних apps.
+
+Правила добавления компонентов и структура каталогов описаны в
+[`platform/README.md`](platform/README.md).
+
 ## Предварительные условия
 
 Перед запуском должны быть готовы:
@@ -117,6 +130,17 @@ task ops:authentik-admin-password
 Переменная bootstrap применяется только при первом запуске Authentik. Для уже
 инициализированного instance используйте recovery-команду из
 [day-0 runbook](../docs/day0-bootstrap.md).
+
+Stalwart доступен по `https://stalwart.lab.zerodi.ru/admin`. Recovery login —
+`admin`, пароль выводится из OpenBao без чтения остальных secret values:
+
+```bash
+task ops:stalwart-admin-password
+```
+
+После создания постоянного администратора recovery credential нужно убрать из
+pod environment. Настройка mail LB, TLS и публичных DNS records описана в
+[Stalwart runbook](../docs/stalwart.md).
 
 ## Первичный доступ к Argo CD
 

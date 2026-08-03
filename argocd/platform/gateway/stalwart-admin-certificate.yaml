@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: stalwart-admin-tls
+  namespace: gateway
+spec:
+  secretName: stalwart-admin-tls
+  dnsNames:
+    - stalwart.lab.zerodi.ru
+  issuerRef:
+    name: homelab-ca
+    kind: ClusterIssuer

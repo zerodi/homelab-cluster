@@ -63,52 +63,96 @@ TERRAFORM_CONSUMERS = (
 )
 
 ARGO_CONSUMERS = (
-    ArgoConsumer("authentik", "argocd/platform/authentik.yaml", "authentik"),
+    ArgoConsumer(
+        "authentik",
+        "argocd/platform/applications/authentik/app.yaml",
+        "authentik",
+    ),
     ArgoConsumer(
         "postgresql",
-        "argocd/platform/authentik-postgresql.yaml",
+        "argocd/platform/applications/authentik/postgresql.yaml",
         "postgresql",
     ),
-    ArgoConsumer("redis", "argocd/platform/authentik-redis.yaml", "redis"),
-    ArgoConsumer("forgejo", "argocd/platform/forgejo.yaml", "forgejo"),
+    ArgoConsumer(
+        "redis",
+        "argocd/platform/applications/authentik/redis.yaml",
+        "redis",
+    ),
+    ArgoConsumer(
+        "forgejo",
+        "argocd/platform/applications/forgejo/app.yaml",
+        "forgejo",
+    ),
     ArgoConsumer(
         "postgresql",
-        "argocd/platform/forgejo-postgresql.yaml",
+        "argocd/platform/applications/forgejo/postgresql.yaml",
         "postgresql",
     ),
-    ArgoConsumer("valkey", "argocd/platform/forgejo-valkey.yaml", "valkey"),
-    ArgoConsumer("harbor", "argocd/platform/harbor.yaml", "harbor"),
+    ArgoConsumer(
+        "valkey",
+        "argocd/platform/applications/forgejo/valkey.yaml",
+        "valkey",
+    ),
+    ArgoConsumer(
+        "harbor",
+        "argocd/platform/applications/harbor/app.yaml",
+        "harbor",
+    ),
     ArgoConsumer(
         "postgresql",
-        "argocd/platform/harbor-postgresql.yaml",
+        "argocd/platform/applications/harbor/postgresql.yaml",
         "postgresql",
     ),
-    ArgoConsumer("valkey", "argocd/platform/harbor-valkey.yaml", "valkey"),
+    ArgoConsumer(
+        "valkey",
+        "argocd/platform/applications/harbor/valkey.yaml",
+        "valkey",
+    ),
     ArgoConsumer(
         "woodpecker",
-        "argocd/platform/woodpecker.yaml",
+        "argocd/platform/applications/woodpecker/app.yaml",
         "woodpecker",
     ),
-    ArgoConsumer("velero", "argocd/platform/velero.yaml", "velero"),
-    ArgoConsumer("kyverno", "argocd/platform/kyverno.yaml", "kyverno"),
-    ArgoConsumer("grafana", "argocd/platform/grafana.yaml", "grafana"),
+    ArgoConsumer(
+        "velero",
+        "argocd/platform/applications/velero/app.yaml",
+        "velero",
+    ),
+    ArgoConsumer(
+        "kyverno",
+        "argocd/platform/applications/kyverno/controller.yaml",
+        "kyverno",
+    ),
+    ArgoConsumer(
+        "grafana",
+        "argocd/platform/applications/observability/grafana.yaml",
+        "grafana",
+    ),
     ArgoConsumer(
         "victoria_metrics_single",
-        "argocd/platform/victoria-metrics.yaml",
+        "argocd/platform/applications/observability/victoria-metrics.yaml",
         "victoria-metrics-single",
     ),
-    ArgoConsumer("loki", "argocd/platform/loki.yaml", "loki"),
+    ArgoConsumer(
+        "loki",
+        "argocd/platform/applications/observability/loki.yaml",
+        "loki",
+    ),
     ArgoConsumer(
         "tempo_distributed",
-        "argocd/platform/tempo.yaml",
+        "argocd/platform/applications/observability/tempo.yaml",
         "tempo-distributed",
     ),
     ArgoConsumer(
         "opentelemetry_collector",
-        "argocd/platform/otel-collector.yaml",
+        "argocd/platform/applications/observability/otel-collector.yaml",
         "opentelemetry-collector",
     ),
-    ArgoConsumer("reloader", "argocd/platform/reloader.yaml", "reloader"),
+    ArgoConsumer(
+        "reloader",
+        "argocd/platform/applications/core/reloader.yaml",
+        "reloader",
+    ),
 )
 
 

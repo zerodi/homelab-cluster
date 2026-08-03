@@ -38,6 +38,7 @@ platform-layer с нуля.
    `platform/authentik/runtime`, `platform/authentik/postgresql`, `platform/authentik/redis`,
    `platform/forgejo/admin`, `platform/forgejo/oidc`, `platform/forgejo/postgresql`, `platform/forgejo/valkey`,
    `platform/harbor/runtime`, `platform/harbor/postgresql`, `platform/harbor/valkey`,
+   `platform/stalwart/runtime`,
    `platform/woodpecker/runtime`,
    `platform/observability/grafana`, `platform/garage/runtime`, `platform/velero/s3`
 
@@ -370,6 +371,8 @@ bao policy read external-secrets
   - `password`
 - `secret/platform/harbor/valkey`
   - `password`
+- `secret/platform/stalwart/runtime`
+  - `recovery_admin_password`
 - `secret/platform/observability/grafana`
   - `username`
   - `password`
@@ -536,6 +539,7 @@ kubectl -n authentik get secret authentik-runtime
 kubectl -n forgejo get secret forgejo-admin-secret
 kubectl -n authentik get secret forgejo-oidc
 kubectl -n harbor get secret harbor-runtime harbor-postgresql-auth harbor-valkey-auth
+kubectl -n stalwart get secret stalwart-runtime
 kubectl -n woodpecker get secret woodpecker-runtime
 ```
 
@@ -587,6 +591,17 @@ Harbor-компоненты читают их через runtime environment var
 потому что Argo CD выполняет client-side Helm render и не может обработать
 `lookup` секрета из Harbor chart. Не переносите пароль в
 `redis.external.password` внутри `values.yaml`.
+
+Stalwart (`admin`):
+
+```bash
+task ops:stalwart-admin-password
+```
+
+Recovery administrator нужен только для первоначальной настройки и аварийного
+доступа. После создания постоянного администратора удалите его `envFrom` из
+StatefulSet и синхронизируйте Argo CD. Полная настройка LB, TLS и DNS описана в
+[Stalwart runbook](stalwart.md).
 
 Woodpecker:
 

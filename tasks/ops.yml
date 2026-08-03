@@ -127,6 +127,13 @@ tasks:
       - test -n "${BAO_TOKEN:-}"
       - bao kv get -field=bootstrap_password "${BAO_KV_MOUNT:-secret}/platform/authentik/runtime"
 
+  stalwart-admin-password:
+    desc: Print the Stalwart recovery admin password from OpenBao
+    silent: true
+    cmds:
+      - test -n "${BAO_TOKEN:-}"
+      - bao kv get -field=recovery_admin_password "${BAO_KV_MOUNT:-secret}/platform/stalwart/runtime"
+
   seed-runtime-secrets:
     desc: Create missing OpenBao runtime secret paths without overwriting existing paths
     cmds:

@@ -83,6 +83,8 @@ app_names=(
   harbor-postgresql
   harbor-valkey
   harbor
+  stalwart-prereqs
+  stalwart
   woodpecker-prereqs
   woodpecker
   garage-prereqs
@@ -106,6 +108,7 @@ namespaces=(
   gateway
   garage
   harbor
+  stalwart
   kube-system
   observability
   velero
@@ -183,6 +186,13 @@ run_check "harbor gateway exists" kubectl -n harbor get gateway harbor >/dev/nul
 run_check "harbor route exists" kubectl -n harbor get httproute harbor >/dev/null || failed=1
 run_check "harbor redirect route exists" kubectl -n harbor get httproute harbor-http-redirect >/dev/null || failed=1
 run_check "harbor pods ready" kubectl -n harbor wait --for=condition=Ready pod --all --timeout=240s >/dev/null || failed=1
+
+run_check "stalwart runtime secret exists" kubectl -n stalwart get secret stalwart-runtime >/dev/null || failed=1
+run_check "stalwart mail tls secret exists" kubectl -n stalwart get secret stalwart-mail-tls >/dev/null || failed=1
+run_check "stalwart admin route exists" kubectl -n stalwart get httproute stalwart >/dev/null || failed=1
+run_check "stalwart redirect route exists" kubectl -n stalwart get httproute stalwart-http-redirect >/dev/null || failed=1
+run_check "stalwart mail load balancer exists" kubectl -n stalwart get service stalwart-mail >/dev/null || failed=1
+run_check "stalwart statefulset ready" kubectl -n stalwart rollout status statefulset/stalwart --timeout=240s >/dev/null || failed=1
 
 run_check "woodpecker runtime secret exists" kubectl -n woodpecker get secret woodpecker-runtime >/dev/null || failed=1
 run_check "woodpecker tls secret exists" kubectl -n woodpecker get secret woodpecker-tls >/dev/null || failed=1

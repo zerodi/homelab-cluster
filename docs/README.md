@@ -25,6 +25,7 @@ cluster/ -> infrastructure/ -> OpenBao init/unseal -> GitOps bootstrap
 - [Renovate](renovate.md)
 - [Backup и restore](backup-restore.md)
 - [Garage и Velero](garage-velero.md)
+- [Stalwart Mail Server](stalwart.md)
 - [Kyverno policies](kyverno-policies.md)
 
 Аналитические документы, audit snapshots и планы развития в документацию не

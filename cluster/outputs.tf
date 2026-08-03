@@ -31,6 +31,11 @@ output "worker_ips_csv" {
   description = "Comma-separated worker IPs used by local health helpers."
 }
 
+output "cilium_lb_pool_manifest" {
+  value       = local.cilium_lb_pool_manifest
+  description = "Rendered Cilium LoadBalancer IP pool manifest used for post-apply reconciliation."
+}
+
 resource "local_sensitive_file" "talosconfig" {
   filename        = var.talosconfig_file_path
   file_permission = "0600"
