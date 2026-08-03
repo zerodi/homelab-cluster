@@ -788,6 +788,43 @@ class Validator:
             "external",
             "addr",
         )
+        harbor_valkey_addr = env["platform"]["harbor"]["valkey"]["addr"]
+        harbor_redis_urls = {
+            "REDIS_URL_CORE": (
+                f"redis://:{{{{ .password | urlquery }}}}@{harbor_valkey_addr}/0"
+                "?idle_timeout_seconds=30"
+            ),
+            "REDIS_URL_REGISTRY": (
+                f"redis://:{{{{ .password | urlquery }}}}@{harbor_valkey_addr}/2"
+                "?idle_timeout_seconds=30"
+            ),
+            "REDIS_URL_HARBOR": (
+                f"redis://:{{{{ .password | urlquery }}}}@{harbor_valkey_addr}/0"
+                "?idle_timeout_seconds=30"
+            ),
+            "REDIS_URL_CACHE": (
+                f"redis://:{{{{ .password | urlquery }}}}@{harbor_valkey_addr}/0"
+                "?idle_timeout_seconds=30"
+            ),
+            "REDIS_URL_JOBSERVICE": (
+                f"redis://:{{{{ .password | urlquery }}}}@{harbor_valkey_addr}/1"
+            ),
+            "REDIS_URL_TRIVY": (
+                f"redis://:{{{{ .password | urlquery }}}}@{harbor_valkey_addr}/5"
+                "?idle_timeout_seconds=30"
+            ),
+        }
+        for key, expected in harbor_redis_urls.items():
+            self.expect_equal(
+                f"harbor derived valkey URL {key}",
+                expected,
+                "argocd/platform/harbor/prereqs/valkey-auth-external-secret.yaml",
+                "spec",
+                "target",
+                "template",
+                "data",
+                key,
+            )
 
         self.expect_equal(
             "woodpecker runtime secret name",

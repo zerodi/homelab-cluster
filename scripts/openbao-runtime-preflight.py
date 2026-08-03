@@ -16,7 +16,10 @@ from typing import Any
 EXPECTED_CONTRACT: dict[str, dict[str, Any]] = {
     "platform/authentik/runtime": {
         "app": "authentik",
-        "properties": {"secret_key": "nonempty"},
+        "properties": {
+            "secret_key": "nonempty",
+            "bootstrap_password": "nonempty",
+        },
     },
     "platform/authentik/postgresql": {
         "app": "authentik",

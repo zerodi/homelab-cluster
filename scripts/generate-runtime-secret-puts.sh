@@ -51,7 +51,7 @@ case "${1:-}" in
 esac
 
 runtime_secret_contract=(
-  "platform/authentik/runtime:secret_key"
+  "platform/authentik/runtime:secret_key,bootstrap_password"
   "platform/authentik/postgresql:password"
   "platform/authentik/redis:password"
   "platform/forgejo/admin:username,password"
@@ -184,6 +184,7 @@ if { [[ -n "${VELERO_S3_ACCESS_KEY_ID:-}" ]] &&
 fi
 
 authentik_secret_key="$(rand_b64ish 64)"
+authentik_bootstrap_password="$(rand_alnum 40)"
 authentik_postgresql_password="$(rand_b64ish 40)"
 authentik_redis_password="$(rand_b64ish 40)"
 forgejo_admin_password="$(rand_alnum 40)"
@@ -248,7 +249,8 @@ EOF
 fi
 
 write_entry "$mount_path/platform/authentik/runtime" \
-  "secret_key=$authentik_secret_key"
+  "secret_key=$authentik_secret_key" \
+  "bootstrap_password=$authentik_bootstrap_password"
 write_entry "$mount_path/platform/authentik/postgresql" \
   "password=$authentik_postgresql_password"
 write_entry "$mount_path/platform/authentik/redis" \

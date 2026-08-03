@@ -26,7 +26,7 @@ charts:
   # renovate: datasource=helm depName=grafana registryUrl=https://grafana-community.github.io/helm-charts versioning=helm
   grafana: "11.3.6"
   # renovate: datasource=helm depName=harbor registryUrl=https://helm.goharbor.io versioning=helm
-  harbor: "1.18.0"
+  harbor: "1.19.2"
   # renovate: datasource=helm depName=kyverno registryUrl=https://kyverno.github.io/kyverno/ versioning=helm
   kyverno: "3.7.1"
   # renovate: datasource=helm depName=loki registryUrl=https://grafana-community.github.io/helm-charts versioning=helm

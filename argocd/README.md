@@ -107,6 +107,17 @@ task ops:post-argocd-check
 kubectl -n argocd get applications
 ```
 
+Начальный пользователь Authentik — `akadmin`. В greenfield bootstrap его
+пароль генерируется в OpenBao и получается без чтения других runtime secrets:
+
+```bash
+task ops:authentik-admin-password
+```
+
+Переменная bootstrap применяется только при первом запуске Authentik. Для уже
+инициализированного instance используйте recovery-команду из
+[day-0 runbook](../docs/day0-bootstrap.md).
+
 ## Первичный доступ к Argo CD
 
 Основной URL публикуется через Ingress и берётся из effective environment

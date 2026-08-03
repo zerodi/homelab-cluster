@@ -120,6 +120,13 @@ tasks:
     cmds:
       - bash ./scripts/generate-runtime-secret-puts.sh
 
+  authentik-admin-password:
+    desc: Print the Authentik akadmin bootstrap password from OpenBao
+    silent: true
+    cmds:
+      - test -n "${BAO_TOKEN:-}"
+      - bao kv get -field=bootstrap_password "${BAO_KV_MOUNT:-secret}/platform/authentik/runtime"
+
   seed-runtime-secrets:
     desc: Create missing OpenBao runtime secret paths without overwriting existing paths
     cmds:

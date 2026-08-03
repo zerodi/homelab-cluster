@@ -1,0 +1,225 @@
+# Cutover Argo CD с test-ssh-git на Forgejo
+
+Этот runbook описывает перевод уже развёрнутого через `test-ssh-git` runtime
+слоя на постоянный GitOps repository в Forgejo. До завершения проверки не
+останавливайте test SSH server и не удаляйте `Application/root-ssh`.
+
+## 1. Подготовка Forgejo
+
+Проверьте, что Forgejo доступен и его Application готово:
+
+```bash
+kubectl -n argocd get application forgejo
+kubectl -n forgejo get pods
+```
+
+В Forgejo:
+
+1. создайте organization `platform`;
+2. создайте пустой repository `gitops` без README, `.gitignore` и license;
+3. создайте отдельного пользователя `argocd`;
+4. предоставьте ему только `Read` для `platform/gitops`;
+5. создайте token с доступом только к этому repository и scope
+   `read:repository`.
+
+Forgejo позволяет ограничить token конкретным repository; используйте наиболее
+узкий доступ. Подробности приведены в
+[официальном описании token scopes](https://forgejo.org/docs/latest/user/token-scope/).
+
+Для текущего environment постоянный URL выглядит так:
+
+```bash
+export FORGEJO_HOST='git.lab.zerodi.ru'
+export FORGEJO_GITOPS_URL="https://${FORGEJO_HOST}/platform/gitops.git"
+```
+
+Не добавляйте token в URL, shell history или Git remote.
+
+## 2. Подготовка GitOps tree
+
+Замените `gitops.repo_url` в `envs/homelab.override.yaml` на
+`https://git.lab.zerodi.ru/platform/gitops.git`, затем синхронизируйте все
+tracked consumers:
+
+```bash
+task sync-env-contract
+task check:env-contract
+task check:kustomize-bootstrap
+task check:kustomize-platform
+```
+
+Не переносите `test-ssh-git/repo-data/gitops.git`: внутри seed URL намеренно
+переписаны на временный SSH endpoint. Пока не отправляйте subtree: сначала
+добавьте tracked credential manifest из шага 4.
+
+## 3. Доверие внутреннему CA
+
+TLS-сертификат Forgejo проверяют два независимых клиента: локальный Git во
+время первого push и `argocd-repo-server` при последующих sync. Экспортируйте
+homelab CA и передайте его локальному Git в текущей shell session:
+
+```bash
+task ops:export-root-ca
+export GIT_SSL_CAINFO="$PWD/out/homelab-root-ca.crt"
+```
+
+Затем добавьте тот же CA для Forgejo hostname в специальный Argo CD ConfigMap:
+
+```bash
+kubectl -n argocd create configmap argocd-tls-certs-cm \
+  --from-file="${FORGEJO_HOST}=out/homelab-root-ca.crt" \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+Не используйте `insecureSkipVerify`. Argo CD хранит доверенные Git TLS CA в
+`argocd-tls-certs-cm`; изменение может распространяться на repo-server
+несколько минут. См.
+[документацию Argo CD по private repositories](https://argo-cd.readthedocs.io/en/latest/user-guide/private-repositories/).
+
+## 4. Credential через OpenBao и ESO
+
+Запишите username и token в OpenBao. Значение token не должно попадать в Git:
+
+```bash
+export FORGEJO_ARGOCD_TOKEN='...'
+bao kv put secret/platform/argocd/repository \
+  username='argocd' \
+  token="$FORGEJO_ARGOCD_TOKEN"
+unset FORGEJO_ARGOCD_TOKEN
+```
+
+Создайте `argocd/bootstrap/forgejo-gitops-repository.yaml` со следующим
+`ExternalSecret` и добавьте файл в `argocd/bootstrap/kustomization.yaml`:
+
+```yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: forgejo-gitops-repository
+  namespace: argocd
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: openbao
+  target:
+    name: forgejo-gitops-repository
+    creationPolicy: Owner
+    template:
+      engineVersion: v2
+      metadata:
+        labels:
+          argocd.argoproj.io/secret-type: repository
+      data:
+        type: git
+        name: forgejo-gitops
+        url: https://git.lab.zerodi.ru/platform/gitops.git
+        username: "{{ .username }}"
+        password: "{{ .token }}"
+  data:
+    - secretKey: username
+      remoteRef:
+        key: platform/argocd/repository
+        property: username
+    - secretKey: token
+      remoteRef:
+        key: platform/argocd/repository
+        property: token
+```
+
+Закоммитьте изменения, затем создайте ветку, в которой содержимое `argocd/`
+становится корнем repository, и отправьте её в Forgejo. Для первого push
+используйте отдельные credentials оператора с правом записи и token со scope
+`write:repository`. Read-only token пользователя `argocd` из этого runbook
+предназначен только для pull со стороны Argo CD и не подходит для push.
+
+Git, запущенный из VS Code, может наследовать `GIT_ASKPASS`, указывающий на уже
+закрытый IPC socket. Следующая команда на один запуск отключает VS Code askpass
+и credential helper, после чего Git запросит username и write token прямо в
+терминале:
+
+```bash
+git subtree split --prefix=argocd -b forgejo-gitops-main
+env -u GIT_ASKPASS \
+  -u SSH_ASKPASS \
+  -u VSCODE_GIT_ASKPASS_MAIN \
+  -u VSCODE_GIT_ASKPASS_NODE \
+  -u VSCODE_GIT_ASKPASS_EXTRA_ARGS \
+  -u VSCODE_GIT_IPC_HANDLE \
+  GIT_TERMINAL_PROMPT=1 \
+  GIT_SSL_CAINFO="$PWD/out/homelab-root-ca.crt" \
+  git -c credential.helper= \
+    push "$FORGEJO_GITOPS_URL" forgejo-gitops-main:main
+unset GIT_SSL_CAINFO
+```
+
+На prompts укажите username оператора Forgejo и write token вместо password.
+Token не вставляйте в repository URL и не сохраняйте в Git config.
+
+Убедитесь в Forgejo UI, что ветка `main` содержит каталоги `bootstrap/`,
+`platform/` и `apps/`. Для разрыва bootstrap-зависимости один раз примените тот
+же tracked `ExternalSecret` напрямую; после cutover им будет владеть GitOps
+repository:
+
+```bash
+kubectl apply -f argocd/bootstrap/forgejo-gitops-repository.yaml
+kubectl -n argocd wait \
+  --for=condition=Ready \
+  externalsecret/forgejo-gitops-repository \
+  --timeout=2m
+kubectl -n argocd get secret forgejo-gitops-repository
+```
+
+Argo CD распознаёт Secret по label
+`argocd.argoproj.io/secret-type: repository`; для HTTPS используются поля
+`username` и `password`. Формат описан в
+[Argo CD declarative setup](https://argo-cd.readthedocs.io/en/latest/operator-manual/declarative-setup/#repositories).
+
+Если repository публичный, отдельный token и `ExternalSecret` не нужны, но
+настройка доверенного CA остаётся обязательной.
+
+## 5. Безопасное переключение root Application
+
+Сначала переключите существующий `root-ssh` на Forgejo. Это позволяет одному
+root Application обновить дочерние Applications на постоянный `repoURL`, не
+создавая конфликт между старым и новым источником:
+
+```bash
+kubectl -n argocd patch application root-ssh \
+  --type=json \
+  -p="[{\"op\":\"replace\",\"path\":\"/spec/source/repoURL\",\"value\":\"${FORGEJO_GITOPS_URL}\"}]"
+kubectl -n argocd get application root-ssh -w
+```
+
+Дождитесь `Synced` и `Healthy`, затем примените канонический root Application:
+
+```bash
+task gitops:preflight
+task gitops:apply-bootstrap
+kubectl -n argocd get applications
+```
+
+Убедитесь, что `Application/root` и все дочерние Applications имеют состояния
+`Synced` и `Healthy` и используют Forgejo URL. Только после этого удалите
+временный root и repository credential:
+
+```bash
+kubectl -n argocd delete application root-ssh
+kubectl -n argocd delete secret test-ssh-gitops-repo
+task gitops:test-ssh-stop
+```
+
+Не удаляйте `argocd-ssh-known-hosts-cm`: он является стандартным объектом Argo
+CD и может использоваться другими SSH repositories.
+
+## 6. Проверка и ротация
+
+```bash
+kubectl -n argocd get application root \
+  -o jsonpath='{.spec.source.repoURL}{" "}{.status.sync.status}{" "}{.status.health.status}{"\n"}'
+task ops:post-argocd-check
+```
+
+Для ротации создайте новый read-only token в Forgejo и целиком перезапишите
+`secret/platform/argocd/repository` в OpenBao. ESO обновит Kubernetes Secret;
+ручное изменение materialized Secret не требуется.

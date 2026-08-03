@@ -50,24 +50,100 @@ redis:
     jobserviceDatabaseIndex: "1"
     registryDatabaseIndex: "2"
     trivyAdapterIndex: "5"
+    harborDatabaseIndex: "0"
+    cacheLayerDatabaseIndex: "0"
 
+# Argo CD renders Helm charts without Kubernetes API access, so Harbor's
+# lookup-based Redis existingSecret support cannot resolve the password.
+# ESO materializes the connection URLs in harbor-valkey-auth and these
+# explicit runtime variables override the passwordless chart defaults.
 core:
   existingSecret: harbor-runtime
   existingXsrfSecret: harbor-runtime
+  extraEnvVars:
+    - name: _REDIS_URL_CORE
+      valueFrom:
+        secretKeyRef:
+          name: harbor-valkey-auth
+          key: REDIS_URL_CORE
+    - name: _REDIS_URL_REG
+      valueFrom:
+        secretKeyRef:
+          name: harbor-valkey-auth
+          key: REDIS_URL_REGISTRY
+    - name: _REDIS_URL_HARBOR
+      valueFrom:
+        secretKeyRef:
+          name: harbor-valkey-auth
+          key: REDIS_URL_HARBOR
+    - name: _REDIS_URL_CACHE_LAYER
+      valueFrom:
+        secretKeyRef:
+          name: harbor-valkey-auth
+          key: REDIS_URL_CACHE
 
 jobservice:
   existingSecret: harbor-runtime
+  extraEnvVars:
+    - name: JOB_SERVICE_POOL_REDIS_URL
+      valueFrom:
+        secretKeyRef:
+          name: harbor-valkey-auth
+          key: REDIS_URL_JOBSERVICE
+    - name: _REDIS_URL_CACHE_LAYER
+      valueFrom:
+        secretKeyRef:
+          name: harbor-valkey-auth
+          key: REDIS_URL_CACHE
 
 registry:
   existingSecret: harbor-runtime
   credentials:
     existingSecret: harbor-runtime
+  registry:
+    extraEnvVars:
+      - name: REGISTRY_REDIS_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: harbor-valkey-auth
+            key: REDIS_PASSWORD
+  controller:
+    extraEnvVars:
+      - name: REGISTRY_REDIS_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: harbor-valkey-auth
+            key: REDIS_PASSWORD
 
 trivy:
   enabled: true
+  extraEnvVars:
+    - name: SCANNER_REDIS_URL
+      valueFrom:
+        secretKeyRef:
+          name: harbor-valkey-auth
+          key: REDIS_URL_TRIVY
+    - name: SCANNER_STORE_REDIS_URL
+      valueFrom:
+        secretKeyRef:
+          name: harbor-valkey-auth
+          key: REDIS_URL_TRIVY
+    - name: SCANNER_JOB_QUEUE_REDIS_URL
+      valueFrom:
+        secretKeyRef:
+          name: harbor-valkey-auth
+          key: REDIS_URL_TRIVY
 
 metrics:
   enabled: false
+
+exporter:
+  extraEnvVars:
+    - name: HARBOR_REDIS_URL
+      valueFrom:
+        secretKeyRef:
+          name: harbor-valkey-auth
+          key: REDIS_URL_JOBSERVICE
 
 trace:
   enabled: true

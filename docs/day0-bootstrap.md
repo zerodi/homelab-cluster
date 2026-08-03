@@ -342,6 +342,7 @@ bao policy read external-secrets
 
 - `secret/platform/authentik/runtime`
   - `secret_key`
+  - `bootstrap_password`
 - `secret/platform/authentik/postgresql`
   - `password`
 - `secret/platform/authentik/redis`
@@ -540,6 +541,33 @@ kubectl -n woodpecker get secret woodpecker-runtime
 
 Данные для первого входа администратора:
 
+Authentik (`akadmin`):
+
+```bash
+task ops:authentik-admin-password
+```
+
+То же значение из materialized Kubernetes Secret:
+
+```bash
+kubectl -n authentik get secret authentik-runtime \
+  -o jsonpath='{.data.AUTHENTIK_BOOTSTRAP_PASSWORD}' | base64 -d && echo
+```
+
+`AUTHENTIK_BOOTSTRAP_PASSWORD` читается Authentik только при первом старте.
+Если instance уже запускался без этого значения, существующий пароль получить
+нельзя: он хранится в базе как verifier. Задайте новый пароль интерактивно и
+затем сохраните согласованное значение в OpenBao:
+
+```bash
+kubectl -n authentik exec -it deployment/authentik-server -c server -- \
+  ak changepassword akadmin
+```
+
+Не перезаписывайте весь `platform/authentik/runtime`, не сохранив существующий
+`secret_key`; для добавления поля в существующий KV v2 path используйте
+`bao kv patch`.
+
 Forgejo:
 
 ```bash
@@ -552,6 +580,13 @@ Harbor:
 ```bash
 kubectl -n harbor get secret harbor-runtime -o jsonpath='{.data.HARBOR_ADMIN_PASSWORD}' | base64 -d && echo
 ```
+
+Harbor получает пароль Valkey из `OpenBao` через `ExternalSecret`
+`harbor-valkey-auth`. ESO формирует в этом Secret готовые Redis URL, а
+Harbor-компоненты читают их через runtime environment variables. Это необходимо,
+потому что Argo CD выполняет client-side Helm render и не может обработать
+`lookup` секрета из Harbor chart. Не переносите пароль в
+`redis.external.password` внутри `values.yaml`.
 
 Woodpecker:
 
