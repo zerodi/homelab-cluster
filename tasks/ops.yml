@@ -1,19 +1,6 @@
 version: "3"
 
 vars:
-  ENVIRONMENT_CONTRACT_PATH:
-    sh: ./scripts/render-environment-contract.sh
-  KUBECONFIG_PATH:
-    sh: |
-      if [ -n "${KUBECONFIG:-}" ]; then
-        realpath "$KUBECONFIG" 2>/dev/null || printf '%s\n' "$KUBECONFIG"
-        exit 0
-      fi
-      cd cluster
-      json="$(tofu output -json 2>/dev/null || true)"
-      printf '%s' "$json" | grep -q '"kubeconfig_path"' || exit 0
-      p="$(tofu output -raw kubeconfig_path 2>/dev/null || true)"
-      [ -z "$p" ] || realpath "$p" 2>/dev/null || printf '%s\n' "$p"
   ROOT_CA_EXPORT_PATH: '{{default "out/homelab-root-ca.crt" .ROOT_CA_EXPORT_PATH}}'
   GARAGE_NAMESPACE: '{{default "garage" .GARAGE_NAMESPACE}}'
   GARAGE_POD: '{{default "garage-0" .GARAGE_POD}}'

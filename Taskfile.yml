@@ -3,6 +3,20 @@ version: "3"
 dotenv:
   - .env
 
+vars:
+  ENVIRONMENT_CONTRACT_PATH:
+    sh: ./scripts/task-vars.sh environment-contract
+  KUBECONFIG_PATH:
+    sh: ./scripts/task-vars.sh kubeconfig
+  TALOSCONFIG_PATH:
+    sh: ./scripts/task-vars.sh talosconfig
+  CONTROLPLANE_IPS:
+    sh: ./scripts/task-vars.sh cluster-output controlplane_ips_csv
+  WORKER_IPS:
+    sh: ./scripts/task-vars.sh cluster-output worker_ips_csv
+  PRIMARY_CONTROLPLANE_IP:
+    sh: ./scripts/task-vars.sh cluster-output controlplane_ips_csv | cut -d, -f1
+
 includes:
   cluster:
     taskfile: ./tasks/cluster.yml

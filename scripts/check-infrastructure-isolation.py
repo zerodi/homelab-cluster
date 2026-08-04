@@ -13,6 +13,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INFRASTRUCTURE_DIR = PROJECT_ROOT / "infrastructure"
 INFRASTRUCTURE_TASKFILE = PROJECT_ROOT / "tasks" / "infrastructure.yml"
+TASK_VARIABLES_SCRIPT = PROJECT_ROOT / "scripts" / "task-vars.sh"
 
 APPROVED_RESOURCES = {
     ("helm_release", "argocd"),
@@ -433,7 +434,8 @@ def scan_task_contract(text: str, display_path: Path) -> list[Violation]:
             "Piraeus device must come from the root environment contract",
         ),
         (
-            r"tofu -chdir=cluster output -json worker_hostnames",
+            r"(?:tofu -chdir=cluster output -json worker_hostnames|"
+            r"cluster_output worker_hostnames json)",
             "Piraeus nodes must come from completed cluster state",
         ),
     )
@@ -501,9 +503,15 @@ def run_checks(infrastructure_dir: Path, display_root: Path) -> list[Violation]:
             )
 
     if infrastructure_dir == DEFAULT_INFRASTRUCTURE_DIR:
+        task_contract = "\n".join(
+            (
+                INFRASTRUCTURE_TASKFILE.read_text(encoding="utf-8"),
+                TASK_VARIABLES_SCRIPT.read_text(encoding="utf-8"),
+            )
+        )
         violations.extend(
             scan_task_contract(
-                INFRASTRUCTURE_TASKFILE.read_text(encoding="utf-8"),
+                task_contract,
                 INFRASTRUCTURE_TASKFILE.relative_to(display_root),
             )
         )
