@@ -8,9 +8,6 @@
         "**/.forgejo/workflows/*.yaml"
     ],
     "yaml.schemas": {
-        "file:///Users/zerodi/.vscode/extensions/continue.continue-1.2.4-darwin-x64/config-yaml-schema.json": [
-            ".continue/**/*.yaml"
-        ],
         "https://taskfile.dev/schema.json": [
             "file:///Users/zerodi/Development/Infra/talos-proxmox-no-ssh/tasks/*.yml",
         ]

@@ -1,8 +1,8 @@
 locals {
-  bootstrap_node_name = sort(keys(var.controlplane_nodes))[0]
-  bootstrap_node_ip   = var.controlplane_nodes[local.bootstrap_node_name].ip
+  bootstrap_node_name = sort(keys(local.controlplane_nodes))[0]
+  bootstrap_node_ip   = local.controlplane_nodes[local.bootstrap_node_name].ip
 
-  kubernetes_endpoint = coalesce(var.cluster_endpoint, "https://${var.controlplane_vip}:6443")
+  kubernetes_endpoint = coalesce(var.cluster_endpoint, "https://${local.controlplane_vip}:6443")
 
   common_cluster_patch = {
     # disable kubernetes discovery as its no longer compatible with k8s 1.32+.
@@ -65,8 +65,8 @@ locals {
     spec = {
       blocks = [
         {
-          start = var.cilium_lb_pool_start
-          stop  = var.cilium_lb_pool_stop
+          start = local.cilium_lb_pool_start
+          stop  = local.cilium_lb_pool_stop
         }
       ]
     }
@@ -318,7 +318,7 @@ resource "talos_machine_configuration_apply" "node" {
       yamlencode({
         apiVersion = "v1alpha1"
         kind       = "Layer2VIPConfig"
-        name       = var.controlplane_vip
+        name       = local.controlplane_vip
         link       = var.cilium_interface
       }),
     ] : [],
@@ -347,18 +347,18 @@ resource "talos_cluster_kubeconfig" "this" {
 data "talos_client_configuration" "this" {
   cluster_name         = var.cluster_name
   client_configuration = talos_machine_secrets.this.client_configuration
-  endpoints            = [for node in values(var.controlplane_nodes) : node.ip]
+  endpoints            = [for node in values(local.controlplane_nodes) : node.ip]
   nodes = concat(
-    [for node in values(var.controlplane_nodes) : node.ip],
-    [for node in values(var.worker_nodes) : node.ip]
+    [for node in values(local.controlplane_nodes) : node.ip],
+    [for node in values(local.worker_nodes) : node.ip]
   )
 }
 
 data "talos_cluster_health" "this" {
   client_configuration = talos_machine_secrets.this.client_configuration
-  control_plane_nodes  = [for node in values(var.controlplane_nodes) : node.ip]
-  worker_nodes         = [for node in values(var.worker_nodes) : node.ip]
-  endpoints            = [for node in values(var.controlplane_nodes) : node.ip]
+  control_plane_nodes  = [for node in values(local.controlplane_nodes) : node.ip]
+  worker_nodes         = [for node in values(local.worker_nodes) : node.ip]
+  endpoints            = [for node in values(local.controlplane_nodes) : node.ip]
 
   skip_kubernetes_checks = true
 

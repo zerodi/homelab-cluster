@@ -19,6 +19,10 @@ task cluster:apply
 task cluster:health
 ```
 
+В `terraform.tfvars` топология задаётся одной IPv4 `/24` подсетью и количеством
+control plane/worker nodes. Gateway, адреса VM, control plane VIP и Cilium
+LoadBalancer pool вычисляются автоматически.
+
 ### 3. Bootstrap platform operators
 
 ```bash

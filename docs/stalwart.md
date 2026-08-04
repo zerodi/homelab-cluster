@@ -120,9 +120,10 @@ TCP/25 также не должен блокироваться. Не публи�
 
 ## Обновление адресов и версии
 
-Mail IP меняется в `platform.stalwart.mail_load_balancer_ip`, а границы Cilium
-pool — в `cilium_lb_pool_start`/`cilium_lb_pool_stop` файла
-`terraform.tfvars`. После изменения:
+Mail IP меняется в `platform.stalwart.mail_load_balancer_ip`. Cilium pool
+автоматически занимает адреса `.230-.250` из `cluster_ipv4_cidr`, заданной в
+`terraform.tfvars`; Mail IP должен оставаться внутри этого диапазона. После
+изменения:
 
 ```bash
 task cluster:apply

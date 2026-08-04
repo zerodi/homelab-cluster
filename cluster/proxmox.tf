@@ -74,8 +74,8 @@ resource "proxmox_virtual_environment_vm" "node" {
   initialization {
     ip_config {
       ipv4 {
-        address = "${each.value.ip}/24"
-        gateway = var.gateway
+        address = "${each.value.ip}/${local.network_prefix_length}"
+        gateway = local.gateway
       }
     }
   }

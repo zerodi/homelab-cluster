@@ -1,9 +1,9 @@
 output "controlplane_ips" {
-  value = { for name, node in var.controlplane_nodes : name => node.ip }
+  value = { for name, node in local.controlplane_nodes : name => node.ip }
 }
 
 output "worker_ips" {
-  value = { for name, node in var.worker_nodes : name => node.ip }
+  value = { for name, node in local.worker_nodes : name => node.ip }
 }
 
 output "talosconfig_path" {
@@ -17,17 +17,17 @@ output "kubeconfig_path" {
 }
 
 output "worker_hostnames" {
-  value       = [for node in values(var.worker_nodes) : node.hostname]
+  value       = [for node in values(local.worker_nodes) : node.hostname]
   description = "Worker hostnames exported for the separate infrastructure entrypoint."
 }
 
 output "controlplane_ips_csv" {
-  value       = join(",", [for name in sort(keys(var.controlplane_nodes)) : var.controlplane_nodes[name].ip])
+  value       = join(",", [for name in sort(keys(local.controlplane_nodes)) : local.controlplane_nodes[name].ip])
   description = "Comma-separated control plane IPs used by local health helpers."
 }
 
 output "worker_ips_csv" {
-  value       = join(",", [for name in sort(keys(var.worker_nodes)) : var.worker_nodes[name].ip])
+  value       = join(",", [for name in sort(keys(local.worker_nodes)) : local.worker_nodes[name].ip])
   description = "Comma-separated worker IPs used by local health helpers."
 }
 

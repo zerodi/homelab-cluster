@@ -87,6 +87,21 @@ sops -d secrets.sops.tfvars > cluster/secrets.auto.tfvars
 остались в локальном `terraform.tfvars` от прежнего контракта, удалите эти две
 строки: bootstrap читает обе версии из root `versions.yaml`.
 
+Сетевой и topology-контракт кластера задаётся тремя значениями:
+
+```hcl
+cluster_ipv4_cidr  = "192.168.100.0/24"
+controlplane_nodes = 3
+worker_nodes       = 2
+```
+
+Из подсети автоматически формируются gateway `.1`, control plane nodes
+`.11-.99`, worker nodes `.101-.199`, control plane VIP `.200` и Cilium
+LoadBalancer pool `.230-.250`. Имена, VM ID и MAC-адреса узлов также
+детерминированы их ролью и порядковым номером. Допустимо до 89 control plane
+nodes и до 99 workers. Для etcd quorum рекомендуется нечётное количество
+control plane nodes.
+
 ### 2. Bootstrap кластера
 
 ```bash

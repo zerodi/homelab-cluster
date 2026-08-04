@@ -14,12 +14,10 @@ proxmox = {
 
 talos_schematic_id = "<SCHEMATIC_ID>"
 
-cluster_name         = "homelab-talos"
-controlplane_vip     = "192.168.10.110"
-# Optional. If null, cluster endpoint is derived from controlplane_vip.
-# cluster_endpoint = "https://192.168.10.110:6443"
-cilium_lb_pool_start = "192.168.10.120"
-cilium_lb_pool_stop  = "192.168.10.130"
+cluster_name      = "homelab-talos"
+cluster_ipv4_cidr = "192.168.10.0/24"
+# Optional. If null, cluster endpoint uses the generated .200 control plane VIP.
+# cluster_endpoint = "https://192.168.10.200:6443"
 
 # Platform naming, including the Argo CD host and Piraeus settings, lives in
 # envs/homelab.yaml and is consumed by infrastructure/.
@@ -30,45 +28,13 @@ controlplane_node_defaults = {
   disk_gb   = 40
 }
 
-controlplane_nodes = {
-  cp-01 = {
-    vm_id       = 9001
-    ip          = "192.168.10.101"
-    mac_address = "BC:24:11:00:00:11"
-    hostname    = "cp-01"
-  }
-  cp-02 = {
-    vm_id       = 9002
-    ip          = "192.168.10.102"
-    mac_address = "BC:24:11:00:00:12"
-    hostname    = "cp-02"
-  }
-  cp-03 = {
-    vm_id       = 9003
-    ip          = "192.168.10.103"
-    mac_address = "BC:24:11:00:00:13"
-    hostname    = "cp-03"
-  }
-}
+controlplane_nodes = 3
 
 worker_node_defaults = {
-  cpu_cores = 4
-  memory_mb = 8192
-  disk_gb   = 40
+  cpu_cores          = 4
+  memory_mb          = 8192
+  disk_gb            = 40
   additional_disk_gb = 80
 }
 
-worker_nodes = {
-  wk-01 = {
-    vm_id       = 9011
-    ip          = "192.168.10.111"
-    mac_address = "BC:24:11:00:00:21"
-    hostname    = "wk-01"
-  }
-  wk-02 = {
-    vm_id       = 9012
-    ip          = "192.168.10.112"
-    mac_address = "BC:24:11:00:00:22"
-    hostname    = "wk-02"
-  }
-}
+worker_nodes = 2

@@ -37,13 +37,8 @@ variable "talos_schematic_id" {
   type        = string
 }
 
-variable "controlplane_vip" {
-  description = "Virtual IPv4 address used by the Kubernetes API endpoint."
-  type        = string
-}
-
 variable "cluster_endpoint" {
-  description = "Optional Kubernetes API URL. When unset, it is derived from controlplane_vip."
+  description = "Optional Kubernetes API URL. When unset, it is derived from the generated control plane VIP."
   type        = string
   default     = null
   nullable    = true
@@ -65,9 +60,18 @@ variable "node_prefix" {
   default     = "talos"
 }
 
-variable "gateway" {
-  description = "Default IPv4 gateway assigned to every Talos VM."
+variable "cluster_ipv4_cidr" {
+  description = "IPv4 /24 subnet used to derive the gateway, node addresses, control plane VIP, and Cilium LoadBalancer pool."
   type        = string
+
+  validation {
+    condition = (
+      can(cidrhost(var.cluster_ipv4_cidr, 250)) &&
+      can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+/24$", var.cluster_ipv4_cidr)) &&
+      try(cidrhost(var.cluster_ipv4_cidr, 0) == split("/", var.cluster_ipv4_cidr)[0], false)
+    )
+    error_message = "cluster_ipv4_cidr must be a canonical IPv4 /24 network, for example 192.168.100.0/24."
+  }
 }
 
 variable "controlplane_node_defaults" {
@@ -80,13 +84,13 @@ variable "controlplane_node_defaults" {
 }
 
 variable "controlplane_nodes" {
-  description = "Control plane VM inventory keyed by a stable node name."
-  type = map(object({
-    vm_id       = number
-    ip          = string
-    mac_address = string
-    hostname    = string
-  }))
+  description = "Number of control plane VMs. Node identity and addressing are generated deterministically."
+  type        = number
+
+  validation {
+    condition     = var.controlplane_nodes >= 1 && var.controlplane_nodes <= 89 && floor(var.controlplane_nodes) == var.controlplane_nodes
+    error_message = "controlplane_nodes must be an integer from 1 to 89."
+  }
 }
 
 variable "worker_node_defaults" {
@@ -100,13 +104,13 @@ variable "worker_node_defaults" {
 }
 
 variable "worker_nodes" {
-  description = "Worker VM inventory keyed by a stable node name."
-  type = map(object({
-    vm_id       = number
-    ip          = string
-    mac_address = string
-    hostname    = string
-  }))
+  description = "Number of worker VMs. Node identity and addressing are generated deterministically."
+  type        = number
+
+  validation {
+    condition     = var.worker_nodes >= 1 && var.worker_nodes <= 99 && floor(var.worker_nodes) == var.worker_nodes
+    error_message = "worker_nodes must be an integer from 1 to 99."
+  }
 }
 
 ###
@@ -117,16 +121,6 @@ variable "cilium_interface" {
   description = "Talos network interface used by Cilium and the control plane VIP."
   type        = string
   default     = "eth0"
-}
-
-variable "cilium_lb_pool_start" {
-  description = "First IPv4 address in the Cilium LoadBalancer pool."
-  type        = string
-}
-
-variable "cilium_lb_pool_stop" {
-  description = "Last IPv4 address in the Cilium LoadBalancer pool."
-  type        = string
 }
 
 ###

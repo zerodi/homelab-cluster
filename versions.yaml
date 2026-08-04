@@ -32,7 +32,7 @@ charts:
   # renovate: datasource=helm depName=argo-cd registryUrl=https://argoproj.github.io/argo-helm versioning=helm
   argo_cd: "10.2.2"
   # renovate: datasource=helm depName=cert-manager registryUrl=https://charts.jetstack.io versioning=helm
-  cert_manager: "1.21.1"
+  cert_manager: "v1.21.1"
   # renovate: datasource=helm depName=external-secrets registryUrl=https://charts.external-secrets.io versioning=helm
   external_secrets: "2.8.0"
   # renovate: datasource=helm depName=openbao registryUrl=https://openbao.github.io/openbao-helm versioning=helm
@@ -40,7 +40,7 @@ charts:
   # renovate: datasource=docker depName=ghcr.io/piraeusdatastore/piraeus-operator/piraeus versioning=semver-coerced
   piraeus: "2.10.8"
   # renovate: datasource=helm depName=trust-manager registryUrl=https://charts.jetstack.io versioning=helm
-  trust_manager: "0.24.0"
+  trust_manager: "v0.24.0"
 
   # renovate: datasource=helm depName=authentik registryUrl=https://charts.goauthentik.io versioning=helm
   authentik: "2026.5.6"
