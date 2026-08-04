@@ -1,23 +1,25 @@
 cluster:
   name: homelab-talos
   base_domain: home.arpa
+  ipv4_cidr: 192.168.100.0/24
 
 gitops:
   repo_url: https://git.example.invalid/replace-me/gitops.git
   revision: main
 
-hosts:
-  argocd: argocd.home.arpa
-  authentik: auth.home.arpa
-  forgejo: git.home.arpa
-  garage: garage.home.arpa
-  harbor: harbor.home.arpa
-  woodpecker: ci.home.arpa
-  echo: echo.home.arpa
-  grafana: grafana.home.arpa
-  hubble: hubble.home.arpa
-  stalwart: stalwart.home.arpa
-  mail: mail.home.arpa
+service_subdomains:
+  argocd: argocd
+  authentik: auth
+  forgejo: git
+  garage: garage
+  harbor: harbor
+  woodpecker: ci
+  echo: echo
+  grafana: grafana
+  hubble: hubble
+  stalwart: stalwart
+  mail: mail
+  minio: minio
 
 storage:
   piraeus:
@@ -33,16 +35,6 @@ platform:
     gateway_class_name: cilium
     internal_gateway_name: internal
     external_gateway_name: external
-    addresses:
-      authentik: 192.168.100.241
-      echo: 192.168.100.242
-      grafana: 192.168.100.243
-      forgejo: 192.168.100.244
-      external: 192.168.100.245
-      internal: 192.168.100.246
-      garage: 192.168.100.247
-      harbor: 192.168.100.248
-      woodpecker: 192.168.100.249
   authentik:
     namespace: authentik
     runtime_secret_name: authentik-runtime
@@ -61,8 +53,6 @@ platform:
     valkey_auth_secret_name: forgejo-valkey-auth
     runtime_config_secret_name: forgejo-runtime-config
     oidc_secret_name: forgejo-oidc
-    admin_email: forgejo@home.arpa
-    root_url: https://git.home.arpa/
     postgresql:
       host: forgejo-postgresql.forgejo.svc.cluster.local:5432
       database: forgejo
@@ -71,17 +61,12 @@ platform:
       host: forgejo-valkey-primary.forgejo.svc.cluster.local:6379
     sso:
       provider_name: Authentik
-      authentik_host: https://auth.home.arpa
       application_slug: forgejo
-      forgejo_root_url: https://git.home.arpa
-      discovery_url: https://auth.home.arpa/application/o/forgejo/.well-known/openid-configuration
   harbor:
     namespace: harbor
     runtime_secret_name: harbor-runtime
     postgresql_auth_secret_name: harbor-postgresql-auth
     valkey_auth_secret_name: harbor-valkey-auth
-    host: harbor.home.arpa
-    external_url: https://harbor.home.arpa
     postgresql:
       host: harbor-postgresql.harbor.svc.cluster.local
       database: registry
@@ -91,19 +76,13 @@ platform:
   stalwart:
     namespace: stalwart
     runtime_secret_name: stalwart-runtime
-    admin_host: stalwart.home.arpa
-    mail_host: mail.home.arpa
-    public_url: https://stalwart.home.arpa
     image: stalwartlabs/stalwart
     image_tag: v0.16
     storage_class: linstor-pool1-r1
     storage_size: 20Gi
-    mail_load_balancer_ip: 192.168.100.250
   woodpecker:
     namespace: woodpecker
     runtime_secret_name: woodpecker-runtime
-    host: ci.home.arpa
-    forgejo_url: https://git.home.arpa
     server_storage_class: linstor-pool1-r1
     server_storage_size: 10Gi
     pipeline_volume_size: 10G
@@ -113,7 +92,6 @@ platform:
     bucket: homelab-velero
     prefix: clusters/homelab-talos
     region: us-east-1
-    s3_url: https://minio.home.arpa
   garage:
     namespace: garage
     runtime_secret_name: garage-config
@@ -130,11 +108,9 @@ platform:
     namespace: observability
     grafana:
       admin_secret_name: grafana-admin-secret
-      root_url: https://grafana.home.arpa/
     victoriametrics:
       retention: 30d
 
 apps:
   echo:
     namespace: echo
-    host: echo.home.arpa

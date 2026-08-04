@@ -14,13 +14,12 @@ proxmox = {
 
 talos_schematic_id = "<SCHEMATIC_ID>"
 
-cluster_name      = "homelab-talos"
-cluster_ipv4_cidr = "192.168.10.0/24"
+cluster_name = "homelab-talos"
 # Optional. If null, cluster endpoint uses the generated .200 control plane VIP.
 # cluster_endpoint = "https://192.168.10.200:6443"
 
-# Platform naming, including the Argo CD host and Piraeus settings, lives in
-# envs/homelab.yaml and is consumed by infrastructure/.
+# Cluster subnet, base domain, service subdomains, Argo CD host, and Piraeus
+# settings live in envs/homelab.yaml plus its optional override.
 
 controlplane_node_defaults = {
   cpu_cores = 4

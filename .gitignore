@@ -15,6 +15,7 @@ override.tf.json
 *_override.tf.json
 *.override.yaml
 *.override.yml
+!envs/homelab.override.yaml
 tfplan
 .env
 # Local ArgoCD SSH test stand

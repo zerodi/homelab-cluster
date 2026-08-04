@@ -1,0 +1,6 @@
+cluster:
+  base_domain: lab.zerodi.ru
+  ipv4_cidr: 192.168.110.0/24
+
+gitops:
+  repo_url: https://git.lab.zerodi.ru/platform/gitops.git

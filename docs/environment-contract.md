@@ -6,12 +6,31 @@ tracked environment-specific отличия и рекурсивно наклад
 
 В нём хранятся:
 
-- имя кластера и base domain
+- имя кластера, общий base domain и IPv4 `/24` подсеть
+- только короткие поддомены сервисов
 - GitOps repository URL и revision
-- hostnames и Gateway addresses
 - Piraeus/LINSTOR naming
 - namespace и Secret names
 - non-secret coordinates для Garage, Velero и runtime services
+
+Полные hostnames, service URLs и LoadBalancer IP не задаются вручную. Команда
+render формирует их в effective contract:
+
+- `hosts.<service>` = `<service_subdomains.service>.<cluster.base_domain>`
+- Gateway addresses = `.231-.239` из `cluster.ipv4_cidr`
+- Stalwart mail LoadBalancer = `.240`
+- control plane, workers, VIP и Cilium pool используют ту же подсеть
+
+Пример минимального environment-specific override:
+
+```yaml
+cluster:
+  base_domain: lab.example.net
+  ipv4_cidr: 192.168.100.0/24
+
+service_subdomains:
+  argocd: cd
+```
 
 В нём не хранятся:
 
@@ -24,11 +43,13 @@ tracked environment-specific отличия и рекурсивно наклад
 
 1. Для общего значения измените `envs/homelab.yaml`.
 2. Для значения конкретного окружения измените `envs/homelab.override.yaml`,
-   оставляя в нём только отличающиеся keys. Example используется как шаблон для
-   нового окружения.
-3. Consumers в `cluster/` и `infrastructure/` читают effective contract
+   оставляя в нём только отличающиеся base domain, subnet или поддомены. Example
+   используется как шаблон для нового окружения.
+3. Render объединяет base и override, затем материализует производные FQDN,
+   URL и IP в effective contract.
+4. Consumers в `cluster/` и `infrastructure/` читают effective contract
    напрямую; tracked mirrors в `argocd/` обновите командой синхронизации.
-4. Выполните:
+5. Выполните:
 
 ```bash
 task render-env-contract
@@ -41,9 +62,9 @@ Environment-specific override коммитится, чтобы локальна�
 использовали один contract.
 
 `task sync-env-contract` изменяет tracked mirrors в `argocd/`: repository
-coordinates, hostnames, Gateway addresses, storage settings, runtime naming и
-другие поля из machine-checkable mapping. После команды проверьте `git diff` и
-закоммитьте изменения вместе с соответствующим environment contract.
+coordinates, сгенерированные hostnames и Gateway addresses, storage settings,
+runtime naming и другие поля из machine-checkable mapping. После команды
+проверьте `git diff` и закоммитьте изменения вместе с environment contract.
 
 Пути можно изменить через:
 

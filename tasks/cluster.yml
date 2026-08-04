@@ -1,6 +1,15 @@
 version: "3"
 
 vars:
+  ENVIRONMENT_CONTRACT_PATH:
+    sh: >-
+      { p="${TF_VAR_environment_contract_path:-}";
+      if [ -n "$p" ]; then
+      case "$p" in /*) ;; *) p="cluster/$p";; esac;
+      realpath "$p";
+      else
+      ./scripts/render-environment-contract.sh;
+      fi; }
   TALOSCONFIG_PATH:
     sh: cd cluster && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"talosconfig_path"' || exit 0; p="$(tofu output -raw talosconfig_path 2>/dev/null || true)"; [ -z "$p" ] || realpath "$p" 2>/dev/null || printf '%s\n' "$p"; }
   KUBECONFIG_PATH:
@@ -11,6 +20,9 @@ vars:
     sh: cd cluster && { json="$(tofu output -json 2>/dev/null || true)"; printf '%s' "$json" | grep -q '"worker_ips_csv"' || exit 0; tofu output -raw worker_ips_csv 2>/dev/null || true; }
   PRIMARY_CONTROLPLANE_IP:
     sh: echo "{{.CONTROLPLANE_IPS}}" | cut -d, -f1
+
+env:
+  TF_VAR_environment_contract_path: "{{.ENVIRONMENT_CONTRACT_PATH}}"
 
 tasks:
   init:

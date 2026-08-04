@@ -19,9 +19,10 @@ task cluster:apply
 task cluster:health
 ```
 
-В `terraform.tfvars` топология задаётся одной IPv4 `/24` подсетью и количеством
-control plane/worker nodes. Gateway, адреса VM, control plane VIP и Cilium
-LoadBalancer pool вычисляются автоматически.
+В `terraform.tfvars` задаётся только количество control plane/worker nodes.
+Общая IPv4 `/24` подсеть, базовый домен и поддомены сервисов задаются в
+environment contract. Gateway, адреса VM и сервисов, control plane VIP, Cilium
+LoadBalancer pool и полные service hostnames вычисляются автоматически.
 
 ### 3. Bootstrap platform operators
 

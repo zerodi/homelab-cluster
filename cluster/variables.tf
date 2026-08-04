@@ -26,6 +26,12 @@ variable "proxmox_api_token" {
 # Talos cluster
 ###
 
+variable "environment_contract_path" {
+  description = "Path to the materialized non-secret environment contract used for cluster networking."
+  type        = string
+  default     = "../out/homelab.effective.yaml"
+}
+
 variable "cluster_name" {
   description = "Talos and Kubernetes cluster name."
   type        = string
@@ -58,20 +64,6 @@ variable "node_prefix" {
   description = "Prefix added to Proxmox VM names."
   type        = string
   default     = "talos"
-}
-
-variable "cluster_ipv4_cidr" {
-  description = "IPv4 /24 subnet used to derive the gateway, node addresses, control plane VIP, and Cilium LoadBalancer pool."
-  type        = string
-
-  validation {
-    condition = (
-      can(cidrhost(var.cluster_ipv4_cidr, 250)) &&
-      can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+/24$", var.cluster_ipv4_cidr)) &&
-      try(cidrhost(var.cluster_ipv4_cidr, 0) == split("/", var.cluster_ipv4_cidr)[0], false)
-    )
-    error_message = "cluster_ipv4_cidr must be a canonical IPv4 /24 network, for example 192.168.100.0/24."
-  }
 }
 
 variable "controlplane_node_defaults" {

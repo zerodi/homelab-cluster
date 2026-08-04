@@ -87,10 +87,18 @@ sops -d secrets.sops.tfvars > cluster/secrets.auto.tfvars
 остались в локальном `terraform.tfvars` от прежнего контракта, удалите эти две
 строки: bootstrap читает обе версии из root `versions.yaml`.
 
-Сетевой и topology-контракт кластера задаётся тремя значениями:
+Сетевой контракт задаётся вместе с общим доменом в
+`envs/homelab.yaml` или environment-specific override:
+
+```yaml
+cluster:
+  base_domain: lab.example.net
+  ipv4_cidr: 192.168.100.0/24
+```
+
+В `terraform.tfvars` остаётся только количество узлов:
 
 ```hcl
-cluster_ipv4_cidr  = "192.168.100.0/24"
 controlplane_nodes = 3
 worker_nodes       = 2
 ```

@@ -53,8 +53,8 @@ OAuth, Garage/S3 и финальная ротация credentials         вру
 | Установить OpenTofu, Task, kubectl, talosctl, bao, SOPS/age и остальные инструменты | Вручную | См. [требования](prerequisites.md) |
 | Создать Proxmox API token | Вручную | Передать через `TF_VAR_proxmox_api_token` или локальный SOPS tfvars |
 | Настроить SSH-доступ к Proxmox node | Вручную | Нужен provider для загрузки Talos image; SSH к Talos nodes не используется |
-| Настроить `terraform.tfvars` и `.env` | Вручную | Выбрать Proxmox node/datastore, IPv4 `/24` подсеть и количество узлов |
-| Настроить environment contract | Вручную | Обновить `envs/homelab.yaml` или tracked non-secret override |
+| Настроить `terraform.tfvars` и `.env` | Вручную | Выбрать Proxmox node/datastore и количество узлов |
+| Настроить environment contract | Вручную | Задать общий домен, IPv4 `/24` подсеть и поддомены в `envs/homelab.yaml` или tracked override |
 | Инициализировать OpenTofu entrypoint | Автоматически | `task init` |
 
 ## 1. Cluster layer

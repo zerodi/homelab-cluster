@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from materialize_environment_contract import ContractError, materialize_contract
+
 
 PLACEHOLDER_REPO_URL = "https://git.example.invalid/replace-me/gitops.git"
 DEFAULT_BASE_DOMAIN = "home.arpa"
@@ -136,7 +138,11 @@ class Validator:
         set_path(data, parts, expected)
 
     def sync_text_mirrors(self, env: dict[str, Any]) -> None:
-        base = load_yaml(self.root / "envs/homelab.yaml")
+        try:
+            base = materialize_contract(load_yaml(self.root / "envs/homelab.yaml"))
+        except ContractError as exc:
+            self.error(f"base environment contract cannot be materialized: {exc}")
+            return
         replacements: dict[str, str] = {}
 
         def add_replacement(old: Any, new: Any) -> None:
@@ -330,6 +336,28 @@ class Validator:
 
     def validate(self) -> int:
         env = self.yaml(str(self.contract_path))
+        try:
+            derived_env = materialize_contract(env)
+        except ContractError as exc:
+            self.error(f"effective environment contract cannot be materialized: {exc}")
+            return self.report_errors()
+
+        for label, actual, expected in [
+            ("derived hosts", env.get("hosts"), derived_env["hosts"]),
+            (
+                "derived gateway addresses",
+                env.get("platform", {}).get("gateway", {}).get("addresses"),
+                derived_env["platform"]["gateway"]["addresses"],
+            ),
+            (
+                "derived mail load balancer address",
+                env.get("platform", {}).get("stalwart", {}).get("mail_load_balancer_ip"),
+                derived_env["platform"]["stalwart"]["mail_load_balancer_ip"],
+            ),
+        ]:
+            if actual != expected:
+                self.error(f"{label} must be generated from the environment contract")
+
         hosts = env["hosts"]
         base_domain = env["cluster"]["base_domain"]
         gitops_repo = env["gitops"]["repo_url"]
@@ -356,9 +384,12 @@ class Validator:
                 )
 
         for host_key, hostname in hosts.items():
-            if not hostname.endswith(f".{base_domain}"):
+            expected_hostname = (
+                f"{env['service_subdomains'][host_key]}.{base_domain}"
+            )
+            if hostname != expected_hostname:
                 self.error(
-                    f"hosts.{host_key}={hostname!r} does not match cluster.base_domain={base_domain!r}"
+                    f"hosts.{host_key}={hostname!r}, expected generated hostname {expected_hostname!r}"
                 )
 
         if env["platform"]["forgejo"]["root_url"] != f"{forgejo_url}/":
@@ -493,7 +524,13 @@ class Validator:
                 )
 
         if not self.write and base_domain != DEFAULT_BASE_DOMAIN:
-            base_contract = load_yaml(self.root / "envs/homelab.yaml")
+            try:
+                base_contract = materialize_contract(
+                    load_yaml(self.root / "envs/homelab.yaml")
+                )
+            except ContractError as exc:
+                self.error(f"base environment contract cannot be materialized: {exc}")
+                base_contract = {"hosts": {}, "platform": {"forgejo": {"admin_email": ""}}}
             scaffold_literals = [
                 *base_contract["hosts"].values(),
                 base_contract["platform"]["forgejo"]["admin_email"],

@@ -2,12 +2,14 @@
 # envs/homelab.yaml. Maps are merged recursively.
 cluster:
   base_domain: lab.example.net
+  ipv4_cidr: 192.168.10.0/24
 
 gitops:
   repo_url: https://git.example.net/platform/gitops.git
 
-hosts:
-  argocd: argocd.lab.example.net
+# Override only subdomains that differ from the base contract.
+service_subdomains:
+  argocd: cd
 
 storage:
   piraeus:

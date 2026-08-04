@@ -11,7 +11,7 @@ variable "cluster_state_path" {
 variable "environment_contract_path" {
   description = "Path to the effective non-secret environment contract used for platform naming. Task renders it from homelab.yaml plus the optional local override."
   type        = string
-  default     = "../envs/homelab.yaml"
+  default     = "../out/homelab.effective.yaml"
 }
 
 ###

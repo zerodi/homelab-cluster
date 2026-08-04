@@ -40,8 +40,8 @@ environment-specific `envs/homelab.override.yaml`, затем обновите �
 `argocd/`:
 
 - repository URL, `repoURL` и `sourceRepos`
-- `*.home.arpa`
-- storage class и адреса Gateway
+- `cluster.base_domain` и короткие `service_subdomains`
+- `cluster.ipv4_cidr`; адреса Gateway генерируются из неё
 - OAuth/OIDC coordinates
 
 Краткий порядок синхронизации consumers приведён в

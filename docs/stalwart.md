@@ -8,23 +8,23 @@ Stalwart разворачивается как runtime-приложение по
 - `StatefulSet/stalwart`, одна реплика, RocksDB на `20Gi` RWO PVC из
   `linstor-pool1-r1`.
 - Web UI и management API публикуются через общий Cilium
-  `Gateway/gateway/external`: `https://stalwart.lab.zerodi.ru`.
+  `Gateway/gateway/external` по сгенерированному Stalwart hostname.
 - SMTP/IMAP публикуются отдельным `LoadBalancer` Service на
-  `mail.lab.zerodi.ru` (`192.168.100.240`). Открыты TCP-порты `25`, `465`,
-  `587` и `993`.
+  сгенерированном mail hostname и адресе `.240` общей подсети. Открыты
+  TCP-порты `25`, `465`, `587` и `993`.
 - `externalTrafficPolicy: Local` сохраняет исходный адрес SMTP-клиента.
 - Сертификаты выпускает `cert-manager` через `ClusterIssuer/homelab-ca`.
 - Recovery credential хранится в `secret/platform/stalwart/runtime` в OpenBao
   и доставляется через External Secrets Operator.
 
-Значения hostname, образа, storage class, размера PVC и mail LB IP задаются в
-`envs/homelab.yaml` с environment-specific override в
-`envs/homelab.override.yaml`.
+Поддомены, образ, storage class и размер PVC задаются в `envs/homelab.yaml` с
+environment-specific override в `envs/homelab.override.yaml`. Полные hostname
+и mail LB IP материализуются из общего домена и подсети.
 
 ## Развёртывание
 
-Диапазон Cilium LB IP должен включать адрес mail Service. Для текущего
-окружения это `.230-.240`. `task cluster:apply` применяет актуальный pool как
+Диапазон Cilium LB IP `.230-.250` включает сгенерированный mail Service `.240`.
+`task cluster:apply` применяет актуальный pool как
 при greenfield bootstrap, так и в уже работающий кластер:
 
 ```bash
@@ -120,10 +120,10 @@ TCP/25 также не должен блокироваться. Не публи�
 
 ## Обновление адресов и версии
 
-Mail IP меняется в `platform.stalwart.mail_load_balancer_ip`. Cilium pool
-автоматически занимает адреса `.230-.250` из `cluster_ipv4_cidr`, заданной в
-`terraform.tfvars`; Mail IP должен оставаться внутри этого диапазона. После
-изменения:
+Mail IP автоматически получает адрес `.240`, а Cilium pool занимает адреса
+`.230-.250` из `cluster.ipv4_cidr` effective environment contract. Полные
+имена Stalwart и mail формируются из `service_subdomains` и общего
+`cluster.base_domain`. После изменения:
 
 ```bash
 task cluster:apply
