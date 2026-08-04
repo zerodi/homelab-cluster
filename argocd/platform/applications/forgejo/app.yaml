@@ -10,7 +10,7 @@ spec:
   sources:
     - repoURL: code.forgejo.org/forgejo-helm
       chart: forgejo
-      targetRevision: 16.2.1
+      targetRevision: "17.1.4"
       helm:
         releaseName: forgejo
         valueFiles:

@@ -10,7 +10,7 @@ spec:
   sources:
     - repoURL: registry-1.docker.io/bitnamicharts
       chart: redis
-      targetRevision: 25.3.9
+      targetRevision: "27.0.18"
       helm:
         releaseName: authentik-redis
         valueFiles:

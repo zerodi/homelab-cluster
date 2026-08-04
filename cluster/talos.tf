@@ -113,7 +113,7 @@ data "helm_template" "cilium" {
   repository   = "https://helm.cilium.io"
   chart        = "cilium"
   version      = local.chart_versions["cilium"]
-  kube_version = var.kubernetes_version
+  kube_version = local.kubernetes_version
   api_versions = []
   set = [
     {
@@ -258,8 +258,8 @@ data "talos_machine_configuration" "node" {
   cluster_endpoint   = local.kubernetes_endpoint
   machine_type       = each.value.machine_type
   machine_secrets    = talos_machine_secrets.this.machine_secrets
-  talos_version      = var.talos_version
-  kubernetes_version = var.kubernetes_version
+  talos_version      = local.talos_version
+  kubernetes_version = local.kubernetes_version
 
   config_patches = [
     yamlencode({
@@ -287,7 +287,7 @@ data "talos_machine_configuration" "node" {
 
 // see https://registry.terraform.io/providers/siderolabs/talos/0.10.1/docs/resources/machine_secrets
 resource "talos_machine_secrets" "this" {
-  talos_version = var.talos_version
+  talos_version = local.talos_version
 }
 
 // see https://registry.terraform.io/providers/siderolabs/talos/0.10.1/docs/resources/machine_configuration_apply

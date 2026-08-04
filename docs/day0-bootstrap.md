@@ -51,6 +51,7 @@ task init
 cp terraform.tfvars.example terraform.tfvars
 cp .env.example .env
 # заполните terraform.tfvars только несекретными значениями
+# версии OpenTofu, providers, Talos Linux и Kubernetes меняйте в versions.yaml
 # заполните .env локальными credentials; Taskfile загружает его автоматически
 # оставьте в tracked homelab.override.yaml только environment-specific
 # non-secret отличия
@@ -81,6 +82,10 @@ sops -d secrets.sops.tfvars > cluster/secrets.auto.tfvars
 `cluster/secrets.auto.tfvars` должен оставаться только локальным рабочим
 файлом. Он создаётся внутри фактического OpenTofu entrypoint, поэтому
 автоматически загружается командами `task cluster:*`.
+
+`talos_version` и `kubernetes_version` не являются environment inputs. Если они
+остались в локальном `terraform.tfvars` от прежнего контракта, удалите эти две
+строки: bootstrap читает обе версии из root `versions.yaml`.
 
 ### 2. Bootstrap кластера
 

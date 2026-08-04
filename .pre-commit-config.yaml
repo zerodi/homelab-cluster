@@ -22,12 +22,15 @@ repos:
         pass_filenames: false
         files: ^(infrastructure/|scripts/check-infrastructure-isolation\.py$|tasks/(checks|infrastructure)\.yml$|\.pre-commit-config\.yaml$)
 
-      - id: chart-versions
-        name: task check:chart-versions
-        entry: task check:chart-versions
+      - id: versions
+        name: task check:versions
+        entry: task check:versions
         language: system
         pass_filenames: false
-        files: ^(versions\.yaml|(cluster|infrastructure|argocd)/|scripts/check-chart-versions\.py|tasks/checks\.yml|Taskfile\.yml|\.pre-commit-config\.yaml)
+        files: >-
+          (?x)^(versions\.yaml|(cluster|infrastructure|argocd)/|\.github/workflows/ci\.yaml|
+          scripts/check-(chart|release)-versions\.py|tasks/checks\.yml|Taskfile\.yml|
+          \.pre-commit-config\.yaml)
 
       - id: environment-contract
         name: task check:env-contract

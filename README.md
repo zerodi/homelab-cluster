@@ -88,16 +88,16 @@ task check:validate
 ```bash
 task check:cluster-isolation
 task check:infrastructure-isolation
-task check:chart-versions
+task check:versions
 task check:env-contract
 task check:runtime-secret-contract
 task ops:openbao-runtime-preflight
 task ops:post-argocd-check
 ```
 
-Все Helm chart pins задаются только в `versions.yaml`. После изменения файла
-выполните `task sync-chart-versions`, чтобы обновить проверяемые
-`targetRevision` mirrors в Argo CD Applications.
+Версии OpenTofu, providers, Talos Linux, Kubernetes и Helm charts задаются
+только в `versions.yaml`. После изменения файла выполните `task sync-versions`,
+чтобы обновить статические OpenTofu/provider, CI и Argo CD mirrors.
 
 Если entrypoint ещё не инициализирован, для части локальных проверок сначала выполните:
 

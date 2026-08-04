@@ -1,18 +1,3 @@
-terraform {
-  required_version = ">= 1.6.0"
-
-  required_providers {
-    helm = {
-      source  = "hashicorp/helm"
-      version = "~> 3.2"
-    }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 3.2"
-    }
-  }
-}
-
 data "terraform_remote_state" "cluster" {
   backend = "local"
 
@@ -23,7 +8,8 @@ data "terraform_remote_state" "cluster" {
 
 locals {
   environment_contract = yamldecode(file(var.environment_contract_path))
-  chart_versions       = yamldecode(file("${path.root}/../versions.yaml")).charts
+  version_contract     = yamldecode(file("${path.root}/../versions.yaml"))
+  chart_versions       = local.version_contract.charts
   cluster_outputs      = data.terraform_remote_state.cluster.outputs
 
   effective_kubeconfig_path = coalesce(

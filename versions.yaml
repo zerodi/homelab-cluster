@@ -1,51 +1,74 @@
 schema_version: 1
 
+# Tool and platform release pins are consumed by CI and cluster bootstrap.
+opentofu:
+  # renovate: datasource=github-releases depName=opentofu/opentofu versioning=semver-coerced
+  version: "1.10.6"
+
+providers:
+  # renovate: datasource=terraform-provider depName=bpg/proxmox versioning=semver
+  proxmox: "0.111.1"
+  # renovate: datasource=terraform-provider depName=hashicorp/helm versioning=semver
+  helm: "3.2.0"
+  # renovate: datasource=terraform-provider depName=hashicorp/kubernetes versioning=semver
+  kubernetes: "3.2.1"
+  # renovate: datasource=terraform-provider depName=hashicorp/local versioning=semver
+  local: "2.9.0"
+  # renovate: datasource=terraform-provider depName=siderolabs/talos versioning=semver
+  talos: "0.11.0"
+
+platform:
+  # renovate: datasource=github-releases depName=siderolabs/talos versioning=semver-coerced
+  talos_linux: "v1.13.4"
+  # renovate: datasource=github-releases depName=kubernetes/kubernetes versioning=semver-coerced
+  kubernetes: "1.35.3"
+
 # Helm chart versions are release policy, not environment-specific settings.
-# Update this file, then run: task sync-chart-versions
+# Update this file, then run: task sync-versions
 charts:
   # renovate: datasource=helm depName=cilium registryUrl=https://helm.cilium.io versioning=helm
-  cilium: "1.19.2"
+  cilium: "1.20.0"
 
   # renovate: datasource=helm depName=argo-cd registryUrl=https://argoproj.github.io/argo-helm versioning=helm
-  argo_cd: "9.4.17"
+  argo_cd: "10.2.2"
   # renovate: datasource=helm depName=cert-manager registryUrl=https://charts.jetstack.io versioning=helm
-  cert_manager: "v1.20.1"
+  cert_manager: "1.21.1"
   # renovate: datasource=helm depName=external-secrets registryUrl=https://charts.external-secrets.io versioning=helm
-  external_secrets: "2.2.0"
+  external_secrets: "2.8.0"
   # renovate: datasource=helm depName=openbao registryUrl=https://openbao.github.io/openbao-helm versioning=helm
-  openbao: "0.26.2"
+  openbao: "0.28.6"
   # renovate: datasource=docker depName=ghcr.io/piraeusdatastore/piraeus-operator/piraeus versioning=semver-coerced
-  piraeus: "2.10.5"
+  piraeus: "2.10.8"
   # renovate: datasource=helm depName=trust-manager registryUrl=https://charts.jetstack.io versioning=helm
-  trust_manager: "0.20.3"
+  trust_manager: "0.24.0"
 
   # renovate: datasource=helm depName=authentik registryUrl=https://charts.goauthentik.io versioning=helm
-  authentik: "2026.2.1"
+  authentik: "2026.5.6"
   # renovate: datasource=docker depName=code.forgejo.org/forgejo-helm/forgejo versioning=semver-coerced
-  forgejo: "16.2.1"
+  forgejo: "17.1.4"
   # renovate: datasource=helm depName=grafana registryUrl=https://grafana-community.github.io/helm-charts versioning=helm
-  grafana: "11.3.6"
+  grafana: "12.1.8"
   # renovate: datasource=helm depName=harbor registryUrl=https://helm.goharbor.io versioning=helm
   harbor: "1.19.2"
   # renovate: datasource=helm depName=kyverno registryUrl=https://kyverno.github.io/kyverno/ versioning=helm
-  kyverno: "3.7.1"
+  kyverno: "3.8.2"
   # renovate: datasource=helm depName=loki registryUrl=https://grafana-community.github.io/helm-charts versioning=helm
-  loki: "9.3.6"
+  loki: "18.7.1"
   # renovate: datasource=helm depName=opentelemetry-collector registryUrl=https://open-telemetry.github.io/opentelemetry-helm-charts versioning=helm
-  opentelemetry_collector: "0.147.1"
+  opentelemetry_collector: "0.166.0"
   # renovate: datasource=docker depName=registry-1.docker.io/bitnamicharts/postgresql versioning=semver-coerced
-  postgresql: "18.5.15"
+  postgresql: "18.8.5"
   # renovate: datasource=docker depName=registry-1.docker.io/bitnamicharts/redis versioning=semver-coerced
-  redis: "25.3.9"
+  redis: "27.0.18"
   # renovate: datasource=helm depName=reloader registryUrl=https://stakater.github.io/stakater-charts versioning=helm
-  reloader: "2.2.0"
+  reloader: "2.2.14"
   # renovate: datasource=helm depName=tempo-distributed registryUrl=https://grafana-community.github.io/helm-charts versioning=helm
-  tempo_distributed: "2.9.0"
+  tempo_distributed: "3.0.6"
   # renovate: datasource=docker depName=registry-1.docker.io/bitnamicharts/valkey versioning=semver-coerced
-  valkey: "5.4.9"
+  valkey: "6.2.5"
   # renovate: datasource=helm depName=velero registryUrl=https://vmware-tanzu.github.io/helm-charts versioning=helm
-  velero: "12.0.0"
+  velero: "12.1.0"
   # renovate: datasource=helm depName=victoria-metrics-single registryUrl=https://victoriametrics.github.io/helm-charts versioning=helm
-  victoria_metrics_single: "0.34.0"
+  victoria_metrics_single: "0.43.0"
   # renovate: datasource=docker depName=ghcr.io/woodpecker-ci/helm/woodpecker versioning=semver-coerced
-  woodpecker: "3.5.1"
+  woodpecker: "3.7.0"

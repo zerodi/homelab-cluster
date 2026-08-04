@@ -32,26 +32,9 @@ variable "cluster_name" {
   default     = "talos-pve"
 }
 
-variable "talos_version" {
-  description = "Talos release version with the required v prefix, for example v1.13.0."
-  type        = string
-
-  validation {
-    condition     = can(regex("^v[0-9]+\\.[0-9]+\\.[0-9]+$", var.talos_version))
-    error_message = "talos_version must be a Talos release in the form v1.13.0."
-  }
-}
-
 variable "talos_schematic_id" {
   description = "Talos Image Factory schematic ID used to download the installer image."
   type        = string
-}
-
-variable "kubernetes_version" {
-  description = "Kubernetes version baked into Talos machine configuration."
-  type        = string
-  default     = null
-  nullable    = true
 }
 
 variable "controlplane_vip" {

@@ -52,7 +52,7 @@ environment-specific `envs/homelab.override.yaml`, затем обновите �
 ```bash
 task sync-env-contract
 task check:env-contract
-task check:chart-versions
+task check:versions
 ```
 
 ## Runtime secrets

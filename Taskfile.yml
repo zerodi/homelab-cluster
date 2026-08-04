@@ -50,9 +50,14 @@ tasks:
       - task check:validate
 
   sync-chart-versions:
-    desc: Synchronize generated Argo CD chart pins from versions.yaml
+    desc: Backward-compatible alias for sync-versions
     cmds:
-      - task check:chart-versions-sync
+      - task sync-versions
+
+  sync-versions:
+    desc: Synchronize generated consumers from versions.yaml
+    cmds:
+      - task check:versions-sync
 
   render-env-contract:
     desc: Merge homelab.yaml with the tracked environment override

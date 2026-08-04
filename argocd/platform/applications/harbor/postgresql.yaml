@@ -10,7 +10,7 @@ spec:
   sources:
     - repoURL: registry-1.docker.io/bitnamicharts
       chart: postgresql
-      targetRevision: 18.5.15
+      targetRevision: "18.8.5"
       helm:
         releaseName: harbor-postgresql
         valueFiles:

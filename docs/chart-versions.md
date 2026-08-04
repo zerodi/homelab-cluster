@@ -1,9 +1,13 @@
 # Версии компонентов
 
-[`versions.yaml`](../versions.yaml) — единый source of truth для Helm chart
-pins и связанных release versions.
+[`versions.yaml`](../versions.yaml) — единый source of truth для версий
+OpenTofu, OpenTofu providers, Talos Linux, Kubernetes, Helm charts и связанных
+release versions.
 
-Argo CD `targetRevision` — проверяемые mirrors, а не независимые значения.
+Статические `terraform.required_version`, `required_providers`, CI
+`tofu_version` и Argo CD `targetRevision` — проверяемые generated mirrors, а не
+независимые значения. Talos Linux и Kubernetes читаются `cluster/` напрямую из
+контракта.
 
 ## Изменение версии
 
@@ -11,19 +15,16 @@ Argo CD `targetRevision` — проверяемые mirrors, а не незав�
 2. Синхронизируйте consumers:
 
 ```bash
-task sync-chart-versions
+task sync-versions
 ```
 
 3. Проверьте результат:
 
 ```bash
-task check:chart-versions
-git diff -- versions.yaml argocd/platform
+task check:versions
+git diff -- versions.yaml cluster/versions.generated.tf infrastructure/versions.generated.tf .github/workflows/ci.yaml argocd/platform
 ```
 
-Не редактируйте `targetRevision` отдельно от `versions.yaml`.
-
-OpenTofu provider versions управляются ограничениями в `required_providers` и
-Renovate, а не `versions.yaml`.
+Не редактируйте generated mirrors отдельно от `versions.yaml`.
 
 Автоматизация описана в [Renovate](renovate.md).

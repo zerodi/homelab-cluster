@@ -1,6 +1,19 @@
 version: "3"
 
 tasks:
+  versions:
+    desc: Verify all release pins and generated mirrors against versions.yaml
+    cmds:
+      - ./scripts/check-release-versions.py
+      - ./scripts/check-chart-versions.py
+
+  versions-sync:
+    desc: Synchronize generated release-version mirrors from versions.yaml
+    cmds:
+      - ./scripts/check-release-versions.py --write
+      - ./scripts/check-chart-versions.py --write
+      - task check:versions
+
   cluster-isolation:
     desc: Verify that cluster does not own platform or runtime resources
     cmds:
@@ -17,15 +30,14 @@ tasks:
       - python3 ./scripts/check-platform-layout.py
 
   chart-versions:
-    desc: Verify all Helm chart pins against versions.yaml
+    desc: Backward-compatible alias for the unified version check
     cmds:
-      - ./scripts/check-chart-versions.py
+      - task check:versions
 
   chart-versions-sync:
-    desc: Synchronize Argo CD chart pins from versions.yaml
+    desc: Backward-compatible alias for unified version synchronization
     cmds:
-      - ./scripts/check-chart-versions.py --write
-      - ./scripts/check-chart-versions.py
+      - task check:versions-sync
 
   documentation:
     desc: Verify documentation layout and local Markdown links
@@ -100,7 +112,7 @@ tasks:
       - task check:cluster-isolation
       - task check:infrastructure-isolation
       - task check:platform-layout
-      - task check:chart-versions
+      - task check:versions
       - task check:documentation
       - task check:env-contract
       - task check:runtime-secret-contract

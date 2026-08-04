@@ -216,6 +216,8 @@ def validate_renovate_annotations(path: Path, chart_keys: set[str]) -> list[str]
             continue
 
         key = pin_match.group("key")
+        if key not in chart_keys:
+            continue
         if index == 0:
             errors.append(f"{VERSIONS_FILE}: chart {key!r} has no Renovate annotation")
             continue
@@ -398,7 +400,7 @@ def validate(root: Path, write: bool) -> int:
             print(f"  - {error}", file=sys.stderr)
         if not write:
             print(
-                "\nRun `task sync-chart-versions` after updating versions.yaml.",
+                "\nRun `task sync-versions` after updating versions.yaml.",
                 file=sys.stderr,
             )
         return 1

@@ -5,23 +5,22 @@ Root [`renovate.json`](../renovate.json) управляет автоматиче
 
 Включены:
 
-- regex manager для pins из `versions.yaml`
-- Terraform manager только для OpenTofu providers
+- regex manager для всех pins из `versions.yaml`
 - GitHub Actions
 
-Chart pins обновляются только в `versions.yaml`. После обновления Renovate
+Release pins обновляются только в `versions.yaml`. После обновления Renovate
 запускает:
 
 ```bash
-flox activate -- task sync-chart-versions
+flox activate -- task sync-versions
 ```
 
-Это обновляет Argo CD mirrors в той же ветке.
+Это обновляет OpenTofu/provider, CI и Argo CD mirrors в той же ветке.
 
 ## Проверка PR
 
 ```bash
-task check:chart-versions
+task check:versions
 task check:tofu-validate-cluster
 task check:tofu-validate-infrastructure
 ```

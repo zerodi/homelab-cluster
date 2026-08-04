@@ -41,7 +41,7 @@ kubectl linstor storage-pool list
 
 ```bash
 task check:env-contract
-task check:chart-versions
+task check:versions
 task check:kustomize-platform
 task gitops:preflight
 ```

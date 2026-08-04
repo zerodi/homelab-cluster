@@ -1,5 +1,8 @@
 locals {
-  chart_versions = yamldecode(file("${path.root}/../versions.yaml")).charts
+  version_contract   = yamldecode(file("${path.root}/../versions.yaml"))
+  chart_versions     = local.version_contract.charts
+  talos_version      = local.version_contract.platform.talos_linux
+  kubernetes_version = local.version_contract.platform.kubernetes
 
   effective_proxmox = merge(
     var.proxmox,

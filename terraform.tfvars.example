@@ -12,14 +12,12 @@ proxmox = {
 #   export TF_VAR_proxmox_api_token='terraform@pve!talos=...'
 # or an encrypted SOPS file based on secrets.sops.tfvars.example.
 
-talos_version = "v1.13.0"
 talos_schematic_id = "<SCHEMATIC_ID>"
 
 cluster_name         = "homelab-talos"
 controlplane_vip     = "192.168.10.110"
 # Optional. If null, cluster endpoint is derived from controlplane_vip.
 # cluster_endpoint = "https://192.168.10.110:6443"
-kubernetes_version   = "1.35.0"
 cilium_lb_pool_start = "192.168.10.120"
 cilium_lb_pool_stop  = "192.168.10.130"
 

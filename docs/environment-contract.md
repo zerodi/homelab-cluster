@@ -18,7 +18,7 @@ tracked environment-specific отличия и рекурсивно наклад
 - пароли, tokens и private keys
 - OpenBao secret values
 - day-0 Terraform credentials
-- версии Helm charts — они находятся в [`versions.yaml`](../versions.yaml)
+- release/tool versions — они находятся в [`versions.yaml`](../versions.yaml)
 
 ## Изменение contract
 

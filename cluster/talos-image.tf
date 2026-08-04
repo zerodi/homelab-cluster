@@ -1,9 +1,9 @@
 locals {
   platform              = "nocloud"
   arch                  = "amd64"
-  talos_image_url       = "https://factory.talos.dev/image/${var.talos_schematic_id}/${var.talos_version}/${local.platform}-${local.arch}.raw.xz"
-  talos_image_path      = "${path.root}/../out/talos-${var.talos_schematic_id}-${var.talos_version}-${local.platform}-${local.arch}.raw"
-  talos_image_file_name = "talos-${var.talos_version}-${local.platform}-${local.arch}.img"
+  talos_image_url       = "https://factory.talos.dev/image/${var.talos_schematic_id}/${local.talos_version}/${local.platform}-${local.arch}.raw.xz"
+  talos_image_path      = "${path.root}/../out/talos-${var.talos_schematic_id}-${local.talos_version}-${local.platform}-${local.arch}.raw"
+  talos_image_file_name = "talos-${local.talos_version}-${local.platform}-${local.arch}.img"
 }
 
 resource "terraform_data" "talos_image_download" {
