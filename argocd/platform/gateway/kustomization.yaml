@@ -3,6 +3,8 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - gateway-class.yaml
+  - cloudflare-api-token-external-secret.yaml
+  - letsencrypt-cloudflare-cluster-issuer.yaml
   - internal-gateway.yaml
   - external-gateway.yaml
   - stalwart-admin-certificate.yaml

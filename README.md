@@ -41,6 +41,7 @@ task ops:day0-guide
 task ops:openbao-port-forward-start
 export BAO_TOKEN='...'
 task ops:openbao-day0
+export CLOUDFLARE_API_TOKEN='...'
 task ops:seed-runtime-secrets
 export TEST_SSH_GIT_HOSTNAME='192.168.100.10'
 task gitops:test-ssh-bootstrap
@@ -115,5 +116,6 @@ task infra:init -- -backend=false
 
 - [Требования к окружению](docs/prerequisites.md)
 - [Day-0 bootstrap](docs/day0-bootstrap.md)
+- [Cloudflare DNS-01 и Cilium Gateway](docs/cloudflare-dns01.md)
 - [Единая авторизация приложений платформы](docs/platform-authentication.md)
 - [Настройка и эксплуатация](docs/README.md)

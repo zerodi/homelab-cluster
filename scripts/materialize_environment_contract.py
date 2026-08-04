@@ -96,6 +96,9 @@ def materialize_contract(raw_contract: dict[str, Any]) -> dict[str, Any]:
 
     contract["cluster"]["base_domain"] = base_domain
     contract["hosts"] = hosts
+    contract["platform"]["cert_manager"]["acme_email"] = (
+        f"{contract['platform']['cert_manager']['acme_email_localpart']}@{base_domain}"
+    )
     contract["platform"]["gateway"]["addresses"] = {
         service: str(network[offset])
         for service, offset in SERVICE_ADDRESS_OFFSETS.items()

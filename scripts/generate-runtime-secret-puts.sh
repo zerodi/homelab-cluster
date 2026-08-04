@@ -21,6 +21,9 @@ Optional final integration credentials:
   VELERO_S3_ACCESS_KEY_ID
   VELERO_S3_SECRET_ACCESS_KEY
 
+Required external credential:
+  CLOUDFLARE_API_TOKEN
+
 Each pair must be supplied together. When omitted, random bootstrap credentials
 are created with bootstrap_provisional=true.
 EOF
@@ -51,6 +54,7 @@ case "${1:-}" in
 esac
 
 runtime_secret_contract=(
+  "platform/cert-manager/cloudflare:api_token"
   "platform/authentik/runtime:secret_key,bootstrap_password"
   "platform/authentik/postgresql:password"
   "platform/authentik/redis:password"
@@ -95,6 +99,11 @@ if [[ "$mode" == "apply-missing" ]]; then
     exit 1
   fi
   bao status >/dev/null
+fi
+
+if [[ -z "${CLOUDFLARE_API_TOKEN:-}" ]]; then
+  echo "CLOUDFLARE_API_TOKEN is required for cert-manager DNS-01." >&2
+  exit 1
 fi
 
 rand_chars() {
@@ -250,6 +259,8 @@ if [[ "$mode" == "print" ]]; then
 EOF
 fi
 
+write_entry "$mount_path/platform/cert-manager/cloudflare" \
+  "api_token=$CLOUDFLARE_API_TOKEN"
 write_entry "$mount_path/platform/authentik/runtime" \
   "secret_key=$authentik_secret_key" \
   "bootstrap_password=$authentik_bootstrap_password"

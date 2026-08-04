@@ -14,6 +14,10 @@ from typing import Any
 
 
 EXPECTED_CONTRACT: dict[str, dict[str, Any]] = {
+    "platform/cert-manager/cloudflare": {
+        "app": "cert-manager/cloudflare-dns01",
+        "properties": {"api_token": "nonempty"},
+    },
     "platform/authentik/runtime": {
         "app": "authentik",
         "properties": {

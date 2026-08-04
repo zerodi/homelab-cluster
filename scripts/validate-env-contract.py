@@ -167,6 +167,15 @@ class Validator:
             add_replacement(old, new)
 
         add_replacement(base["gitops"]["repo_url"], env["gitops"]["repo_url"])
+        add_replacement(
+            base["platform"]["cert_manager"]["acme_email"],
+            env["platform"]["cert_manager"]["acme_email"],
+        )
+        add_yaml_replacement(
+            "argocd/platform/gateway/letsencrypt-cloudflare-cluster-issuer.yaml",
+            ("spec", "acme", "email"),
+            env["platform"]["cert_manager"]["acme_email"],
+        )
         add_yaml_replacement(
             "argocd/bootstrap/root-application.yaml",
             ("spec", "source", "repoURL"),
@@ -616,6 +625,94 @@ class Validator:
             ("argocd/platform/observability/grafana/values.yaml", ("persistence", "storageClassName")),
         ]:
             self.expect_equal("storage class", storage_class, relpath, *parts)
+
+        cert_manager = env["platform"]["cert_manager"]
+        issuer_path = (
+            "argocd/platform/gateway/letsencrypt-cloudflare-cluster-issuer.yaml"
+        )
+        self.expect_equal(
+            "Cloudflare ACME issuer name",
+            cert_manager["cluster_issuer_name"],
+            issuer_path,
+            "metadata",
+            "name",
+        )
+        self.expect_equal(
+            "Cloudflare ACME email",
+            cert_manager["acme_email"],
+            issuer_path,
+            "spec",
+            "acme",
+            "email",
+        )
+        self.expect_equal(
+            "Cloudflare ACME server",
+            cert_manager["acme_server"],
+            issuer_path,
+            "spec",
+            "acme",
+            "server",
+        )
+        self.expect_equal(
+            "Cloudflare ACME account secret",
+            cert_manager["account_private_key_secret_name"],
+            issuer_path,
+            "spec",
+            "acme",
+            "privateKeySecretRef",
+            "name",
+        )
+        self.expect_equal(
+            "Cloudflare API token secret reference",
+            cert_manager["cloudflare_api_token_secret_name"],
+            issuer_path,
+            "spec",
+            "acme",
+            "solvers",
+            0,
+            "dns01",
+            "cloudflare",
+            "apiTokenSecretRef",
+            "name",
+        )
+
+        cloudflare_external_secret = (
+            "argocd/platform/gateway/cloudflare-api-token-external-secret.yaml"
+        )
+        self.expect_equal(
+            "Cloudflare API token target secret",
+            cert_manager["cloudflare_api_token_secret_name"],
+            cloudflare_external_secret,
+            "spec",
+            "target",
+            "name",
+        )
+        self.expect_equal(
+            "Cloudflare API token OpenBao path",
+            "platform/cert-manager/cloudflare",
+            cloudflare_external_secret,
+            "spec",
+            "data",
+            0,
+            "remoteRef",
+            "key",
+        )
+
+        certificate_paths = sorted(
+            path.relative_to(self.root).as_posix()
+            for path in self.root.glob("argocd/**/*.[Yy][Aa][Mm][Ll]")
+            if isinstance(load_yaml(path), dict)
+            and load_yaml(path).get("kind") == "Certificate"
+        )
+        for certificate_path in certificate_paths:
+            self.expect_equal(
+                "public certificate issuer",
+                cert_manager["cluster_issuer_name"],
+                certificate_path,
+                "spec",
+                "issuerRef",
+                "name",
+            )
 
         self.expect_equal(
             "woodpecker server storage class",

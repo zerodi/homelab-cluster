@@ -35,6 +35,7 @@ platform-layer с нуля.
 2. bootstrap-доступ к `OpenBao`
 3. план хранения `unseal keys` и recovery material вне repo и вне Terraform state
 4. runtime credentials для приложений:
+   `platform/cert-manager/cloudflare`,
    `platform/authentik/runtime`, `platform/authentik/postgresql`, `platform/authentik/redis`,
    `platform/forgejo/admin`, `platform/forgejo/oidc`, `platform/forgejo/postgresql`, `platform/forgejo/valkey`,
    `platform/harbor/runtime`, `platform/harbor/postgresql`, `platform/harbor/valkey`,
@@ -369,6 +370,8 @@ bao policy read external-secrets
 
 До полного apply в `OpenBao` должны существовать:
 
+- `secret/platform/cert-manager/cloudflare`
+  - `api_token`
 - `secret/platform/authentik/runtime`
   - `secret_key`
   - `bootstrap_password`
@@ -421,12 +424,14 @@ bao policy read external-secrets
 Безопасно создать только отсутствующие paths можно так:
 
 ```bash
+export CLOUDFLARE_API_TOKEN='...'
 task ops:seed-runtime-secrets
 ```
 
 Команда:
 
 - не перезаписывает существующие OpenBao paths
+- записывает предоставленный Cloudflare API token для DNS-01
 - генерирует все локально управляемые credentials
 - создаёт согласованные `registry_password` и bcrypt `registry_htpasswd`
 - добавляет обязательный `platform/garage/runtime`

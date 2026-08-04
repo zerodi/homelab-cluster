@@ -13,7 +13,8 @@ Stalwart разворачивается как runtime-приложение по
   сгенерированном mail hostname и адресе `.240` общей подсети. Открыты
   TCP-порты `25`, `465`, `587` и `993`.
 - `externalTrafficPolicy: Local` сохраняет исходный адрес SMTP-клиента.
-- Сертификаты выпускает `cert-manager` через `ClusterIssuer/homelab-ca`.
+- Сертификаты выпускает `cert-manager` через Cloudflare DNS-01 и
+  `ClusterIssuer/letsencrypt-cloudflare`.
 - Recovery credential хранится в `secret/platform/stalwart/runtime` в OpenBao
   и доставляется через External Secrets Operator.
 
@@ -93,14 +94,9 @@ kubectl -n stalwart get secret stalwart-runtime \
 OpenBao path при этом можно сохранить для аварийного доступа. Для recovery
 временно верните secret в environment, выполните работу и снова удалите его.
 
-Внутренний `homelab-ca` подходит только клиентам, где установлен корневой CA:
-
-```bash
-task ops:export-root-ca
-```
-
-Для доставки почты через публичный Интернет используйте публично доверенный
-сертификат для `mail` hostname, а не внутренний CA.
+Для `mail` hostname используется публично доверенный сертификат, выпускаемый
+через Cloudflare DNS-01. Настройка token и проверка ACME resources описаны в
+[Cloudflare runbook](cloudflare-dns01.md).
 
 ## DNS и почтовая доставляемость
 

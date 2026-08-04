@@ -65,6 +65,10 @@ task ops:seed-runtime-secrets
 task gitops:preflight
 ```
 
+Для выпуска публичных сертификатов перед seed требуется Cloudflare API token.
+Полная настройка DNS-01 описана в
+[Cloudflare runbook](../docs/cloudflare-dns01.md).
+
 Команда не перезаписывает существующие paths. Для аудита полного набора
 `bao kv put` без записи используйте `task ops:generate-runtime-secret-puts`.
 Сгенерированные Woodpecker OAuth и Velero S3 credentials являются временными:

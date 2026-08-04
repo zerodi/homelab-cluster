@@ -49,11 +49,6 @@ tasks:
     cmds:
       - task check:validate
 
-  sync-chart-versions:
-    desc: Backward-compatible alias for sync-versions
-    cmds:
-      - task sync-versions
-
   sync-versions:
     desc: Synchronize generated consumers from versions.yaml
     cmds:

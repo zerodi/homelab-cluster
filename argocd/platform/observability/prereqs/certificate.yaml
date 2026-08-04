@@ -8,5 +8,5 @@ spec:
   dnsNames:
     - grafana.lab.zerodi.ru
   issuerRef:
-    name: homelab-ca
+    name: letsencrypt-cloudflare
     kind: ClusterIssuer
