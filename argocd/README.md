@@ -188,3 +188,7 @@ kubectl -n argocd port-forward svc/argocd-server 8080:80
 
 Day-1 проверки собраны в
 [коротком operations runbook](../docs/day1-operations.md).
+
+Единая схема пользователей, групп, OIDC applications, callback URLs и
+break-glass доступа описана в
+[runbook авторизации платформы](../docs/platform-authentication.md).

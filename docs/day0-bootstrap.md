@@ -537,10 +537,10 @@ kubectl -n argocd delete secret argocd-initial-admin-secret
 ```bash
 kubectl -n authentik get secret authentik-runtime
 kubectl -n forgejo get secret forgejo-admin-secret
-kubectl -n authentik get secret forgejo-oidc
+kubectl -n forgejo get secret forgejo-oidc
 kubectl -n harbor get secret harbor-runtime harbor-postgresql-auth harbor-valkey-auth
 kubectl -n stalwart get secret stalwart-runtime
-kubectl -n woodpecker get secret woodpecker-runtime
+kubectl -n woodpecker get secret woodpecker-runtime woodpecker-default-agent-secret
 ```
 
 Данные для первого входа администратора:

@@ -18,11 +18,13 @@ spec:
         runAsNonRoot: true
       containers:
         - name: bootstrap
-          image: bitnami/kubectl:1.34.1
+          image: bitnami/kubectl:latest@sha256:9e369df7ab3386b736d162348f167bcc02cb4ba3f5203e9151be854437d6e0af
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
             capabilities:
               drop: ["ALL"]
           resources:
@@ -107,23 +109,18 @@ spec:
                 AUTH_ID="$(
                   {
                     kubectl -n forgejo exec "$POD_NAME" -- sh -ceu 'forgejo admin auth list --vertical-bars || true'
-                  } | while IFS= read -r line; do
-                    case "$line" in
-                      *"$FORGEJO_SSO_NAME"*)
-                        auth_id="${line#|}"
-                        auth_id="${auth_id%%|*}"
-                        auth_id="$(printf '%s' "$auth_id" | tr -d '[:space:]')"
-                        case "$auth_id" in
-                          ''|*[!0-9]*)
-                            ;;
-                          *)
-                            printf '%s\n' "$auth_id"
-                            break
-                            ;;
-                        esac
-                        ;;
-                    esac
-                  done
+                  } | awk -F '|' -v expected="$FORGEJO_SSO_NAME" '
+                    {
+                      auth_id = $1
+                      auth_name = $2
+                      gsub(/^[[:space:]]+|[[:space:]]+$/, "", auth_id)
+                      gsub(/^[[:space:]]+|[[:space:]]+$/, "", auth_name)
+                      if (auth_id ~ /^[0-9]+$/ && tolower(auth_name) == tolower(expected)) {
+                        print auth_id
+                        exit
+                      }
+                    }
+                  '
                 )"
 
                 if [ -n "$AUTH_ID" ]; then

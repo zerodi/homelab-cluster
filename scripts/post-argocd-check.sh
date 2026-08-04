@@ -195,6 +195,7 @@ run_check "stalwart mail load balancer exists" kubectl -n stalwart get service s
 run_check "stalwart statefulset ready" kubectl -n stalwart rollout status statefulset/stalwart --timeout=240s >/dev/null || failed=1
 
 run_check "woodpecker runtime secret exists" kubectl -n woodpecker get secret woodpecker-runtime >/dev/null || failed=1
+run_check "woodpecker agent secret exists" kubectl -n woodpecker get secret woodpecker-default-agent-secret >/dev/null || failed=1
 run_check "woodpecker tls secret exists" kubectl -n woodpecker get secret woodpecker-tls >/dev/null || failed=1
 run_check "woodpecker gateway exists" kubectl -n woodpecker get gateway woodpecker >/dev/null || failed=1
 run_check "woodpecker route exists" kubectl -n woodpecker get httproute woodpecker >/dev/null || failed=1

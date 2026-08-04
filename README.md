@@ -110,4 +110,5 @@ task infra:init -- -backend=false
 
 - [Требования к окружению](docs/prerequisites.md)
 - [Day-0 bootstrap](docs/day0-bootstrap.md)
+- [Единая авторизация приложений платформы](docs/platform-authentication.md)
 - [Настройка и эксплуатация](docs/README.md)

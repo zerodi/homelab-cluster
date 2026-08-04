@@ -81,29 +81,40 @@ detect_node_id() {
   fi
 
   local node_id=""
-  node_id="$(printf '%s\n' "${output}" | awk '
-    /garage-0\.garage-internal/ {
-      for (i = 1; i <= NF; i++) {
-        if ($i ~ /^[0-9A-Fa-f]{8,}$/) {
-          print $i
-          exit
-        }
+  node_id="$(printf '%s\n' "${output}" | awk -v pod="${GARAGE_POD}" '
+    /^==== HEALTHY NODES ====$/ {
+      in_healthy_nodes = 1
+      next
+    }
+
+    /^==== / {
+      if (in_healthy_nodes) {
+        exit
+      }
+      next
+    }
+
+    in_healthy_nodes && $1 == "ID" {
+      next
+    }
+
+    in_healthy_nodes && $1 ~ /^[0-9A-Fa-f]+$/ && length($1) >= 16 && length($1) <= 64 {
+      healthy_node_count++
+      only_healthy_node_id = $1
+
+      if ($2 == pod || index($2, pod ".") == 1) {
+        matched_pod = 1
+        print $1
+        exit
+      }
+    }
+
+    END {
+      if (!matched_pod && healthy_node_count == 1) {
+        print only_healthy_node_id
       }
     }'
   )"
-
-  if [[ -z "${node_id}" ]]; then
-    node_id="$(printf '%s\n' "${output}" | awk '
-      {
-        for (i = 1; i <= NF; i++) {
-          if ($i ~ /^[0-9A-Fa-f]{32,}$/) {
-            print $i
-            exit
-          }
-        }
-      }'
-    )"
-  fi
 
   if [[ -z "${node_id}" ]]; then
     echo "failed to detect Garage node id automatically" >&2

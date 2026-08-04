@@ -23,6 +23,8 @@ server:
     enabled: false
   podSecurityContext:
     fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
   securityContext:
     runAsNonRoot: true
     runAsUser: 1000
@@ -67,6 +69,8 @@ agent:
     size: 1Gi
   podSecurityContext:
     fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
   securityContext:
     runAsNonRoot: true
     runAsUser: 1000
