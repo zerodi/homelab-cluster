@@ -2,126 +2,153 @@
 
 ## Scope
 
-Этот файл задаёт рабочие правила для агентных изменений в репозитории `talos-proxmox-no-ssh`.
+This file defines the working rules for agent-driven changes in the
+`talos-proxmox-no-ssh` repository.
 
-По умолчанию всегда считайте, что кластер поднимается с нуля.
-Если задача явно не говорит об обратном, ориентируйтесь на greenfield bootstrap, а не на миграцию существующего живого кластера.
+Always assume that the cluster is being created from scratch by default.
+Unless a task explicitly says otherwise, target a greenfield bootstrap rather
+than a migration of an existing live cluster.
 
 ## Current Architecture
 
-Текущий проект разделён так:
+The project is currently split into the following layers:
 
-- root: только `terraform.tfvars`, `terraform.tfvars.example`, `secrets.sops.tfvars.example` и общая документация
-- `cluster/`: самостоятельный Terraform/OpenTofu entrypoint для Proxmox VM, Talos image, Talos machine config, cluster bootstrap, локальных `kubeconfig` и `talosconfig`
-- `infrastructure/`: отдельный Terraform/OpenTofu entrypoint для минимального platform bootstrap внутри Kubernetes
-- `argocd/`: отдельный runtime/GitOps scaffold, не подключённый к Terraform entrypoint
+- repository root: shared orchestration, environment and version contracts,
+  `terraform.tfvars`, `terraform.tfvars.example`,
+  `secrets.sops.tfvars.example`, and shared documentation; it is not a
+  Terraform/OpenTofu entrypoint
+- `cluster/`: a standalone Terraform/OpenTofu entrypoint for Proxmox VMs, the
+  Talos image, Talos machine configuration, cluster bootstrap, and local
+  `kubeconfig` and `talosconfig` files
+- `infrastructure/`: a separate Terraform/OpenTofu entrypoint for the minimal
+  in-cluster platform bootstrap
+- `argocd/`: a separate runtime/GitOps scaffold that is not connected to a
+  Terraform entrypoint
 
-Runtime не должен возвращаться ни в `cluster/`, ни в `infrastructure/`.
-`authentik`, `forgejo`, `echo` и app-level GitOps bootstrap живут вне Terraform bootstrap entrypoint.
+Do not move runtime resources back into `cluster/` or `infrastructure/`.
+Application workloads and app-level GitOps bootstrap resources live outside
+the Terraform bootstrap entrypoints.
 
 ## Ownership Rules
 
-`cluster/` владеет только:
+`cluster/` owns only:
 
-- Talos image download/import
+- Talos image download and import
 - Proxmox VM lifecycle
-- Talos machine secrets and config
+- Talos machine secrets and configuration
 - control plane bootstrap
-- `kubeconfig` / `talosconfig` files in `out/`
-- базовым Cilium bootstrap, который нужен для старта кластера
+- `kubeconfig` and `talosconfig` files in `out/`
+- the minimum Cilium bootstrap required to start the cluster
 
-`infrastructure/` владеет только:
+`infrastructure/` owns only:
 
 - `cert-manager`
 - `trust-manager`
 - `openbao`
 - `external-secrets`
-- `piraeus-operator` / LINSTOR bootstrap
+- `piraeus-operator` and LINSTOR bootstrap
 - `argocd`
-- bootstrap CRD / issuer / storage / secret-store readiness
+- bootstrap readiness for CRDs, issuers, storage, and secret stores
 
-`argocd/` владеет только runtime-слоем:
+`argocd/` owns only the runtime layer:
 
-- `echo`
-- `authentik`
-- `forgejo`
-- app-level `ExternalSecret`
-- GitOps bootstrap objects, относящиеся к runtime
+- application workloads such as `echo`, `authentik`, `forgejo`, `harbor`,
+  `woodpecker`, `stalwart`, and observability components
+- app-level `ExternalSecret` resources
+- runtime-related GitOps bootstrap objects
 - app namespace labels and similar runtime wiring
+- runtime routing, policies, storage declarations, and application dependencies
 
 ## Default Working Assumption
 
-Если задача не требует миграции state, recovery или partial reconcile, агент должен:
+Unless a task requires state migration, recovery, or partial reconciliation,
+the agent must:
 
-1. считать, что выполняется первый bootstrap с пустого состояния
-2. предпочитать чистый bootstrap path:
+1. Assume a first bootstrap from an empty state.
+2. Prefer the clean bootstrap path:
    - `task cluster:apply`
    - `task infra:apply`
-   - затем отдельный запуск `argocd/`, если задача относится к runtime
-3. не проектировать решение вокруг already-existing runtime resources
+   - then run `argocd/` separately when the task concerns runtime resources
+3. Do not design the solution around pre-existing runtime resources.
 
-Если задача действительно про миграцию существующего state, это должно быть явно зафиксировано в ответе и в изменениях.
+If a task does concern migration of existing state, explicitly record that in
+both the response and the changes.
 
 ## What Not To Do
 
-Не делать без явного запроса:
+Do not do any of the following without an explicit request:
 
-- не подключать `argocd/` обратно в Terraform bootstrap entrypoint
-- не возвращать runtime-ресурсы в `infrastructure/`
-- не добавлять app-level manifests в `default` namespace как часть bootstrap baseline
-- не хранить runtime secrets в `terraform.tfvars`, `outputs`, `values.yaml` или repo
-- не предполагать, что можно опереться на уже существующие namespace, CRD или secrets, если это не гарантирует bootstrap-контракт
-- не использовать destructive git-команды для очистки чужих изменений
+- connect `argocd/` back to a Terraform bootstrap entrypoint
+- move runtime resources back into `infrastructure/`
+- add app-level manifests to the `default` namespace as part of the bootstrap
+  baseline
+- store runtime secrets in `terraform.tfvars`, outputs, `values.yaml`, or the
+  repository
+- assume existing namespaces, CRDs, or secrets are available unless the
+  bootstrap contract guarantees them
+- use destructive Git commands to discard changes made by others
 
 ## Secret Model
 
-Всегда придерживайтесь этой модели:
+Always follow this model:
 
-- `OpenBao` — source of truth для runtime secrets
-- `External Secrets Operator` — доставка runtime secrets в Kubernetes
-- `SOPS/age` — только для day-0 bootstrap секретов Terraform
-- root `tfvars` и examples не должны становиться source of truth для runtime secrets
+- `OpenBao` is the source of truth for runtime secrets.
+- `External Secrets Operator` delivers runtime secrets to Kubernetes.
+- `SOPS/age` is used only for day-0 Terraform bootstrap secrets.
+- Root tfvars and examples must not become a source of truth for runtime
+  secrets.
 
-Новые runtime secrets нельзя добавлять в root `terraform.tfvars.example`, `secrets.sops.tfvars.example` или runtime manifests.
+Do not add new runtime secrets to the root `terraform.tfvars.example`,
+`secrets.sops.tfvars.example`, or runtime manifests.
 
 ## Change Strategy
 
-При изменениях сначала определяйте слой ownership:
+Before making a change, identify its ownership layer:
 
-- если изменение касается VM, Talos, bootstrap networking, `out/` артефактов: это `cluster/`
-- если изменение нужно для доведения кластера до `ArgoCD + OpenBao + ESO + Storage ready`: это `infrastructure/`
-- если изменение касается приложений или app-level manifests: это `argocd/`
+- Changes to VMs, Talos, bootstrap networking, or `out/` artifacts belong in
+  `cluster/`.
+- Changes required to reach `Argo CD + OpenBao + ESO + Storage ready` belong in
+  `infrastructure/`.
+- Changes to applications or app-level manifests belong in `argocd/`.
 
-Если изменение пересекает границу слоёв, агент должен сначала объяснить причину такой границы и минимизировать связность.
+If a change crosses a layer boundary, explain why before editing and minimize
+the coupling.
 
 ## Validation Expectations
 
-Минимальная ожидаемая проверка после изменений:
+Run the checks for each changed Terraform/OpenTofu entrypoint:
 
-- `tofu fmt`
-- `tofu validate`
-- `tofu plan`, если изменение затрагивает bootstrap path
+- `tofu -chdir=cluster fmt -check` and/or
+  `tofu -chdir=infrastructure fmt -check`
+- `tofu -chdir=cluster validate` and/or
+  `tofu -chdir=infrastructure validate`
+- the applicable plan task when the change affects the bootstrap path
 
-Если меняется только `argocd/`, проверять нужно отдельно в его own entrypoint/контексте.
+Run `task check:validate` as the repository baseline when practical.
 
-Если локально нет `tofu` или доступного кластера, агент должен прямо сказать, что проверка не выполнена.
+When only `argocd/` changes, validate it separately in its own entrypoint or
+context.
+
+If `tofu` or an accessible cluster is unavailable locally, explicitly state
+which validation was not run.
 
 ## Review Priority
 
-При аудите и review в первую очередь ищите:
+During audits and reviews, look for these issues first:
 
-- утечку runtime обратно в `cluster/` или `infrastructure/`
-- зависимость bootstrap от уже существующего state
-- хранение секретов не по модели `OpenBao/ESO/SOPS`
-- `terraform_data + local-exec`, который создаёт long-lived runtime objects
-- лишние baseline-ресурсы в `default` namespace
-- разрывы в readiness chain для `Piraeus`, `OpenBao`, `ESO`, `ArgoCD`
+- runtime resources leaking back into `cluster/` or `infrastructure/`
+- bootstrap depending on pre-existing state
+- secrets stored outside the `OpenBao/ESO/SOPS` model
+- `terraform_data` plus `local-exec` creating long-lived runtime objects
+- unnecessary baseline resources in the `default` namespace
+- gaps in the readiness chain for `Piraeus`, `OpenBao`, `ESO`, or `Argo CD`
 
 ## Reference Docs
 
-Перед значимыми изменениями сверяйтесь с:
+Before significant changes, consult:
 
 - `README.md`
 - `docs/day0-bootstrap.md`
 
-Если код и документация расходятся, сначала фиксируйте кодовую границу ownership, затем приводите документацию к ней.
+If the code and documentation disagree, first restore the ownership boundary in
+code, then update the documentation to match.
