@@ -90,7 +90,7 @@ ssh://git@git.localtest.me:2222/home/git/repos/gitops.git
 `git.localtest.me` резолвится в `127.0.0.1`. Если ArgoCD находится не на той же машине, задайте перед `setup.sh` другой hostname:
 
 ```bash
-SERVER_HOSTNAME=192.168.1.10 ./setup.sh
+TEST_SSH_GIT_HOSTNAME=192.168.1.10 ./setup.sh
 ```
 
 ## Проверка с локальной машины

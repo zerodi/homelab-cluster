@@ -8,9 +8,9 @@ TEMPLATE_DIR="$ROOT_DIR/templates"
 REPO_DIR="$ROOT_DIR/repo-data/gitops.git"
 ARGOCD_DIR="$PROJECT_ROOT/argocd"
 CLIENT_KEY="$KEY_DIR/argocd_test_client_ed25519"
-SERVER_HOSTNAME="${TEST_SSH_GIT_HOSTNAME:-${SERVER_HOSTNAME:-git.localtest.me}}"
+TEST_SSH_GIT_HOSTNAME="${TEST_SSH_GIT_HOSTNAME:-git.localtest.me}"
 SERVER_PORT="${TEST_SSH_GIT_PORT:-${SERVER_PORT:-2222}}"
-REPO_URL="ssh://git@${SERVER_HOSTNAME}:${SERVER_PORT}/home/git/repos/gitops.git"
+REPO_URL="ssh://git@${TEST_SSH_GIT_HOSTNAME}:${SERVER_PORT}/home/git/repos/gitops.git"
 PLACEHOLDER_REPO_URL="https://git.example.invalid/replace-me/gitops.git"
 SOURCE_REPO_URL="${SOURCE_REPO_URL:-}"
 
@@ -86,9 +86,9 @@ git init "$TMP_REPO" >/dev/null
 )
 
 {
-  printf '[%s]:%s ' "$SERVER_HOSTNAME" "$SERVER_PORT"
+  printf '[%s]:%s ' "$TEST_SSH_GIT_HOSTNAME" "$SERVER_PORT"
   cat "$KEY_DIR/ssh_host_ed25519_key.pub"
-  printf '[%s]:%s ' "$SERVER_HOSTNAME" "$SERVER_PORT"
+  printf '[%s]:%s ' "$TEST_SSH_GIT_HOSTNAME" "$SERVER_PORT"
   cat "$KEY_DIR/ssh_host_rsa_key.pub"
 } > "$KEY_DIR/known_hosts"
 
