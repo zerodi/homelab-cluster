@@ -4,7 +4,47 @@
 слоя на постоянный GitOps repository в Forgejo. До завершения проверки не
 останавливайте test SSH server и не удаляйте `Application/root-ssh`.
 
-## 1. Подготовка Forgejo
+## Автоматизированный cutover
+
+Основной greenfield-путь выполняется task-командой. Предварительно:
+
+- дождитесь `Synced/Healthy` для `Application/forgejo`;
+- закоммитьте все изменения в `argocd/`;
+- запустите управляемый OpenBao port-forward;
+- экспортируйте `BAO_ADDR` и административный `BAO_TOKEN`.
+
+```bash
+task ops:openbao-port-forward-start
+export BAO_ADDR='http://127.0.0.1:8200'
+export BAO_TOKEN='...'
+task gitops:forgejo-cutover
+```
+
+Task идемпотентно выполняет весь сценарий:
+
+1. читает Forgejo hostname, repository URL и namespace из effective
+   environment contract;
+2. экспортирует homelab CA и использует его без `insecureSkipVerify`;
+3. создаёт organization, private repository и restricted пользователя
+   `argocd` через Forgejo API;
+4. выдаёт пользователю только `Read` и создаёт token со scope
+   `read:repository`, ограниченный целевым repository;
+5. записывает credential в `secret/platform/argocd/repository` в OpenBao;
+6. публикует committed subtree `argocd/` в ветку `main`, не помещая password
+   или token в URL, Git config либо repository;
+7. настраивает `argocd-tls-certs-cm`, применяет ExternalSecret и ждёт его
+   готовности;
+8. переключает `root-ssh` на Forgejo, ждёт `Synced/Healthy`, применяет
+   канонический `root` и снова проверяет источник;
+9. удаляет временные Application/Secret и останавливает test SSH Git только
+   после успешных проверок.
+
+Если проверка завершается ошибкой, временный bootstrap не удаляется. Повторный
+запуск продолжает с уже созданными Forgejo/OpenBao ресурсами. Последующие
+разделы описывают те же операции вручную и используются для диагностики или
+recovery.
+
+## 1. Ручная подготовка Forgejo
 
 Проверьте, что Forgejo доступен и его Application готово:
 

@@ -332,11 +332,21 @@ path "secret/metadata/platform/*" {
   capabilities = ["read", "list"]
 }
 EOF
+
+bao policy write external-secrets /tmp/external-secrets-policy.hcl
 ```
 
-Запишите её в OpenBao:
+```fish
+set policy 'path "secret/data/platform/*" {
+  capabilities = ["read"]
+}
 
-```bash
+path "secret/metadata/platform/*" {
+  capabilities = ["read", "list"]
+}'
+
+printf '%s\n' "$policy" > /tmp/external-secrets-policy.hcl
+
 bao policy write external-secrets /tmp/external-secrets-policy.hcl
 ```
 
@@ -497,6 +507,8 @@ task gitops:test-ssh-bootstrap
 - не печатает secret values
 - создаёт seed repository из текущего `argocd/` и переписывает его Git source
   URL на локальный SSH endpoint
+- исключает из временного seed tree `forgejo-gitops-repository`, поскольку
+  credential постоянного Forgejo создаётся только во время cutover
 - собирает и запускает `test-ssh-git` в Docker
 - проверяет repository через `git ls-remote`
 - проверяет readiness `argocd`
@@ -509,10 +521,19 @@ task gitops:test-ssh-bootstrap
 до перевода Applications на постоянный Git repository.
 
 После создания Forgejo перенесите GitOps tree и переключите Argo CD по
-[cutover runbook](forgejo-argocd-cutover.md). Он сохраняет token в OpenBao,
-доставляет repository Secret через ESO и предотвращает конфликт между
-`root-ssh` и каноническим `root`. Только после успешного cutover остановите
-временный сервер командой `task gitops:test-ssh-stop`.
+[cutover runbook](forgejo-argocd-cutover.md). После commit текущего `argocd/`
+основной сценарий выполняется одной командой:
+
+```bash
+export BAO_ADDR='http://127.0.0.1:8200'
+export BAO_TOKEN='...'
+task gitops:forgejo-cutover
+```
+
+Task создаёт постоянный repository и read-only service credential, сохраняет
+его в OpenBao, публикует GitOps tree, переключает `root-ssh` на Forgejo,
+применяет канонический `root` и останавливает временный server только после
+успешной проверки. Ручные шаги сохранены в runbook для recovery и аудита.
 
 Если постоянный repository доступен до первого sync, используйте обычный путь:
 

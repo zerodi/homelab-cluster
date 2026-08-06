@@ -24,6 +24,14 @@ crd_backed_targets=(
   "kubernetes_manifest.linstor_cluster[0]"
 )
 
+run_tofu_destroy() {
+  if [[ ${#destroy_args[@]} -gt 0 ]]; then
+    tofu -chdir="$infra_dir" destroy -refresh=false "${destroy_args[@]}" "$@"
+  else
+    tofu -chdir="$infra_dir" destroy -refresh=false "$@"
+  fi
+}
+
 target_missing_from_state() {
   local target="$1"
 
@@ -100,7 +108,7 @@ destroy_crd_backed_resources() {
     return 0
   fi
 
-  tofu -chdir="$infra_dir" destroy -refresh=false "${destroy_args[@]}" "${target_args[@]}"
+  run_tofu_destroy "${target_args[@]}"
 }
 
 main() {
@@ -110,7 +118,7 @@ main() {
     prune_missing_crd_targets
   fi
   destroy_crd_backed_resources
-  tofu -chdir="$infra_dir" destroy -refresh=false "${destroy_args[@]}"
+  run_tofu_destroy
 }
 
 main "$@"

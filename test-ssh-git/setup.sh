@@ -34,6 +34,24 @@ rewrite_repo_url() {
   done < <(find "$WORKTREE_DIR" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0)
 }
 
+exclude_cutover_only_bootstrap_resources() {
+  local kustomization="$WORKTREE_DIR/bootstrap/kustomization.yaml"
+  local resource="forgejo-gitops-repository.yaml"
+
+  awk -v resource="$resource" '
+    $0 ~ "^[[:space:]]*-[[:space:]]*" resource "[[:space:]]*$" { next }
+    { print }
+  ' "$kustomization" > "${kustomization}.tmp"
+  mv "${kustomization}.tmp" "$kustomization"
+  rm -f "$WORKTREE_DIR/bootstrap/$resource"
+
+  if rg -n "^[[:space:]]*-[[:space:]]*${resource}[[:space:]]*$" \
+    "$kustomization" >/dev/null; then
+    echo "Failed to exclude cutover-only bootstrap resource: $resource" >&2
+    exit 1
+  fi
+}
+
 if [ -z "$SOURCE_REPO_URL" ]; then
   SOURCE_REPO_URL="$(sed -n 's/^[[:space:]]*repoURL:[[:space:]]*//p' \
     "$ARGOCD_DIR/bootstrap/root-application.yaml" | head -n 1 | tr -d '\"')"
@@ -65,6 +83,7 @@ cp -R "$ARGOCD_DIR/bootstrap" "$WORKTREE_DIR/"
 cp -R "$ARGOCD_DIR/platform" "$WORKTREE_DIR/"
 cp -R "$ARGOCD_DIR/apps" "$WORKTREE_DIR/"
 cp "$ARGOCD_DIR/README.md" "$WORKTREE_DIR/README.md"
+exclude_cutover_only_bootstrap_resources
 rewrite_repo_url "$PLACEHOLDER_REPO_URL"
 if [ -n "$SOURCE_REPO_URL" ] && [ "$SOURCE_REPO_URL" != "$PLACEHOLDER_REPO_URL" ]; then
   rewrite_repo_url "$SOURCE_REPO_URL"

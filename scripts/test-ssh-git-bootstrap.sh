@@ -106,10 +106,21 @@ log "Generating keys, manifests, and the seeded GitOps repository"
 "$test_git_dir/setup.sh"
 
 log "Building and starting the test SSH Git server"
-docker compose \
-  --project-directory "$test_git_dir" \
-  -f "$test_git_dir/docker-compose.yaml" \
-  up -d --build
+compose=(
+  docker compose
+  --project-directory "$test_git_dir"
+  -f "$test_git_dir/docker-compose.yaml"
+)
+
+if docker buildx version >/dev/null 2>&1; then
+  "${compose[@]}" up -d --build
+elif [[ -n "$("${compose[@]}" images -q git-ssh)" ]]; then
+  log "Docker buildx is unavailable; reusing the existing test SSH Git image"
+  "${compose[@]}" up -d --no-build
+else
+  echo "Docker buildx is required to build the test SSH Git image." >&2
+  exit 1
+fi
 
 printf -v ssh_command \
   'ssh -i %q -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=%q' \

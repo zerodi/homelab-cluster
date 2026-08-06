@@ -36,3 +36,23 @@ tasks:
     desc: Stop the local test SSH Git server
     cmds:
       - docker compose --project-directory test-ssh-git -f test-ssh-git/docker-compose.yaml down
+
+  forgejo-cutover:
+    desc: Publish argocd/ to Forgejo and switch Argo CD from test-ssh-git
+    cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - test -n "{{.ENVIRONMENT_CONTRACT_PATH}}"
+      - |
+        test -n "${BAO_ADDR:-}" || {
+          echo "Set BAO_ADDR to the unsealed OpenBao endpoint." >&2
+          exit 1
+        }
+      - |
+        test -n "${BAO_TOKEN:-}" || {
+          echo "Set BAO_TOKEN with access to secret/platform/argocd/repository." >&2
+          exit 1
+        }
+      - >-
+        ./scripts/forgejo-argocd-cutover.sh
+        --kubeconfig "{{.KUBECONFIG_PATH}}"
+        --contract "{{.ENVIRONMENT_CONTRACT_PATH}}"

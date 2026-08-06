@@ -82,6 +82,7 @@ tasks:
     desc: Run greenfield cluster bootstrap, platform bootstrap, then print day-0 guide
     cmds:
       - task cluster:apply
+      - task cluster:health
       - task infra:apply
       - task ops:day0-guide
 

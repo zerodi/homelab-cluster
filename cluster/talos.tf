@@ -183,6 +183,10 @@ data "helm_template" "cilium" {
       value = "true"
     },
     {
+      name  = "hubble.tls.auto.method"
+      value = "cronJob"
+    },
+    {
       name  = "hubble.relay.enabled"
       value = "true"
     },
@@ -267,8 +271,7 @@ data "talos_machine_configuration" "node" {
         local.common_cluster_patch,
         {
           extraManifests = each.value.machine_type == "controlplane" ? [
-            "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.1/standard-install.yaml",
-            "https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.4.1/config/crd/experimental/gateway.networking.k8s.io_tlsroutes.yaml",
+            "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.1/standard-install.yaml",
           ] : []
           inlineManifests = each.value.machine_type == "controlplane" ? [
             {

@@ -94,6 +94,9 @@ task gitops:test-ssh-bootstrap
 
 Команда собирает `test-ssh-git`, запускает сервер, регистрирует repository в
 Argo CD и ждёт `Application/root-ssh` в состояниях `Synced` и `Healthy`.
+Временный seed tree не включает `forgejo-gitops-repository`: этот
+`ExternalSecret` требует token уже работающего Forgejo и подключается только
+при последующем cutover.
 
 Для уже доступного постоянного Git repository:
 
@@ -113,9 +116,22 @@ task gitops:apply-bootstrap
 
 После развёртывания Forgejo переведите Argo CD с временного SSH server на
 постоянный repository по отдельному
-[cutover runbook](../docs/forgejo-argocd-cutover.md). Он описывает создание
-repository, read-only token, доставку credential через OpenBao/ESO, настройку
-внутреннего CA и безопасную замену `root-ssh` на `root`.
+[cutover runbook](../docs/forgejo-argocd-cutover.md). Основной путь полностью
+автоматизирован:
+
+```bash
+task ops:openbao-port-forward-start
+export BAO_ADDR='http://127.0.0.1:8200'
+export BAO_TOKEN='...'
+task gitops:forgejo-cutover
+```
+
+Task создаёт Forgejo organization, private repository и restricted service
+account, выпускает repository-scoped read token, сохраняет его в OpenBao,
+публикует committed `argocd/`, настраивает внутренний CA и ESO, безопасно
+заменяет `root-ssh` на `root` и только после проверки останавливает временный
+Git server. Перед запуском `argocd/` должен быть закоммичен без локальных
+изменений.
 
 ## Проверка результата
 
