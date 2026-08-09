@@ -416,9 +416,13 @@ unexpected_git_sources="$(
 log "Removing the verified temporary SSH bootstrap"
 kubectl -n argocd delete application root-ssh --ignore-not-found >/dev/null
 kubectl -n argocd delete secret test-ssh-gitops-repo --ignore-not-found >/dev/null
-docker compose \
-  --project-directory "$project_root/test-ssh-git" \
-  -f "$project_root/test-ssh-git/docker-compose.yaml" \
-  down
+if docker info >/dev/null 2>&1; then
+  docker compose \
+    --project-directory "$project_root/test-ssh-git" \
+    -f "$project_root/test-ssh-git/docker-compose.yaml" \
+    down
+else
+  log "Docker daemon is unavailable; test SSH Git is already unreachable locally"
+fi
 
 log "Cutover completed: Application/root is Synced/Healthy on ${repo_url}"
