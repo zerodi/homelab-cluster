@@ -7,6 +7,8 @@ Stalwart разворачивается как runtime-приложение по
 
 - `StatefulSet/stalwart`, одна реплика, RocksDB на `20Gi` RWO PVC из
   `linstor-pool1-r1`.
+- WebUI загружается Stalwart при первом старте и распаковывается во временный
+  writable `emptyDir`, смонтированный в `/tmp`.
 - Web UI и management API публикуются через общий Cilium
   `Gateway/gateway/external` по сгенерированному Stalwart hostname.
 - SMTP/IMAP публикуются отдельным `LoadBalancer` Service на

@@ -7,5 +7,6 @@ resources:
   - letsencrypt-cloudflare-cluster-issuer.yaml
   - internal-gateway.yaml
   - external-gateway.yaml
+  - hubble-certificate.yaml
   - stalwart-admin-certificate.yaml
   - coredns-home-arpa-overrides.yaml

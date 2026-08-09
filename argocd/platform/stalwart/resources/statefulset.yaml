@@ -82,6 +82,8 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
             - name: config
               mountPath: /etc/stalwart/config.json
               subPath: config.json
@@ -92,6 +94,8 @@ spec:
               mountPath: /etc/stalwart/tls
               readOnly: true
       volumes:
+        - name: tmp
+          emptyDir: {}
         - name: config
           configMap:
             name: stalwart-config

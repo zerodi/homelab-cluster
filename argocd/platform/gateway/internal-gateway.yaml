@@ -15,3 +15,15 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
+    - name: hubble-https
+      protocol: HTTPS
+      port: 443
+      hostname: hubble.lab.zerodi.ru
+      tls:
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: hubble-tls
+      allowedRoutes:
+        namespaces:
+          from: All
