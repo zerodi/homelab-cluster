@@ -139,6 +139,8 @@ fi
 
 log "Applying $root_manifest"
 kubectl apply -n argocd -f "$root_manifest"
+kubectl -n argocd annotate application root \
+  argocd.argoproj.io/refresh=hard --overwrite >/dev/null
 wait_for_application "root"
 
 log "ArgoCD root bootstrap completed"

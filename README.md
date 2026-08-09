@@ -5,10 +5,6 @@
 
 ## Greenfield deployment
 
-### 1. Tooling
-
-Минимальный toolchain описан в [docs/prerequisites.md](docs/prerequisites.md).
-
 ### 2. Bootstrap cluster
 
 ```bash

@@ -4,7 +4,6 @@
 
 Greenfield-развёртывание кластера и platform bootstrap:
 
-- [Требования к окружению](prerequisites.md)
 - [Карта этапов развёртывания](deployment-map.md)
 - [Day-0 bootstrap](day0-bootstrap.md)
 
@@ -23,7 +22,6 @@ cluster/ -> infrastructure/ -> OpenBao init/unseal -> GitOps bootstrap
 - [Единая авторизация приложений платформы](platform-authentication.md)
 - [Cutover Argo CD с test-ssh-git на Forgejo](forgejo-argocd-cutover.md)
 - [Версии компонентов](chart-versions.md)
-- [Renovate](renovate.md)
 - [Backup и restore](backup-restore.md)
 - [Garage и Velero](garage-velero.md)
 - [Stalwart Mail Server](stalwart.md)

@@ -10,21 +10,24 @@
 
 - дождитесь `Synced/Healthy` для `Application/forgejo`;
 - закоммитьте все изменения в `argocd/`;
-- запустите управляемый OpenBao port-forward;
 - экспортируйте `BAO_ADDR` и административный `BAO_TOKEN`.
 
 ```bash
-task ops:openbao-port-forward-start
 export BAO_ADDR='http://127.0.0.1:8200'
 export BAO_TOKEN='...'
 task gitops:forgejo-cutover
 ```
 
+Если локальный `BAO_ADDR=http://127.0.0.1:8200` недоступен, task сам поднимает
+временный port-forward к `service/openbao` и останавливает его при завершении.
+Уже работающий port-forward переиспользуется и не останавливается.
+
 Task идемпотентно выполняет весь сценарий:
 
 1. читает Forgejo hostname, repository URL и namespace из effective
    environment contract;
-2. экспортирует homelab CA и использует его без `insecureSkipVerify`;
+2. экспортирует TLS trust bundle из Certificate Secret Forgejo и использует
+   его без `insecureSkipVerify`;
 3. создаёт organization, private repository и restricted пользователя
    `argocd` через Forgejo API;
 4. выдаёт пользователю только `Read` и создаёт token со scope
@@ -92,22 +95,26 @@ task check:kustomize-platform
 переписаны на временный SSH endpoint. Пока не отправляйте subtree: сначала
 добавьте tracked credential manifest из шага 4.
 
-## 3. Доверие внутреннему CA
+## 3. Доверие TLS-сертификату Forgejo
 
 TLS-сертификат Forgejo проверяют два независимых клиента: локальный Git во
 время первого push и `argocd-repo-server` при последующих sync. Экспортируйте
-homelab CA и передайте его локальному Git в текущей shell session:
+полный certificate bundle, который использует Forgejo Gateway, и передайте его
+локальному Git в текущей shell session:
 
 ```bash
-task ops:export-root-ca
-export GIT_SSL_CAINFO="$PWD/out/homelab-root-ca.crt"
+kubectl -n forgejo get secret forgejo-tls \
+  -o go-template='{{ index .data "tls.crt" }}' | base64 -d \
+  > out/forgejo-repository-trust.pem
+export GIT_SSL_CAINFO="$PWD/out/forgejo-repository-trust.pem"
 ```
 
-Затем добавьте тот же CA для Forgejo hostname в специальный Argo CD ConfigMap:
+Затем добавьте тот же bundle для Forgejo hostname в специальный Argo CD
+ConfigMap:
 
 ```bash
 kubectl -n argocd create configmap argocd-tls-certs-cm \
-  --from-file="${FORGEJO_HOST}=out/homelab-root-ca.crt" \
+  --from-file="${FORGEJO_HOST}=out/forgejo-repository-trust.pem" \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
@@ -187,7 +194,7 @@ env -u GIT_ASKPASS \
   -u VSCODE_GIT_ASKPASS_EXTRA_ARGS \
   -u VSCODE_GIT_IPC_HANDLE \
   GIT_TERMINAL_PROMPT=1 \
-  GIT_SSL_CAINFO="$PWD/out/homelab-root-ca.crt" \
+  GIT_SSL_CAINFO="$PWD/out/forgejo-repository-trust.pem" \
   git -c credential.helper= \
     push "$FORGEJO_GITOPS_URL" forgejo-gitops-main:main
 unset GIT_SSL_CAINFO

@@ -68,6 +68,26 @@ done
 
 export KUBECONFIG="$kubeconfig"
 
+work_dir="$(mktemp -d)"
+api_body="$work_dir/api-body.json"
+openbao_port_forward_log="$work_dir/openbao-port-forward.log"
+openbao_port_forward_pid=""
+admin_password=""
+argocd_password=""
+repo_token=""
+
+cleanup() {
+  admin_password=""
+  argocd_password=""
+  repo_token=""
+  if [[ -n "$openbao_port_forward_pid" ]] && kill -0 "$openbao_port_forward_pid" 2>/dev/null; then
+    kill "$openbao_port_forward_pid" 2>/dev/null || true
+    wait "$openbao_port_forward_pid" 2>/dev/null || true
+  fi
+  rm -rf "$work_dir"
+}
+trap cleanup EXIT
+
 repo_url="$(yq eval -r '.gitops.repo_url // ""' "$contract")"
 revision="$(yq eval -r '.gitops.revision // ""' "$contract")"
 forgejo_host="$(yq eval -r '.hosts.forgejo // ""' "$contract")"
@@ -108,7 +128,34 @@ log "Checking Forgejo, Argo CD, and OpenBao readiness"
 kubectl -n argocd rollout status deployment/argocd-server --timeout="$timeout" >/dev/null
 kubectl -n argocd rollout status deployment/argocd-repo-server --timeout="$timeout" >/dev/null
 kubectl -n "$forgejo_namespace" rollout status deployment/forgejo --timeout="$timeout" >/dev/null
-bao status >/dev/null
+
+if ! bao status >/dev/null 2>&1; then
+  [[ "$BAO_ADDR" == "http://127.0.0.1:8200" ]] || \
+    fail "OpenBao is not reachable at BAO_ADDR=${BAO_ADDR}"
+
+  log "Starting a temporary OpenBao port-forward"
+  kubectl -n openbao port-forward --address 127.0.0.1 service/openbao 8200:8200 \
+    >"$openbao_port_forward_log" 2>&1 &
+  openbao_port_forward_pid=$!
+
+  openbao_reachable=false
+  for ((attempt = 1; attempt <= 30; attempt++)); do
+    if curl --silent --output /dev/null "${BAO_ADDR}/v1/sys/health"; then
+      openbao_reachable=true
+      break
+    fi
+    if ! kill -0 "$openbao_port_forward_pid" 2>/dev/null; then
+      break
+    fi
+    sleep 1
+  done
+  if [[ "$openbao_reachable" != "true" ]]; then
+    sed -n '1,80p' "$openbao_port_forward_log" >&2 || true
+    fail "Temporary OpenBao port-forward did not become ready"
+  fi
+fi
+
+bao status >/dev/null || fail "OpenBao is not ready or is sealed"
 
 forgejo_ip="$(
   kubectl -n "$forgejo_namespace" get service cilium-gateway-forgejo \
@@ -116,11 +163,17 @@ forgejo_ip="$(
 )"
 [[ -n "$forgejo_ip" ]] || fail "Forgejo Gateway Service has no LoadBalancer IP"
 
-ca_file="$project_root/out/homelab-root-ca.crt"
-mkdir -p "$(dirname "$ca_file")"
-kubectl -n cert-manager get secret homelab-root-ca \
-  -o go-template='{{ index .data "tls.crt" }}' | base64 -d > "$ca_file"
-[[ -s "$ca_file" ]] || fail "Exported homelab root CA is empty"
+forgejo_tls_secret="$(
+  kubectl -n "$forgejo_namespace" get gateway forgejo \
+    -o jsonpath='{.spec.listeners[?(@.protocol=="HTTPS")].tls.certificateRefs[0].name}'
+)"
+[[ -n "$forgejo_tls_secret" ]] || fail "Forgejo Gateway has no HTTPS certificate reference"
+
+trust_file="$project_root/out/forgejo-repository-trust.pem"
+mkdir -p "$(dirname "$trust_file")"
+kubectl -n "$forgejo_namespace" get secret "$forgejo_tls_secret" \
+  -o go-template='{{ index .data "tls.crt" }}' | base64 -d > "$trust_file"
+[[ -s "$trust_file" ]] || fail "Exported Forgejo TLS trust bundle is empty"
 
 admin_user="$(
   kubectl -n "$forgejo_namespace" get secret "$forgejo_admin_secret" \
@@ -133,19 +186,6 @@ admin_password="$(
 [[ -n "$admin_user" && -n "$admin_password" ]] || fail "Forgejo admin Secret is incomplete"
 [[ "$admin_user" =~ ^[A-Za-z0-9_.-]+$ ]] || fail "Unsupported Forgejo admin username"
 
-work_dir="$(mktemp -d)"
-api_body="$work_dir/api-body.json"
-repo_token=""
-argocd_password=""
-
-cleanup() {
-  admin_password=""
-  argocd_password=""
-  repo_token=""
-  rm -rf "$work_dir"
-}
-trap cleanup EXIT
-
 api_status=""
 api_call() {
   local auth="$1"
@@ -155,7 +195,7 @@ api_call() {
   local -a args=(
     --silent
     --show-error
-    --cacert "$ca_file"
+    --cacert "$trust_file"
     --resolve "${forgejo_host}:443:${forgejo_ip}"
     --request "$method"
     --output "$api_body"
@@ -293,7 +333,7 @@ env \
   FORGEJO_GIT_PASSWORD="$admin_password" \
   git -C "$project_root" \
     -c credential.helper= \
-    -c "http.sslCAInfo=${ca_file}" \
+    -c "http.sslCAInfo=${trust_file}" \
     -c "http.curloptResolve=${forgejo_host}:443:${forgejo_ip}" \
     push "$repo_url" "${subtree_commit}:refs/heads/main"
 
@@ -301,7 +341,7 @@ log "Configuring the Forgejo CA and repository credential in Argo CD"
 if ! kubectl -n argocd get configmap argocd-tls-certs-cm >/dev/null 2>&1; then
   kubectl -n argocd create configmap argocd-tls-certs-cm >/dev/null
 fi
-ca_patch="$(jq -Rs --arg host "$forgejo_host" '{data:{($host):.}}' < "$ca_file")"
+ca_patch="$(jq -Rs --arg host "$forgejo_host" '{data:{($host):.}}' < "$trust_file")"
 kubectl -n argocd patch configmap argocd-tls-certs-cm --type=merge -p "$ca_patch" >/dev/null
 kubectl -n argocd rollout restart deployment/argocd-repo-server >/dev/null
 kubectl -n argocd rollout status deployment/argocd-repo-server --timeout="$timeout" >/dev/null
@@ -344,6 +384,8 @@ if kubectl -n argocd get application root-ssh >/dev/null 2>&1; then
     jq -cn --arg url "$repo_url" \
       '[{op:"replace",path:"/spec/source/repoURL",value:$url}]'
   )" >/dev/null
+  kubectl -n argocd annotate application root-ssh \
+    argocd.argoproj.io/refresh=hard --overwrite >/dev/null
   wait_for_application root-ssh
 fi
 
