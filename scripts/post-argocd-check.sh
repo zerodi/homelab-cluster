@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
+# Bootstrap role: no-deploy (read-only runtime validation).
 
 set -euo pipefail
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd "$script_dir/.." && pwd)"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_COMPONENT="post-argocd-check"
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
+# shellcheck source=scripts/lib/argocd.sh
+source "$SCRIPT_DIR/lib/argocd.sh"
 
 info() {
   printf '[post-argocd-check] %s\n' "$*"
@@ -15,13 +20,6 @@ pass() {
 
 fail() {
   printf 'FAIL %s\n' "$*" >&2
-}
-
-require_cmd() {
-  if ! command -v "$1" >/dev/null 2>&1; then
-    fail "missing command: $1"
-    exit 1
-  fi
 }
 
 run_check() {
@@ -38,17 +36,11 @@ run_check() {
 }
 
 application_synced() {
-  local app="$1"
-  local status
-  status="$(kubectl -n argocd get application "$app" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
-  [[ "$status" == "Synced" ]]
+  argocd::application_status_is "$1" sync Synced
 }
 
 application_healthy() {
-  local app="$1"
-  local status
-  status="$(kubectl -n argocd get application "$app" -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
-  [[ "$status" == "Healthy" ]]
+  argocd::application_status_is "$1" health Healthy
 }
 
 clustersecretstore_ready() {
@@ -58,11 +50,10 @@ clustersecretstore_ready() {
   [[ "$ready" == "True" ]]
 }
 
-require_cmd kubectl
-require_cmd tofu
+common::require_commands kubectl tofu realpath
 
-kubeconfig="$(cd "$repo_root/cluster" && realpath "$(tofu output -raw kubeconfig_path)")"
-export KUBECONFIG="$kubeconfig"
+kubeconfig="$(cd "$PROJECT_ROOT/cluster" && realpath "$(tofu output -raw kubeconfig_path)")"
+common::use_kubeconfig "$kubeconfig"
 
 failed=0
 

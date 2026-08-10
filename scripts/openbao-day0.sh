@@ -2,16 +2,12 @@
 
 set -euo pipefail
 
-log() {
-  printf '[openbao-day0] %s\n' "$*"
-}
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_COMPONENT="openbao-day0"
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
 
-require_cmd() {
-  if ! command -v "$1" >/dev/null 2>&1; then
-    echo "Required command not found: $1" >&2
-    exit 1
-  fi
-}
+log() { common::log "$SCRIPT_COMPONENT" "$@"; }
 
 usage() {
   cat <<'EOF'
@@ -91,21 +87,13 @@ if [[ -z "$kubeconfig" ]]; then
   exit 1
 fi
 
-if [[ ! -f "$kubeconfig" ]]; then
-  echo "Kubeconfig not found: $kubeconfig" >&2
-  exit 1
-fi
-
 if [[ -z "${BAO_TOKEN:-}" ]]; then
   echo "BAO_TOKEN is required." >&2
   exit 1
 fi
 
-require_cmd bao
-require_cmd kubectl
-require_cmd base64
-
-export KUBECONFIG="$kubeconfig"
+common::require_commands bao kubectl base64
+common::use_kubeconfig "$kubeconfig"
 export BAO_ADDR="$bao_addr"
 
 log "Checking service account ${eso_namespace}/${eso_service_account}"

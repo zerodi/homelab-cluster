@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Bootstrap role: no-deploy (runtime secret contract validation only).
 
 from __future__ import annotations
 
@@ -49,6 +50,10 @@ EXPECTED_CONTRACT: dict[str, dict[str, Any]] = {
         "app": "forgejo",
         "properties": {"client_id": "nonempty", "client_secret": "nonempty"},
     },
+    "platform/argocd/oidc": {
+        "app": "authentik/argocd",
+        "properties": {"client_id": "nonempty", "client_secret": "nonempty"},
+    },
     "platform/harbor/runtime": {
         "app": "harbor",
         "properties": {
@@ -70,13 +75,25 @@ EXPECTED_CONTRACT: dict[str, dict[str, Any]] = {
         "app": "harbor",
         "properties": {"password": "nonempty"},
     },
+    "platform/harbor/oidc": {
+        "app": "authentik/harbor",
+        "properties": {"client_id": "nonempty", "client_secret": "nonempty"},
+    },
     "platform/stalwart/runtime": {
         "app": "stalwart",
         "properties": {"recovery_admin_password": "nonempty"},
     },
+    "platform/stalwart/oidc": {
+        "app": "authentik/stalwart",
+        "properties": {"client_id": "nonempty"},
+    },
     "platform/observability/grafana": {
         "app": "observability/grafana",
         "properties": {"username": "nonempty", "password": "nonempty"},
+    },
+    "platform/observability/grafana-oidc": {
+        "app": "authentik/grafana",
+        "properties": {"client_id": "nonempty", "client_secret": "nonempty"},
     },
     "platform/woodpecker/runtime": {
         "app": "woodpecker",

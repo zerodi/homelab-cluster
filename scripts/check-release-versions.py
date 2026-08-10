@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Bootstrap role: no-deploy (repository validation/generation only).
 """Validate and synchronize non-chart consumers of versions.yaml."""
 
 from __future__ import annotations

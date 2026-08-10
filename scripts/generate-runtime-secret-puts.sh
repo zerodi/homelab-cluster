@@ -2,6 +2,11 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_COMPONENT="runtime-secrets"
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
+
 usage() {
   cat <<'EOF'
 Usage:
@@ -62,11 +67,15 @@ runtime_secret_contract=(
   "platform/forgejo/postgresql:password"
   "platform/forgejo/valkey:password"
   "platform/forgejo/oidc:client_id,client_secret"
+  "platform/argocd/oidc:client_id,client_secret"
   "platform/harbor/runtime:admin_password,secret_key,core_secret,xsrf_key,jobservice_secret,registry_http_secret,registry_password,registry_htpasswd"
   "platform/harbor/postgresql:password"
   "platform/harbor/valkey:password"
+  "platform/harbor/oidc:client_id,client_secret"
   "platform/stalwart/runtime:recovery_admin_password"
+  "platform/stalwart/oidc:client_id"
   "platform/observability/grafana:username,password"
+  "platform/observability/grafana-oidc:client_id,client_secret"
   "platform/woodpecker/runtime:agent_secret,forgejo_client,forgejo_secret"
   "platform/garage/runtime:rpc_secret,admin_token,metrics_token"
   "platform/velero/s3:access_key_id,secret_access_key"
@@ -84,16 +93,10 @@ if [[ "$mode" == "list-contract" ]]; then
   exit 0
 fi
 
-if ! command -v htpasswd >/dev/null 2>&1; then
-  echo "Required command not found: htpasswd" >&2
-  exit 1
-fi
+common::require_commands htpasswd
 
 if [[ "$mode" == "apply-missing" ]]; then
-  if ! command -v bao >/dev/null 2>&1; then
-    echo "Required command not found: bao" >&2
-    exit 1
-  fi
+  common::require_commands bao
   if [[ -z "${BAO_TOKEN:-}" ]]; then
     echo "BAO_TOKEN is required for --apply-missing." >&2
     exit 1
@@ -202,6 +205,8 @@ forgejo_postgresql_password="$(rand_alnum 40)"
 forgejo_valkey_password="$(rand_alnum 40)"
 forgejo_oidc_client_id="$(rand_alnum 32)"
 forgejo_oidc_client_secret="$(rand_b64ish 64)"
+argocd_oidc_client_id="$(rand_alnum 32)"
+argocd_oidc_client_secret="$(rand_b64ish 64)"
 harbor_admin_password="$(rand_alnum 40)"
 harbor_postgresql_password="$(rand_alnum 40)"
 harbor_valkey_password="$(rand_alnum 40)"
@@ -211,12 +216,17 @@ harbor_xsrf_key="$(rand_alnum 32)"
 harbor_jobservice_secret="$(rand_alnum 16)"
 harbor_registry_http_secret="$(rand_alnum 16)"
 harbor_registry_password="$(rand_alnum 40)"
+harbor_oidc_client_id="$(rand_alnum 32)"
+harbor_oidc_client_secret="$(rand_b64ish 64)"
 harbor_registry_htpasswd="$(
   htpasswd -nbBC 10 harbor_registry_user "$harbor_registry_password" |
     tr -d '\n'
 )"
 stalwart_recovery_admin_password="$(rand_alnum 40)"
+stalwart_oidc_client_id="$(rand_alnum 32)"
 grafana_password="$(rand_b64ish 32)"
+grafana_oidc_client_id="$(rand_alnum 32)"
+grafana_oidc_client_secret="$(rand_b64ish 64)"
 woodpecker_agent_secret="$(rand_b64ish 64)"
 garage_rpc_secret="$(rand_hex 64)"
 garage_admin_token="$(rand_b64ish 64)"
@@ -278,6 +288,9 @@ write_entry "$mount_path/platform/forgejo/valkey" \
 write_entry "$mount_path/platform/forgejo/oidc" \
   "client_id=$forgejo_oidc_client_id" \
   "client_secret=$forgejo_oidc_client_secret"
+write_entry "$mount_path/platform/argocd/oidc" \
+  "client_id=$argocd_oidc_client_id" \
+  "client_secret=$argocd_oidc_client_secret"
 write_entry "$mount_path/platform/harbor/runtime" \
   "admin_password=$harbor_admin_password" \
   "secret_key=$harbor_secret_key" \
@@ -291,11 +304,19 @@ write_entry "$mount_path/platform/harbor/postgresql" \
   "password=$harbor_postgresql_password"
 write_entry "$mount_path/platform/harbor/valkey" \
   "password=$harbor_valkey_password"
+write_entry "$mount_path/platform/harbor/oidc" \
+  "client_id=$harbor_oidc_client_id" \
+  "client_secret=$harbor_oidc_client_secret"
 write_entry "$mount_path/platform/stalwart/runtime" \
   "recovery_admin_password=$stalwart_recovery_admin_password"
+write_entry "$mount_path/platform/stalwart/oidc" \
+  "client_id=$stalwart_oidc_client_id"
 write_entry "$mount_path/platform/observability/grafana" \
   "username=admin" \
   "password=$grafana_password"
+write_entry "$mount_path/platform/observability/grafana-oidc" \
+  "client_id=$grafana_oidc_client_id" \
+  "client_secret=$grafana_oidc_client_secret"
 write_entry "$mount_path/platform/woodpecker/runtime" \
   "agent_secret=$woodpecker_agent_secret" \
   "${woodpecker_credentials[@]}"

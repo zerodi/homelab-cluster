@@ -2,9 +2,14 @@
 
 set -euo pipefail
 
-log() {
-  printf '[argocd-bootstrap] %s\n' "$*"
-}
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_COMPONENT="argocd-bootstrap"
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
+# shellcheck source=scripts/lib/argocd.sh
+source "$SCRIPT_DIR/lib/argocd.sh"
+
+log() { common::log "$SCRIPT_COMPONENT" "$@"; }
 
 usage() {
   cat <<'EOF'
@@ -59,57 +64,15 @@ if [[ -z "$kubeconfig" ]]; then
   exit 1
 fi
 
-if [[ ! -f "$kubeconfig" ]]; then
-  echo "Kubeconfig not found: $kubeconfig" >&2
-  exit 1
-fi
+common::use_kubeconfig "$kubeconfig"
+root_manifest="$(common::resolve_from_root "$root_manifest")"
+common::require_file "Root manifest" "$root_manifest"
+common::require_commands kubectl rg
 
-if [[ ! -f "$root_manifest" ]]; then
-  echo "Root manifest not found: $root_manifest" >&2
-  exit 1
-fi
-
-export KUBECONFIG="$kubeconfig"
-
+test_ssh_git_dir="$(common::resolve_from_root "$test_ssh_git_dir")"
 test_known_hosts="$test_ssh_git_dir/keys/known_hosts"
 test_repo_secret_manifest="$test_ssh_git_dir/templates/argocd-repository-secret.yaml"
 test_root_manifest="$test_ssh_git_dir/templates/root-application-ssh.yaml"
-
-wait_for_application() {
-  local app_name="$1"
-
-  log "Waiting for Application/${app_name} sync"
-  deadline=$((SECONDS + 600))
-  while true; do
-    sync_status="$(kubectl -n argocd get application "$app_name" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
-    if [[ "$sync_status" == "Synced" ]]; then
-      break
-    fi
-
-    if (( SECONDS >= deadline )); then
-      echo "Application/${app_name} did not reach Synced status within 10 minutes." >&2
-      kubectl -n argocd get application "$app_name" -o yaml >&2 || true
-      exit 1
-    fi
-    sleep 5
-  done
-
-  log "Waiting for Application/${app_name} health"
-  deadline=$((SECONDS + 600))
-  while true; do
-    health_status="$(kubectl -n argocd get application "$app_name" -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
-    if [[ "$health_status" == "Healthy" ]]; then
-      break
-    fi
-
-    if (( SECONDS >= deadline )); then
-      echo "Application/${app_name} did not reach Healthy status within 10 minutes." >&2
-      kubectl -n argocd get application "$app_name" -o yaml >&2 || true
-      exit 1
-    fi
-    sleep 5
-  done
-}
 
 log "Checking ArgoCD readiness"
 kubectl get namespace argocd >/dev/null
@@ -117,7 +80,8 @@ kubectl wait --for=condition=Established --timeout="$timeout" crd/applications.a
 kubectl -n argocd rollout status --timeout="$timeout" deploy/argocd-server
 
 log "Selecting the GitOps source"
-if [[ "$force_test_ssh_git" == "true" ]] || rg -n 'git\.example\.invalid/replace-me/gitops\.git' argocd >/dev/null; then
+if [[ "$force_test_ssh_git" == "true" ]] || \
+  rg -n 'git\.example\.invalid/replace-me/gitops\.git' "$PROJECT_ROOT/argocd" >/dev/null; then
   if [[ -f "$test_known_hosts" && -f "$test_repo_secret_manifest" && -f "$test_root_manifest" ]]; then
     log "Using test-ssh-git bootstrap mode"
     kubectl -n argocd create configmap argocd-ssh-known-hosts-cm \
@@ -126,14 +90,14 @@ if [[ "$force_test_ssh_git" == "true" ]] || rg -n 'git\.example\.invalid/replace
       --dry-run=client | kubectl apply -f -
     kubectl apply -f "$test_repo_secret_manifest"
     kubectl apply -f "$test_root_manifest"
-    wait_for_application "root-ssh"
+    argocd::wait_for_application "root-ssh"
     log "ArgoCD root bootstrap completed via test-ssh-git"
     exit 0
   fi
 
   echo "argocd/ still contains placeholder repoURL values." >&2
   echo "Either replace repoURL values in argocd/ or prepare test-ssh-git via ./test-ssh-git/setup.sh." >&2
-  rg -n 'git\.example\.invalid/replace-me/gitops\.git' argocd >&2
+  rg -n 'git\.example\.invalid/replace-me/gitops\.git' "$PROJECT_ROOT/argocd" >&2
   exit 1
 fi
 
@@ -141,6 +105,6 @@ log "Applying $root_manifest"
 kubectl apply -n argocd -f "$root_manifest"
 kubectl -n argocd annotate application root \
   argocd.argoproj.io/refresh=hard --overwrite >/dev/null
-wait_for_application "root"
+argocd::wait_for_application "root"
 
 log "ArgoCD root bootstrap completed"

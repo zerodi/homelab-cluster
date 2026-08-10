@@ -2,11 +2,15 @@
 
 set -euo pipefail
 
-project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_COMPONENT="forgejo-cutover"
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
+# shellcheck source=scripts/lib/argocd.sh
+source "$SCRIPT_DIR/lib/argocd.sh"
+project_root="$PROJECT_ROOT"
 
-log() {
-  printf '[forgejo-cutover] %s\n' "$*"
-}
+log() { common::log "$SCRIPT_COMPONENT" "$@"; }
 
 fail() {
   printf '[forgejo-cutover] ERROR: %s\n' "$*" >&2
@@ -62,11 +66,8 @@ done
 [[ -n "${BAO_ADDR:-}" ]] || fail "BAO_ADDR is required"
 [[ -n "${BAO_TOKEN:-}" ]] || fail "BAO_TOKEN is required"
 
-for command in bao base64 curl docker git jq kubectl openssl rg yq; do
-  command -v "$command" >/dev/null 2>&1 || fail "Required command not found: $command"
-done
-
-export KUBECONFIG="$kubeconfig"
+common::require_commands bao base64 curl docker git jq kubectl openssl rg yq
+common::use_kubeconfig "$kubeconfig"
 
 work_dir="$(mktemp -d)"
 api_body="$work_dir/api-body.json"
@@ -353,31 +354,6 @@ kubectl -n argocd wait \
   --timeout="$timeout" >/dev/null
 kubectl -n argocd get secret forgejo-gitops-repository >/dev/null
 
-wait_for_application() {
-  local name="$1"
-  local deadline=$((SECONDS + 600))
-  local sync_status
-  local health_status
-
-  while ((SECONDS < deadline)); do
-    sync_status="$(
-      kubectl -n argocd get application "$name" \
-        -o jsonpath='{.status.sync.status}' 2>/dev/null || true
-    )"
-    health_status="$(
-      kubectl -n argocd get application "$name" \
-        -o jsonpath='{.status.health.status}' 2>/dev/null || true
-    )"
-    if [[ "$sync_status" == "Synced" && "$health_status" == "Healthy" ]]; then
-      return
-    fi
-    sleep 5
-  done
-
-  kubectl -n argocd get application "$name" -o yaml >&2 || true
-  fail "Application/${name} did not reach Synced/Healthy within 10 minutes"
-}
-
 if kubectl -n argocd get application root-ssh >/dev/null 2>&1; then
   log "Switching Application/root-ssh to Forgejo"
   kubectl -n argocd patch application root-ssh --type=json -p="$(
@@ -386,7 +362,7 @@ if kubectl -n argocd get application root-ssh >/dev/null 2>&1; then
   )" >/dev/null
   kubectl -n argocd annotate application root-ssh \
     argocd.argoproj.io/refresh=hard --overwrite >/dev/null
-  wait_for_application root-ssh
+  argocd::wait_for_application root-ssh
 fi
 
 log "Applying and verifying canonical Application/root"
@@ -394,7 +370,7 @@ log "Applying and verifying canonical Application/root"
   --kubeconfig "$kubeconfig" \
   --root-manifest "$project_root/argocd/bootstrap/root-application.yaml" \
   --timeout "$timeout"
-wait_for_application root
+argocd::wait_for_application root
 
 unexpected_git_sources="$(
   kubectl -n argocd get applications -o json | jq -r \

@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_COMPONENT="task-vars"
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
 
 usage() {
   cat >&2 <<'EOF'
@@ -16,28 +19,6 @@ Commands:
   piraeus-nodes
 EOF
   exit 2
-}
-
-absolute_path() {
-  local path="$1"
-  local base_dir="${2:-$PROJECT_ROOT}"
-  local parent_dir
-  local resolved_parent
-
-  if [[ "$path" != /* ]]; then
-    path="${base_dir}/${path}"
-  fi
-
-  if realpath "$path" 2>/dev/null; then
-    return
-  fi
-
-  parent_dir="$(dirname "$path")"
-  if resolved_parent="$(cd "$parent_dir" 2>/dev/null && pwd -P)"; then
-    printf '%s/%s\n' "$resolved_parent" "$(basename "$path")"
-  else
-    printf '%s\n' "$path"
-  fi
 }
 
 cluster_output() {
@@ -55,7 +36,7 @@ environment_contract() {
   local configured="${ENVIRONMENT_CONTRACT_PATH:-}"
 
   if [[ -n "$configured" ]]; then
-    absolute_path "$configured"
+    common::absolute_path "$configured"
     return
   fi
 
@@ -64,7 +45,7 @@ environment_contract() {
     # Keep Terraform's entrypoint-relative convention for the legacy TF_VAR.
     # Both tracked entrypoints have the same directory depth, so ../out/... is
     # resolved consistently and exported back to Terraform as an absolute path.
-    absolute_path "$configured" "${PROJECT_ROOT}/cluster"
+    common::absolute_path "$configured" "${PROJECT_ROOT}/cluster"
     return
   fi
 
@@ -75,30 +56,30 @@ kubeconfig_path() {
   local configured="${KUBECONFIG:-}"
 
   if [[ -n "$configured" ]]; then
-    absolute_path "$configured"
+    common::absolute_path "$configured"
     return
   fi
 
   configured="${TF_VAR_kubeconfig_path:-}"
   if [[ -n "$configured" ]]; then
-    absolute_path "$configured" "${PROJECT_ROOT}/infrastructure"
+    common::absolute_path "$configured" "${PROJECT_ROOT}/infrastructure"
     return
   fi
 
   configured="$(cluster_output kubeconfig_path raw)"
-  [[ -z "$configured" ]] || absolute_path "$configured" "${PROJECT_ROOT}/cluster"
+  [[ -z "$configured" ]] || common::absolute_path "$configured" "${PROJECT_ROOT}/cluster"
 }
 
 talosconfig_path() {
   local configured="${TALOSCONFIG:-}"
 
   if [[ -n "$configured" ]]; then
-    absolute_path "$configured"
+    common::absolute_path "$configured"
     return
   fi
 
   configured="$(cluster_output talosconfig_path raw)"
-  [[ -z "$configured" ]] || absolute_path "$configured" "${PROJECT_ROOT}/cluster"
+  [[ -z "$configured" ]] || common::absolute_path "$configured" "${PROJECT_ROOT}/cluster"
 }
 
 contract_value() {

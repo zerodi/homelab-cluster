@@ -1,31 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_COMPONENT="render-environment-contract"
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
 
-resolve_from_root() {
-  local path="$1"
-  if [[ "$path" == /* ]]; then
-    printf '%s\n' "$path"
-  else
-    printf '%s/%s\n' "$project_root" "$path"
-  fi
-}
+base_path="$(common::resolve_from_root "${HOMELAB_CONFIG_PATH:-envs/homelab.yaml}")"
+override_path="$(common::resolve_from_root "${HOMELAB_OVERRIDE_PATH:-envs/homelab.override.yaml}")"
+output_path="$(common::resolve_from_root "${HOMELAB_EFFECTIVE_PATH:-out/homelab.effective.yaml}")"
+materializer="$SCRIPTS_DIR/materialize_environment_contract.py"
 
-base_path="$(resolve_from_root "${HOMELAB_CONFIG_PATH:-envs/homelab.yaml}")"
-override_path="$(resolve_from_root "${HOMELAB_OVERRIDE_PATH:-envs/homelab.override.yaml}")"
-output_path="$(resolve_from_root "${HOMELAB_EFFECTIVE_PATH:-out/homelab.effective.yaml}")"
-materializer="$project_root/scripts/materialize_environment_contract.py"
-
-if ! command -v yq >/dev/null 2>&1; then
-  echo "Required command not found: yq" >&2
-  exit 1
-fi
-
-if [[ ! -f "$base_path" ]]; then
-  echo "Base environment contract not found: $base_path" >&2
-  exit 1
-fi
+common::require_commands python3 yq
+common::require_file "Base environment contract" "$base_path"
+common::require_file "Environment contract materializer" "$materializer"
 
 mkdir -p "$(dirname "$output_path")"
 merged_path="$(mktemp "${output_path}.merged.XXXXXX")"

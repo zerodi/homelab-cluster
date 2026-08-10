@@ -84,7 +84,7 @@ tasks:
   shellcheck:
     desc: Run shellcheck for repository helper scripts
     cmds:
-      - shellcheck scripts/*.sh
+      - shellcheck -x scripts/*.sh scripts/lib/*.sh
 
   kustomize-bootstrap:
     desc: Build argocd/bootstrap with kustomize or kubectl fallback

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Bootstrap role: no-deploy (repository validation/generation only).
 
 from __future__ import annotations
 
@@ -1253,13 +1254,32 @@ class Validator:
         )
         self.expect_contains(
             "forgejo sso blueprint callback url",
-            "argocd/platform/authentik/prereqs/forgejo-sso-blueprint-template-configmap.yml",
+            "argocd/platform/authentik/prereqs/platform-sso-blueprint-templates.yaml",
             f'https://{hosts["forgejo"]}/user/oauth2/authentik/callback',
         )
         self.expect_contains(
             "forgejo sso blueprint launch url",
-            "argocd/platform/authentik/prereqs/forgejo-sso-blueprint-template-configmap.yml",
+            "argocd/platform/authentik/prereqs/platform-sso-blueprint-templates.yaml",
             env["platform"]["forgejo"]["root_url"],
+        )
+        blueprint_path = (
+            "argocd/platform/authentik/prereqs/"
+            "platform-sso-blueprint-templates.yaml"
+        )
+        for label, hostname, callback_path in [
+            ("argocd", hosts["argocd"], "/auth/callback"),
+            ("harbor", hosts["harbor"], "/c/oidc/callback"),
+            ("grafana", hosts["grafana"], "/login/generic_oauth"),
+        ]:
+            self.expect_contains(
+                f"{label} sso blueprint callback url",
+                blueprint_path,
+                f"https://{hostname}{callback_path}",
+            )
+        self.expect_contains(
+            "stalwart sso blueprint launch url",
+            blueprint_path,
+            f'https://{hosts["stalwart"]}/account/',
         )
 
         external_secret_checks = [

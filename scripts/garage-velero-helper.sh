@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
+# Bootstrap role: no-deploy (status inspection and command rendering only).
 
 set -euo pipefail
 
-log() {
-  printf '[garage-velero-helper] %s\n' "$*"
-}
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_COMPONENT="garage-velero-helper"
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
 
 usage() {
   cat <<'EOF'
@@ -57,6 +59,9 @@ if [[ $# -lt 1 ]]; then
   exit 1
 fi
 
+common::require_commands awk kubectl
+common::use_kubeconfig "$KUBECONFIG_PATH"
+
 COMMAND="$1"
 shift || true
 
@@ -69,7 +74,7 @@ GARAGE_KEY_NAME="${GARAGE_KEY_NAME:-velero}"
 GARAGE_NODE_ID="${GARAGE_NODE_ID:-}"
 
 garage_status() {
-  KUBECONFIG="${KUBECONFIG_PATH}" kubectl -n "${GARAGE_NAMESPACE}" exec "${GARAGE_POD}" -- /garage status
+  kubectl -n "${GARAGE_NAMESPACE}" exec "${GARAGE_POD}" -- /garage status
 }
 
 detect_node_id() {

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Bootstrap role: no-deploy (repository validation only).
 """Validate the flat docs/ layout and local Markdown links."""
 
 from __future__ import annotations

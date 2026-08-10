@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Bootstrap role: no-deploy (repository validation only).
 """Enforce the ownership and cluster-state dependency of infrastructure/."""
 
 from __future__ import annotations

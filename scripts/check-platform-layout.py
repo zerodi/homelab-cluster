@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Bootstrap role: no-deploy (repository validation only).
 """Validate the Argo CD platform orchestration/payload boundary."""
 
 from __future__ import annotations

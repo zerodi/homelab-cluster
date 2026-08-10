@@ -2,25 +2,20 @@
 
 set -euo pipefail
 
-project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_COMPONENT="reconcile-cilium-lb-pool"
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
 
-for command in tofu kubectl realpath; do
-  if ! command -v "$command" >/dev/null 2>&1; then
-    echo "Required command not found: $command" >&2
-    exit 1
-  fi
-done
+common::require_commands tofu kubectl realpath
 
 kubeconfig="$(
-  cd "$project_root/cluster"
+  cd "$PROJECT_ROOT/cluster"
   realpath "$(tofu output -raw kubeconfig_path)"
 )"
-manifest="$(tofu -chdir="$project_root/cluster" output -raw cilium_lb_pool_manifest)"
+manifest="$(tofu -chdir="$PROJECT_ROOT/cluster" output -raw cilium_lb_pool_manifest)"
 
-if [[ ! -f "$kubeconfig" ]]; then
-  echo "Kubeconfig not found: $kubeconfig" >&2
-  exit 1
-fi
+common::require_file "Kubeconfig" "$kubeconfig"
 
 for attempt in {1..300}; do
   if kubectl --kubeconfig "$kubeconfig" get \

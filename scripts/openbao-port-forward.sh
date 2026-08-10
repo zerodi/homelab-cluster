@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
+# Bootstrap role: no-deploy (local connectivity helper only).
 
 set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_COMPONENT="openbao-port-forward"
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
 
 usage() {
   cat <<'EOF'
@@ -20,7 +26,6 @@ Environment overrides:
 EOF
 }
 
-project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 action="${1:-}"
 if [[ -z "$action" ]]; then
   usage >&2
@@ -47,22 +52,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-resolve_from_root() {
-  local path="$1"
-  if [[ "$path" == /* ]]; then
-    printf '%s\n' "$path"
-  else
-    printf '%s/%s\n' "$project_root" "$path"
-  fi
-}
-
 local_address="${OPENBAO_LOCAL_ADDRESS:-127.0.0.1}"
 local_port="${OPENBAO_LOCAL_PORT:-8200}"
 remote_port="${OPENBAO_REMOTE_PORT:-8200}"
 namespace="${OPENBAO_NAMESPACE:-openbao}"
 service="${OPENBAO_SERVICE:-openbao}"
-pid_file="$(resolve_from_root "${OPENBAO_PORT_FORWARD_PID:-out/openbao-port-forward.pid}")"
-log_file="$(resolve_from_root "${OPENBAO_PORT_FORWARD_LOG:-out/openbao-port-forward.log}")"
+pid_file="$(common::resolve_from_root "${OPENBAO_PORT_FORWARD_PID:-out/openbao-port-forward.pid}")"
+log_file="$(common::resolve_from_root "${OPENBAO_PORT_FORWARD_LOG:-out/openbao-port-forward.log}")"
 
 read_pid() {
   if [[ ! -f "$pid_file" ]]; then
@@ -113,11 +109,9 @@ start_port_forward() {
     echo "--kubeconfig is required for start." >&2
     exit 1
   fi
-  kubeconfig="$(resolve_from_root "$kubeconfig")"
-  if [[ ! -f "$kubeconfig" ]]; then
-    echo "Kubeconfig not found: $kubeconfig" >&2
-    exit 1
-  fi
+  common::require_commands kubectl ps
+  kubeconfig="$(common::resolve_from_root "$kubeconfig")"
+  common::require_file "Kubeconfig" "$kubeconfig"
 
   mkdir -p "$(dirname "$pid_file")" "$(dirname "$log_file")"
   clean_stale_pid_file

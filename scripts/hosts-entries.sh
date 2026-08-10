@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
+# Bootstrap role: no-deploy (client configuration rendering only).
 
 set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_COMPONENT="hosts-entries"
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
 
 usage() {
   cat <<'EOF'
@@ -39,20 +45,9 @@ if [[ -z "$kubeconfig" || -z "$contract" ]]; then
   exit 1
 fi
 
-if [[ ! -f "$kubeconfig" ]]; then
-  echo "Kubeconfig not found: $kubeconfig" >&2
-  exit 1
-fi
-
-if [[ ! -f "$contract" ]]; then
-  echo "Environment contract not found: $contract" >&2
-  exit 1
-fi
-
-if ! command -v kubectl >/dev/null 2>&1; then
-  echo "Required command not found: kubectl" >&2
-  exit 1
-fi
+common::require_commands awk kubectl
+common::require_file "Kubeconfig" "$kubeconfig"
+common::require_file "Environment contract" "$contract"
 
 hostname_for() {
   local wanted_key="$1"

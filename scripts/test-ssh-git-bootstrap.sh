@@ -2,9 +2,12 @@
 
 set -euo pipefail
 
-log() {
-  printf '[test-ssh-git-bootstrap] %s\n' "$*"
-}
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_COMPONENT="test-ssh-git-bootstrap"
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
+
+log() { common::log "$SCRIPT_COMPONENT" "$@"; }
 
 usage() {
   cat <<'EOF'
@@ -15,13 +18,6 @@ Usage:
     [--port <host-port>] \
     [--timeout <duration>]
 EOF
-}
-
-require_cmd() {
-  if ! command -v "$1" >/dev/null 2>&1; then
-    echo "Required command not found: $1" >&2
-    exit 1
-  fi
 }
 
 kubeconfig=""
@@ -65,10 +61,7 @@ if [[ -z "$kubeconfig" || -z "$hostname" ]]; then
   exit 1
 fi
 
-if [[ ! -f "$kubeconfig" ]]; then
-  echo "Kubeconfig not found: $kubeconfig" >&2
-  exit 1
-fi
+common::use_kubeconfig "$kubeconfig"
 
 case "$hostname" in
   localhost|localhost.*|127.*|::1|git.localtest.me)
@@ -82,18 +75,14 @@ if [[ ! "$port" =~ ^[0-9]+$ ]] || (( port < 1 || port > 65535 )); then
   exit 1
 fi
 
-for command in docker git kubectl rg ssh ssh-keygen; do
-  require_cmd "$command"
-done
+common::require_commands docker git kubectl rg ssh ssh-keygen
 
 if ! docker compose version >/dev/null 2>&1; then
   echo "Docker Compose v2 is required (docker compose)." >&2
   exit 1
 fi
 
-script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-repo_root=$(cd -- "$script_dir/.." && pwd)
-test_git_dir="$repo_root/test-ssh-git"
+test_git_dir="$PROJECT_ROOT/test-ssh-git"
 client_key="$test_git_dir/keys/argocd_test_client_ed25519"
 known_hosts="$test_git_dir/keys/known_hosts"
 repo_url="ssh://git@${hostname}:${port}/home/git/repos/gitops.git"
@@ -141,8 +130,8 @@ until GIT_SSH_COMMAND="$ssh_command" git ls-remote "$repo_url" >/dev/null 2>&1; 
 done
 
 log "Applying the repository credentials and root-ssh Application"
-cd "$repo_root"
-"$script_dir/argocd-apply-bootstrap.sh" \
+cd "$PROJECT_ROOT"
+"$SCRIPT_DIR/argocd-apply-bootstrap.sh" \
   --kubeconfig "$kubeconfig" \
   --test-ssh-git \
   --timeout "$timeout"

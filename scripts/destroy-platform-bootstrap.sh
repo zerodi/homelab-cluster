@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
+# Bootstrap role: no-deploy (destructive recovery/teardown only).
 
 set -euo pipefail
 
-require_cmd() {
-  if ! command -v "$1" >/dev/null 2>&1; then
-    echo "Required command not found: $1" >&2
-    exit 1
-  fi
-}
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_COMPONENT="destroy-platform-bootstrap"
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
 
-script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-repo_root=$(cd -- "$script_dir/.." && pwd)
-infra_dir="$repo_root/infrastructure"
-cluster_dir="$repo_root/cluster"
+infra_dir="$PROJECT_ROOT/infrastructure"
+cluster_dir="$PROJECT_ROOT/cluster"
 destroy_args=("$@")
 
 crd_backed_targets=(
@@ -112,7 +109,7 @@ destroy_crd_backed_resources() {
 }
 
 main() {
-  require_cmd tofu
+  common::require_commands tofu
 
   if prime_kubeconfig; then
     prune_missing_crd_targets

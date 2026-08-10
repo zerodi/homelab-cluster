@@ -2,16 +2,12 @@
 
 set -euo pipefail
 
-log() {
-  printf '[bootstrap-linstor-storage] %s\n' "$*"
-}
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_COMPONENT="bootstrap-linstor-storage"
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
 
-require_cmd() {
-  if ! command -v "$1" >/dev/null 2>&1; then
-    echo "Required command not found: $1" >&2
-    exit 1
-  fi
-}
+log() { common::log "$SCRIPT_COMPONENT" "$@"; }
 
 usage() {
   cat <<'EOF'
@@ -71,14 +67,8 @@ if [[ -z "$kubeconfig" || -z "$namespace" || -z "$pool_name" || -z "$device" || 
   exit 1
 fi
 
-if [[ ! -f "$kubeconfig" ]]; then
-  echo "Kubeconfig not found: $kubeconfig" >&2
-  exit 1
-fi
-
-require_cmd kubectl
-
-export KUBECONFIG="$kubeconfig"
+common::require_commands kubectl
+common::use_kubeconfig "$kubeconfig"
 
 if ! kubectl linstor --help >/dev/null 2>&1; then
   echo "kubectl linstor plugin is required for storage bootstrap." >&2
