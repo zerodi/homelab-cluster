@@ -14,6 +14,19 @@ tasks:
       - task gitops:preflight
       - ./scripts/argocd-apply-bootstrap.sh --kubeconfig "{{.KUBECONFIG_PATH}}"
 
+  push:
+    desc: Push the committed argocd subtree to the configured Forgejo GitOps repository
+    cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - test -n "{{.ENVIRONMENT_CONTRACT_PATH}}"
+      - ./scripts/validate-env-contract.py --mode strict
+      - task check:kustomize-bootstrap
+      - task check:kustomize-platform
+      - >-
+        ./scripts/argocd-push.sh
+        --kubeconfig "{{.KUBECONFIG_PATH}}"
+        --contract "{{.ENVIRONMENT_CONTRACT_PATH}}"
+
   test-ssh-bootstrap:
     desc: Build test-ssh-git and deploy the initial Argo CD tree from it
     cmds:

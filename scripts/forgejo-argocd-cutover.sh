@@ -8,6 +8,8 @@ SCRIPT_COMPONENT="forgejo-cutover"
 source "$SCRIPT_DIR/lib/common.sh"
 # shellcheck source=scripts/lib/argocd.sh
 source "$SCRIPT_DIR/lib/argocd.sh"
+# shellcheck source=scripts/lib/forgejo.sh
+source "$SCRIPT_DIR/lib/forgejo.sh"
 project_root="$PROJECT_ROOT"
 
 log() { common::log "$SCRIPT_COMPONENT" "$@"; }
@@ -116,11 +118,7 @@ for value in "$forgejo_org" "$forgejo_repo" "$argocd_user"; do
   [[ "$value" =~ ^[A-Za-z0-9_.-]+$ ]] || fail "Unsupported Forgejo identifier: $value"
 done
 
-if ! git -C "$project_root" diff --quiet -- argocd || \
-   ! git -C "$project_root" diff --cached --quiet -- argocd || \
-   [[ -n "$(git -C "$project_root" ls-files --others --exclude-standard -- argocd)" ]]; then
-  fail "argocd/ has uncommitted changes; commit them before publishing the GitOps repository"
-fi
+forgejo::require_clean_subtree "$project_root" argocd
 
 log "Validating the canonical environment contract"
 "$project_root/scripts/validate-env-contract.py" --mode strict
@@ -319,24 +317,9 @@ if [[ "$token_valid" != "true" ]]; then
 fi
 
 log "Publishing the committed argocd/ subtree to Forgejo"
-subtree_commit="$(git -C "$project_root" subtree split --prefix=argocd HEAD)"
-[[ -n "$subtree_commit" ]] || fail "Failed to create the argocd subtree commit"
-
-env \
-  -u SSH_ASKPASS \
-  -u VSCODE_GIT_ASKPASS_MAIN \
-  -u VSCODE_GIT_ASKPASS_NODE \
-  -u VSCODE_GIT_ASKPASS_EXTRA_ARGS \
-  -u VSCODE_GIT_IPC_HANDLE \
-  GIT_ASKPASS="$project_root/scripts/forgejo-git-askpass.sh" \
-  GIT_TERMINAL_PROMPT=0 \
-  FORGEJO_GIT_USERNAME="$admin_user" \
-  FORGEJO_GIT_PASSWORD="$admin_password" \
-  git -C "$project_root" \
-    -c credential.helper= \
-    -c "http.sslCAInfo=${trust_file}" \
-    -c "http.curloptResolve=${forgejo_host}:443:${forgejo_ip}" \
-    push "$repo_url" "${subtree_commit}:refs/heads/main"
+forgejo::push_subtree \
+  "$project_root" argocd "$repo_url" main "$trust_file" \
+  "$forgejo_host" "$forgejo_ip" "$admin_user" "$admin_password"
 
 log "Configuring the Forgejo CA and repository credential in Argo CD"
 if ! kubectl -n argocd get configmap argocd-tls-certs-cm >/dev/null 2>&1; then

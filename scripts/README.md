@@ -15,6 +15,7 @@
 | Скрипт | Метка | Назначение |
 | --- | --- | --- |
 | `argocd-apply-bootstrap.sh` | `deploy` | Применяет один root Application и ждёт его готовности. |
+| `argocd-push.sh` | `deploy` | Публикует закоммиченный `argocd/` subtree в настроенный Forgejo GitOps repository без force-push. |
 | `bootstrap-linstor-storage.sh` | `deploy` | Создаёт LINSTOR device pool на заданных узлах. |
 | `forgejo-argocd-cutover.sh` | `deploy` | Оркестрирует проверяемый GitOps cutover с временного Git на Forgejo. |
 | `generate-runtime-secret-puts.sh` | `deploy` | Создаёт только отсутствующие runtime secrets при `--apply-missing`; без флага только печатает команды. |

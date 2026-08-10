@@ -108,6 +108,24 @@ task gitops:apply-bootstrap
 `argocd/bootstrap/root-application.yaml` и ждёт `Application/root` в состояниях
 `Synced` и `Healthy`.
 
+## Публикация последующих изменений
+
+После cutover закоммитьте изменения runtime-дерева и отправьте только
+`argocd/` subtree в настроенный Forgejo repository:
+
+```bash
+git add argocd
+git commit -m 'update runtime GitOps'
+task gitops:push
+```
+
+Команда запускает проверки environment contract и Kustomize, запрещает push
+при незакоммиченных изменениях внутри `argocd/`, проверяет Forgejo TLS через
+кластерный Certificate и не выполняет force-push. По умолчанию write-доступ
+берётся из bootstrap admin Secret Forgejo. Для отдельного операторского token
+передайте `FORGEJO_GIT_USERNAME` и `FORGEJO_GIT_PASSWORD`; оба значения должны
+быть заданы вместе и не сохраняются в Git config или repository URL.
+
 Явный test bootstrap создаёт:
 
 - `argocd-ssh-known-hosts-cm`
