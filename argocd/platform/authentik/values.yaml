@@ -68,6 +68,10 @@ blueprints:
     - authentik-blueprints
   secrets:
     - forgejo-sso-blueprint
+    - grafana-sso-blueprint
+    - argocd-sso-blueprint
+    - harbor-sso-blueprint
+    - stalwart-sso-blueprint
 worker:
   resources:
     requests:

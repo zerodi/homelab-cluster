@@ -48,10 +48,10 @@ browser
 | Authentik | `https://auth.lab.zerodi.ru` | `akadmin` | центральный IdP | реализовано |
 | Forgejo | `https://git.lab.zerodi.ru` | local admin + Authentik OIDC | Authentik OIDC, local admin как break-glass | реализовано, требуется доводка регистрации |
 | Woodpecker | `https://ci.lab.zerodi.ru` | Forgejo OAuth2 | Forgejo OAuth2 поверх Authentik SSO | реализовано, OAuth application создаётся вручную |
-| Argo CD | environment contract | local `admin` | прямой Authentik OIDC + Argo CD RBAC | целевая настройка |
-| Harbor | `https://harbor.lab.zerodi.ru` | local `admin` | Authentik OIDC + Harbor groups | ручной переход после bootstrap |
-| Grafana | `https://grafana.lab.zerodi.ru` | local admin | Authentik Generic OAuth + entitlements | целевая настройка |
-| Stalwart | `https://stalwart.lab.zerodi.ru` | recovery admin/internal directory | Authentik OIDC для совместимых клиентов, app passwords для остальных | отдельный этап |
+| Argo CD | environment contract | local `admin` | прямой Authentik OIDC + Argo CD RBAC | provider/application реализованы; consumer остаётся в `infrastructure/` |
+| Harbor | `https://harbor.lab.zerodi.ru` | local `admin` | Authentik OIDC + Harbor groups | provider/application реализованы; переход после bootstrap |
+| Grafana | `https://grafana.lab.zerodi.ru` | local admin | Authentik Generic OAuth + entitlements | provider/application реализованы; consumer ещё не включён |
+| Stalwart | `https://stalwart.lab.zerodi.ru` | recovery admin/internal directory | Authentik OIDC для совместимых клиентов, app passwords для остальных | public provider/application реализованы; OIDC Directory — отдельный этап |
 | Hubble UI | `https://hubble.lab.zerodi.ru` | отсутствует | Authentik proxy/outpost или сетевое ограничение | известный gap |
 | echo | `https://echo.lab.zerodi.ru` | отсутствует | оставить diagnostic endpoint либо закрыть proxy policy | осознанное решение |
 | Garage | S3/admin API | S3 keys/admin token | service credentials, не пользовательский OIDC | реализовано |
@@ -110,18 +110,20 @@ Entitlements, а не размножение глобальных групп. Р
 
 1. Используйте отдельный slug: `forgejo`, `argocd`, `harbor`, `grafana` или
    `stalwart`.
-2. Выберите confidential client и Authorization Code flow.
-3. Укажите только точные `Strict` redirect URI из таблицы ниже.
+2. Для browser applications выберите confidential client и Authorization Code
+   flow. Stalwart использует отдельный public client с Device Authorization
+   flow, поскольку mail server только валидирует уже полученный access token.
+3. Укажите только точные `Strict` authorization redirect URI из таблицы ниже.
 4. Выберите signing key.
 5. Добавьте scopes `openid`, `profile`, `email`; `offline_access` добавляйте
    только приложению, которому нужен refresh token.
 6. Привяжите к Application разрешённые группы или policy.
-7. Client ID и client secret создавайте через OpenBao-backed blueprint либо
-   сразу сохраняйте в OpenBao до настройки consumer.
+7. Client ID и client secret создаются через OpenBao-backed blueprints;
+   Stalwart public client использует только client ID.
 
-Текущая версия Authentik в репозитории ниже `2026.5`, поэтому redirect URI
-задаются как обычные authorization redirects; типизированный Post Logout URI
-из новых инструкций Authentik пока не используйте.
+Закреплённая версия Authentik `2026.5.6` поддерживает типизированные redirect
+URI. Blueprints явно задают `redirect_uri_type: authorization` и только
+разрешённые grant types.
 
 | Consumer | Authentik slug | Redirect URI |
 | --- | --- | --- |
@@ -129,6 +131,7 @@ Entitlements, а не размножение глобальных групп. Р
 | Argo CD, direct OIDC | `argocd` | `<ARGOCD_URL>/auth/callback` |
 | Harbor | `harbor` | `https://harbor.lab.zerodi.ru/c/oidc/callback` |
 | Grafana | `grafana` | `https://grafana.lab.zerodi.ru/login/generic_oauth` |
+| Stalwart | `stalwart` | отсутствует: public Device Authorization client |
 
 Per-provider issuer и discovery URL имеют вид:
 
@@ -137,27 +140,32 @@ https://auth.lab.zerodi.ru/application/o/<slug>/
 https://auth.lab.zerodi.ru/application/o/<slug>/.well-known/openid-configuration
 ```
 
+Blueprint-модель и специальные YAML tags сверены с официальными разделами
+[Blueprints](https://docs.goauthentik.io/customize/blueprints),
+[File structure](https://docs.goauthentik.io/customize/blueprints/v1/structure/)
+и [YAML tags](https://docs.goauthentik.io/customize/blueprints/v1/tags).
+Redirect URI и scopes основаны на integration guides Authentik для
+[Grafana](https://docs.goauthentik.io/integrations/services/grafana/),
+[Argo CD](https://docs.goauthentik.io/integrations/services/argocd/) и
+[Harbor](https://docs.goauthentik.io/integrations/services/harbor/), а
+Stalwart device-flow audience — на его
+[OIDC backend contract](https://stalw.art/docs/auth/backend/oidc/).
+
 ## Secret contract
 
-Уже существующие paths:
+Декларативные Authentik blueprints используют следующий контракт:
 
 | OpenBao path | Keys | Consumer |
 | --- | --- | --- |
-| `secret/platform/forgejo/oidc` | `client_id`, `client_secret` | Authentik blueprint и Forgejo |
-| `secret/platform/woodpecker/runtime` | `agent_secret`, `forgejo_client`, `forgejo_secret` | Woodpecker |
+| `secret/platform/forgejo/oidc` | `client_id`, `client_secret` | Authentik и Forgejo |
+| `secret/platform/argocd/oidc` | `client_id`, `client_secret` | Authentik; Argo CD подключается в `infrastructure/` |
+| `secret/platform/harbor/oidc` | `client_id`, `client_secret` | Authentik; Harbor подключается после greenfield bootstrap |
+| `secret/platform/observability/grafana-oidc` | `client_id`, `client_secret` | Authentik; Grafana получает secret через ESO при включении OAuth |
+| `secret/platform/stalwart/oidc` | `client_id` | Authentik public client и Stalwart audience |
+| `secret/platform/woodpecker/runtime` | `agent_secret`, `forgejo_client`, `forgejo_secret` | Woodpecker через Forgejo |
 
-Для новых прямых integrations используйте следующий целевой контракт:
-
-| OpenBao path | Keys |
-| --- | --- |
-| `secret/platform/argocd/oidc` | `client_id`, `client_secret` |
-| `secret/platform/harbor/oidc` | `client_id`, `client_secret` |
-| `secret/platform/observability/grafana-oidc` | `client_id`, `client_secret` |
-| `secret/platform/stalwart/oidc` | `client_id`, `client_secret` при необходимости confidential client |
-
-Эти новые paths являются целевым контрактом: до их использования нужно
-добавить соответствующие ExternalSecret и required-key checks. Не добавляйте
-значения в Git.
+Все paths создаются `task ops:seed-runtime-secrets`, проверяются runtime secret
+contract и не содержат значений в Git.
 
 ## 1. Authentik
 
@@ -181,7 +189,8 @@ task ops:authentik-admin-password
 
 ## 2. Forgejo через Authentik
 
-В репозитории уже реализованы:
+В репозитории декларативно реализованы provider/application pairs для Forgejo,
+Argo CD, Harbor, Grafana и Stalwart. Для Forgejo дополнительно реализованы:
 
 - Authentik blueprint с provider slug `forgejo`;
 - доставка одной пары client credentials в Authentik и Forgejo из

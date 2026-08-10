@@ -38,10 +38,12 @@ platform-layer с нуля.
    `platform/cert-manager/cloudflare`,
    `platform/authentik/runtime`, `platform/authentik/postgresql`, `platform/authentik/redis`,
    `platform/forgejo/admin`, `platform/forgejo/oidc`, `platform/forgejo/postgresql`, `platform/forgejo/valkey`,
-   `platform/harbor/runtime`, `platform/harbor/postgresql`, `platform/harbor/valkey`,
-   `platform/stalwart/runtime`,
+   `platform/argocd/oidc`,
+   `platform/harbor/runtime`, `platform/harbor/postgresql`, `platform/harbor/valkey`, `platform/harbor/oidc`,
+   `platform/stalwart/runtime`, `platform/stalwart/oidc`,
    `platform/woodpecker/runtime`,
-   `platform/observability/grafana`, `platform/garage/runtime`, `platform/velero/s3`
+   `platform/observability/grafana`, `platform/observability/grafana-oidc`,
+   `platform/garage/runtime`, `platform/velero/s3`
 
 ## Порядок шагов
 
@@ -399,6 +401,9 @@ bao policy read external-secrets
 - `secret/platform/forgejo/oidc`
   - `client_id`
   - `client_secret`
+- `secret/platform/argocd/oidc`
+  - `client_id`
+  - `client_secret`
 - `secret/platform/harbor/runtime`
   - `admin_password`
   - `secret_key`
@@ -412,11 +417,19 @@ bao policy read external-secrets
   - `password`
 - `secret/platform/harbor/valkey`
   - `password`
+- `secret/platform/harbor/oidc`
+  - `client_id`
+  - `client_secret`
 - `secret/platform/stalwart/runtime`
   - `recovery_admin_password`
+- `secret/platform/stalwart/oidc`
+  - `client_id`
 - `secret/platform/observability/grafana`
   - `username`
   - `password`
+- `secret/platform/observability/grafana-oidc`
+  - `client_id`
+  - `client_secret`
 - `secret/platform/woodpecker/runtime`
   - `agent_secret`
   - `forgejo_client`

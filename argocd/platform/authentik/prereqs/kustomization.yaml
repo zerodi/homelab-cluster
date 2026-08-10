@@ -10,7 +10,10 @@ resources:
   - postgresql-auth-external-secret.yaml
   - redis-auth-external-secret.yaml
   - runtime-external-secret.yaml
-  - forgejo-oidc-external-secret.yaml
   - forgejo-sso-configmap.yaml
-  - forgejo-sso-blueprint-template-configmap.yml
+  - platform-sso-blueprint-templates.yaml
   - forgejo-sso-blueprint-external-secret.yaml
+  - grafana-sso-blueprint-external-secret.yaml
+  - argocd-sso-blueprint-external-secret.yaml
+  - harbor-sso-blueprint-external-secret.yaml
+  - stalwart-sso-blueprint-external-secret.yaml
