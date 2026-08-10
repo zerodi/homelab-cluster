@@ -123,6 +123,17 @@ tasks:
       - test -n "${BAO_TOKEN:-}"
       - bao kv get -field=recovery_admin_password "${BAO_KV_MOUNT:-secret}/platform/stalwart/runtime"
 
+  initial-app-credentials:
+    desc: Print initial interactive administrator logins and passwords
+    silent: true
+    cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - test -n "{{.ENVIRONMENT_CONTRACT_PATH}}"
+      - >-
+        ./scripts/initial-app-credentials.sh
+        --kubeconfig "{{.KUBECONFIG_PATH}}"
+        --contract "{{.ENVIRONMENT_CONTRACT_PATH}}"
+
   seed-runtime-secrets:
     desc: Create missing OpenBao runtime secret paths without overwriting existing paths
     cmds:

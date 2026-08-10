@@ -140,6 +140,18 @@ task ops:post-argocd-check
 kubectl -n argocd get applications
 ```
 
+Все первичные интерактивные admin credentials можно вывести одной командой
+после запуска OpenBao port-forward и экспорта `BAO_TOKEN`:
+
+```bash
+task ops:initial-app-credentials
+```
+
+Команда выводит доступы к Authentik, Argo CD, Forgejo, Grafana, Harbor и
+Stalwart. Она намеренно не показывает OAuth client secrets, пароли баз данных,
+registry credentials и service tokens. Пароль Argo CD доступен только пока в
+кластере существует `argocd-initial-admin-secret`.
+
 Начальный пользователь Authentik — `akadmin`. В greenfield bootstrap его
 пароль генерируется в OpenBao и получается без чтения других runtime secrets:
 
