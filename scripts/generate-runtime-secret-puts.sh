@@ -73,7 +73,6 @@ runtime_secret_contract=(
   "platform/harbor/valkey:password"
   "platform/harbor/oidc:client_id,client_secret"
   "platform/stalwart/runtime:recovery_admin_password"
-  "platform/stalwart/oidc:client_id"
   "platform/observability/grafana:username,password"
   "platform/observability/grafana-oidc:client_id,client_secret"
   "platform/woodpecker/runtime:agent_secret,forgejo_client,forgejo_secret"
@@ -223,7 +222,6 @@ harbor_registry_htpasswd="$(
     tr -d '\n'
 )"
 stalwart_recovery_admin_password="$(rand_alnum 40)"
-stalwart_oidc_client_id="$(rand_alnum 32)"
 grafana_password="$(rand_b64ish 32)"
 grafana_oidc_client_id="$(rand_alnum 32)"
 grafana_oidc_client_secret="$(rand_b64ish 64)"
@@ -309,8 +307,6 @@ write_entry "$mount_path/platform/harbor/oidc" \
   "client_secret=$harbor_oidc_client_secret"
 write_entry "$mount_path/platform/stalwart/runtime" \
   "recovery_admin_password=$stalwart_recovery_admin_password"
-write_entry "$mount_path/platform/stalwart/oidc" \
-  "client_id=$stalwart_oidc_client_id"
 write_entry "$mount_path/platform/observability/grafana" \
   "username=admin" \
   "password=$grafana_password"

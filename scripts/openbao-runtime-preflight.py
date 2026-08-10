@@ -83,10 +83,6 @@ EXPECTED_CONTRACT: dict[str, dict[str, Any]] = {
         "app": "stalwart",
         "properties": {"recovery_admin_password": "nonempty"},
     },
-    "platform/stalwart/oidc": {
-        "app": "authentik/stalwart",
-        "properties": {"client_id": "nonempty"},
-    },
     "platform/observability/grafana": {
         "app": "observability/grafana",
         "properties": {"username": "nonempty", "password": "nonempty"},

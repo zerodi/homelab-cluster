@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - configmap.yaml
+  - authentik-oidc-plan-configmap.yaml
   - headless-service.yaml
   - service.yaml
   - mail-service.yaml
@@ -10,3 +11,4 @@ resources:
   - httproute.yaml
   - redirect-httproute.yaml
   - networkpolicy.yaml
+  - authentik-oidc-configuration-job.yaml

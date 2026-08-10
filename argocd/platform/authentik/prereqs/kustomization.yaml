@@ -16,4 +16,4 @@ resources:
   - grafana-sso-blueprint-external-secret.yaml
   - argocd-sso-blueprint-external-secret.yaml
   - harbor-sso-blueprint-external-secret.yaml
-  - stalwart-sso-blueprint-external-secret.yaml
+  - stalwart-sso-blueprint-configmap.yaml

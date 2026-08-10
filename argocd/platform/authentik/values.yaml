@@ -66,12 +66,12 @@ server:
 blueprints:
   configMaps:
     - authentik-blueprints
+    - stalwart-sso-blueprint
   secrets:
     - forgejo-sso-blueprint
     - grafana-sso-blueprint
     - argocd-sso-blueprint
     - harbor-sso-blueprint
-    - stalwart-sso-blueprint
 worker:
   resources:
     requests:

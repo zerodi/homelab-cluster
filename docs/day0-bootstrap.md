@@ -40,7 +40,7 @@ platform-layer с нуля.
    `platform/forgejo/admin`, `platform/forgejo/oidc`, `platform/forgejo/postgresql`, `platform/forgejo/valkey`,
    `platform/argocd/oidc`,
    `platform/harbor/runtime`, `platform/harbor/postgresql`, `platform/harbor/valkey`, `platform/harbor/oidc`,
-   `platform/stalwart/runtime`, `platform/stalwart/oidc`,
+   `platform/stalwart/runtime`,
    `platform/woodpecker/runtime`,
    `platform/observability/grafana`, `platform/observability/grafana-oidc`,
    `platform/garage/runtime`, `platform/velero/s3`
@@ -422,8 +422,6 @@ bao policy read external-secrets
   - `client_secret`
 - `secret/platform/stalwart/runtime`
   - `recovery_admin_password`
-- `secret/platform/stalwart/oidc`
-  - `client_id`
 - `secret/platform/observability/grafana`
   - `username`
   - `password`

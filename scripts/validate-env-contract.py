@@ -1276,10 +1276,28 @@ class Validator:
                 blueprint_path,
                 f"https://{hostname}{callback_path}",
             )
+        stalwart_blueprint_path = (
+            "argocd/platform/authentik/prereqs/"
+            "stalwart-sso-blueprint-configmap.yaml"
+        )
+        for label, callback_path in [
+            ("admin", "/admin/oauth/callback"),
+            ("account", "/account/oauth/callback"),
+        ]:
+            self.expect_contains(
+                f"stalwart {label} sso callback url",
+                stalwart_blueprint_path,
+                f'https://{hosts["stalwart"]}{callback_path}',
+            )
         self.expect_contains(
             "stalwart sso blueprint launch url",
-            blueprint_path,
+            stalwart_blueprint_path,
             f'https://{hosts["stalwart"]}/account/',
+        )
+        self.expect_contains(
+            "stalwart oidc directory issuer",
+            "argocd/platform/stalwart/resources/authentik-oidc-plan-configmap.yaml",
+            f'https://{hosts["authentik"]}/application/o/stalwart/',
         )
 
         external_secret_checks = [

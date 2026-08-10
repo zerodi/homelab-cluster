@@ -19,6 +19,9 @@ Stalwart разворачивается как runtime-приложение по
   `ClusterIssuer/letsencrypt-cloudflare`.
 - Recovery credential хранится в `secret/platform/stalwart/runtime` в OpenBao
   и доставляется через External Secrets Operator.
+- Authentik OIDC provider использует public client `stalwart-webui`, PKCE и
+  строгие callbacks WebUI. PostSync Job декларативно создаёт OIDC Directory и
+  назначает его активным через актуальный `stalwart-cli apply`.
 
 Поддомены, образ, storage class и размер PVC задаются в `envs/homelab.yaml` с
 environment-specific override в `envs/homelab.override.yaml`. Полные hostname
@@ -53,6 +56,16 @@ kubectl -n stalwart get externalsecret,certificate,pvc,pod,svc,httproute
 kubectl -n stalwart rollout status statefulset/stalwart --timeout=240s
 task ops:hosts-entries
 ```
+
+Проверьте применение Authentik Directory:
+
+```bash
+kubectl -n stalwart logs job/stalwart-authentik-oidc-configuration
+```
+
+OIDC не предоставляет offline directory lookup: почтовые accounts нужно
+создать в Stalwart до первого входа, иначе входящая почта для ещё неизвестного
+адреса будет отклонена.
 
 `task ops:hosts-entries` читает фактические адреса из Kubernetes status и
 добавляет обе записи: web hostname с адресом общего Gateway и mail hostname с
@@ -90,8 +103,10 @@ kubectl -n stalwart get secret stalwart-runtime \
    `/etc/stalwart/tls/tls.crt` и `/etc/stalwart/tls/tls.key` и назначьте его
    default certificate;
 3. проверьте listeners SMTP, submissions и IMAPS;
-4. удалите `envFrom` с `stalwart-runtime` из StatefulSet и синхронизируйте
-   Argo CD, чтобы recovery credential не оставался постоянно активным.
+4. удалите переменную `STALWART_RECOVERY_ADMIN` из StatefulSet и
+   синхронизируйте Argo CD, чтобы recovery credential не оставался постоянно
+   активным в основном контейнере. PostSync Job продолжит читать отдельный
+   password key напрямую из Secret.
 
 OpenBao path при этом можно сохранить для аварийного доступа. Для recovery
 временно верните secret в environment, выполните работу и снова удалите его.

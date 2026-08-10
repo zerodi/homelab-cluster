@@ -51,7 +51,7 @@ browser
 | Argo CD | environment contract | local `admin` | прямой Authentik OIDC + Argo CD RBAC | provider/application реализованы; consumer остаётся в `infrastructure/` |
 | Harbor | `https://harbor.lab.zerodi.ru` | local `admin` | Authentik OIDC + Harbor groups | provider/application реализованы; переход после bootstrap |
 | Grafana | `https://grafana.lab.zerodi.ru` | local admin | Authentik Generic OAuth + entitlements | provider/application реализованы; consumer ещё не включён |
-| Stalwart | `https://stalwart.lab.zerodi.ru` | recovery admin/internal directory | Authentik OIDC для совместимых клиентов, app passwords для остальных | public provider/application реализованы; OIDC Directory — отдельный этап |
+| Stalwart | `https://stalwart.lab.zerodi.ru` | recovery admin + Authentik OIDC | Authentik OIDC для WebUI и совместимых клиентов, app passwords для остальных | provider, callbacks и OIDC Directory реализованы декларативно |
 | Hubble UI | `https://hubble.lab.zerodi.ru` | отсутствует | Authentik proxy/outpost или сетевое ограничение | известный gap |
 | echo | `https://echo.lab.zerodi.ru` | отсутствует | оставить diagnostic endpoint либо закрыть proxy policy | осознанное решение |
 | Garage | S3/admin API | S3 keys/admin token | service credentials, не пользовательский OIDC | реализовано |
@@ -148,8 +148,9 @@ Redirect URI и scopes основаны на integration guides Authentik для
 [Grafana](https://docs.goauthentik.io/integrations/services/grafana/),
 [Argo CD](https://docs.goauthentik.io/integrations/services/argocd/) и
 [Harbor](https://docs.goauthentik.io/integrations/services/harbor/), а
-Stalwart device-flow audience — на его
-[OIDC backend contract](https://stalw.art/docs/auth/backend/oidc/).
+Stalwart provider и directory — на актуальных контрактах
+[OIDC backend](https://stalw.art/docs/auth/backend/oidc/) и
+[WebUI OAuth client](https://stalw.art/docs/auth/oauth/client-registration/#webui-client).
 
 ## Secret contract
 
@@ -161,7 +162,6 @@ Stalwart device-flow audience — на его
 | `secret/platform/argocd/oidc` | `client_id`, `client_secret` | Authentik; Argo CD подключается в `infrastructure/` |
 | `secret/platform/harbor/oidc` | `client_id`, `client_secret` | Authentik; Harbor подключается после greenfield bootstrap |
 | `secret/platform/observability/grafana-oidc` | `client_id`, `client_secret` | Authentik; Grafana получает secret через ESO при включении OAuth |
-| `secret/platform/stalwart/oidc` | `client_id` | Authentik public client и Stalwart audience |
 | `secret/platform/woodpecker/runtime` | `agent_secret`, `forgejo_client`, `forgejo_secret` | Woodpecker через Forgejo |
 
 Все paths создаются `task ops:seed-runtime-secrets`, проверяются runtime secret
@@ -374,26 +374,27 @@ Client secret нельзя добавлять в values. Доставьте ег
 
 ## 7. Stalwart и почтовые клиенты
 
-Stalwart поддерживает внешний OIDC directory, но это не обычный browser-only
-SSO. IMAP/SMTP/JMAP client должен получить access token у Authentik и передать
-его через `OAUTHBEARER`.
+Stalwart 0.16 поддерживает внешний OIDC directory для WebUI и протокольных
+клиентов. Authentik provider использует public client `stalwart-webui`, PKCE,
+authorization code, refresh token и device code grants. Разрешены только
+строгие callbacks `/admin/oauth/callback` и `/account/oauth/callback`.
 
-В Stalwart настройте OIDC Directory:
+PostSync Job идемпотентно применяет через `stalwart-cli apply`:
 
 ```text
 issuerUrl: https://auth.lab.zerodi.ru/application/o/stalwart/
-requireAudience: <stalwart-client-id>
+requireAudience: stalwart-webui
 requireScopes: [openid, email]
-claimUsername: preferred_username
-usernameDomain: <mail-domain>
+claimUsername: email
 claimName: name
 claimGroups: groups
 ```
 
-Затем выберите этот Directory в
-`Settings -> Authentication -> General`. Почтовые principals необходимо
-создать заранее: OIDC не предоставляет Stalwart offline directory lookup, и
-письмо неизвестному до первого входа адресу будет отклонено.
+Тот же план назначает созданный Directory в `Authentication.directoryId`.
+Recovery credential остаётся доступен для декларативного Job и аварийного
+входа. Почтовые principals необходимо создать заранее: OIDC не предоставляет
+Stalwart offline directory lookup, и письмо неизвестному до первого входа
+адресу будет отклонено.
 
 Многие распространённые почтовые клиенты не умеют third-party OIDC через
 `OAUTHBEARER`. Для них используйте отдельные Stalwart app passwords, а не пароль
@@ -448,7 +449,7 @@ Machine credentials должны иметь отдельный lifecycle и не
 6. Настройте Argo CD OIDC и RBAC, не меняя ownership `infrastructure/`.
 7. Переключите новый Harbor на OIDC до создания локальных пользователей.
 8. Настройте Grafana Generic OAuth и role mapping.
-9. Отдельно протестируйте Stalwart OIDC и список поддерживаемых mail clients.
+9. Проверьте Stalwart WebUI OIDC и список поддерживаемых mail clients.
 10. Закройте Hubble UI и при необходимости echo через Authentik proxy или сеть.
 11. Выполните финальные проверки и только затем ограничивайте local login.
 
@@ -520,3 +521,5 @@ Harbor, после чего выполните `Test OIDC Server`.
 - [Woodpecker user registration](https://woodpecker-ci.org/docs/administration/configuration/server)
 - [Forgejo OIDC group mappings](https://forgejo.org/docs/latest/admin/advanced/oidc-group-mappings/)
 - [Stalwart external OIDC directory](https://stalw.art/docs/auth/backend/oidc/)
+- [Stalwart declarative apply](https://stalw.art/docs/management/cli/apply/)
+- [Stalwart WebUI OAuth client](https://stalw.art/docs/auth/oauth/client-registration/#webui-client)
