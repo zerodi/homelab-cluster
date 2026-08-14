@@ -7,11 +7,11 @@ bootstrap entrypoint.
 ## Структура и ownership
 
 - `bootstrap/` содержит root Applications, AppProjects и repository metadata;
-- `platform/applications/` индексирует дочерние platform Applications;
-- `platform/<component>/` содержит Helm values или Kustomize payload;
+- `platform/<domain>/applications/` индексирует дочерние platform Applications;
+- `platform/<domain>/<component>/` содержит Helm values или Kustomize payload;
 - `apps/` содержит application workloads вне platform baseline.
 
-`platform/kustomization.yaml` подключает только application index, поэтому root
+`platform/kustomization.yaml` подключает только domain application indexes, поэтому root
 Application не становится совладельцем ресурсов дочерних приложений. Правила
 добавления компонентов описаны в [`platform/README.md`](platform/README.md).
 

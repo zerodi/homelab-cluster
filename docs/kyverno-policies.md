@@ -1,7 +1,7 @@
 # Kyverno policies
 
 Runtime policy pack находится в
-[`argocd/platform/kyverno/policies`](../argocd/platform/kyverno/policies).
+[`argocd/platform/policy/kyverno/policies`](../argocd/platform/policy/kyverno/policies).
 
 Текущие `ValidatingPolicy`:
 

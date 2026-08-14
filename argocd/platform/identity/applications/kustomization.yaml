@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - authentik/prereqs.yaml
+  - authentik/postgresql.yaml
+  - authentik/redis.yaml
+  - authentik/app.yaml

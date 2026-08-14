@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - garage/prereqs.yaml
+  - garage/app.yaml
+  - velero/prereqs.yaml
+  - velero/app.yaml

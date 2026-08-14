@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: stalwart
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  project: platform
+  source:
+    repoURL: https://git.home.arpa/platform/gitops.git
+    targetRevision: main
+    path: platform/messaging/stalwart/resources
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: stalwart
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

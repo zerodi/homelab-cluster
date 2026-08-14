@@ -173,7 +173,7 @@ class Validator:
             env["platform"]["cert_manager"]["acme_email"],
         )
         add_yaml_replacement(
-            "argocd/platform/gateway/letsencrypt-cloudflare-cluster-issuer.yaml",
+            "argocd/platform/core/gateway/letsencrypt-cloudflare-cluster-issuer.yaml",
             ("spec", "acme", "email"),
             env["platform"]["cert_manager"]["acme_email"],
         )
@@ -185,23 +185,23 @@ class Validator:
 
         hostname_mirrors = {
             "authentik": (
-                "argocd/platform/authentik/prereqs/certificate.yaml",
+                "argocd/platform/identity/authentik/prereqs/certificate.yaml",
                 ("spec", "dnsNames", 0),
             ),
             "forgejo": (
-                "argocd/platform/forgejo/prereqs/certificate.yaml",
+                "argocd/platform/delivery/forgejo/prereqs/certificate.yaml",
                 ("spec", "dnsNames", 0),
             ),
             "garage": (
-                "argocd/platform/garage/prereqs/certificate.yaml",
+                "argocd/platform/storage/garage/prereqs/certificate.yaml",
                 ("spec", "dnsNames", 0),
             ),
             "harbor": (
-                "argocd/platform/harbor/prereqs/certificate.yaml",
+                "argocd/platform/delivery/harbor/prereqs/certificate.yaml",
                 ("spec", "dnsNames", 0),
             ),
             "woodpecker": (
-                "argocd/platform/woodpecker/prereqs/certificate.yaml",
+                "argocd/platform/delivery/woodpecker/prereqs/certificate.yaml",
                 ("spec", "dnsNames", 0),
             ),
             "echo": (
@@ -213,15 +213,15 @@ class Validator:
                 ("spec", "dnsNames", 0),
             ),
             "hubble": (
-                "argocd/platform/hubble/httproute.yaml",
+                "argocd/platform/core/hubble/httproute.yaml",
                 ("spec", "hostnames", 0),
             ),
             "stalwart": (
-                "argocd/platform/gateway/stalwart-admin-certificate.yaml",
+                "argocd/platform/core/gateway/stalwart-admin-certificate.yaml",
                 ("spec", "dnsNames", 0),
             ),
             "mail": (
-                "argocd/platform/stalwart/prereqs/mail-certificate.yaml",
+                "argocd/platform/messaging/stalwart/prereqs/mail-certificate.yaml",
                 ("spec", "dnsNames", 0),
             ),
         }
@@ -232,15 +232,15 @@ class Validator:
                 add_yaml_replacement(relpath, parts, env["hosts"][key])
 
         address_mirrors = {
-            "authentik": "argocd/platform/authentik/prereqs/gateway.yaml",
+            "authentik": "argocd/platform/identity/authentik/prereqs/gateway.yaml",
             "echo": "argocd/apps/echo/resources/gateway.yaml",
             "grafana": "argocd/platform/observability/prereqs/gateway.yaml",
-            "forgejo": "argocd/platform/forgejo/prereqs/gateway.yaml",
-            "external": "argocd/platform/gateway/external-gateway.yaml",
-            "internal": "argocd/platform/gateway/internal-gateway.yaml",
-            "garage": "argocd/platform/garage/prereqs/gateway.yaml",
-            "harbor": "argocd/platform/harbor/prereqs/gateway.yaml",
-            "woodpecker": "argocd/platform/woodpecker/prereqs/gateway.yaml",
+            "forgejo": "argocd/platform/delivery/forgejo/prereqs/gateway.yaml",
+            "external": "argocd/platform/core/gateway/external-gateway.yaml",
+            "internal": "argocd/platform/core/gateway/internal-gateway.yaml",
+            "garage": "argocd/platform/storage/garage/prereqs/gateway.yaml",
+            "harbor": "argocd/platform/delivery/harbor/prereqs/gateway.yaml",
+            "woodpecker": "argocd/platform/delivery/woodpecker/prereqs/gateway.yaml",
         }
         for key, old_value in base["platform"]["gateway"]["addresses"].items():
             add_replacement(
@@ -263,7 +263,7 @@ class Validator:
             env["platform"]["stalwart"]["mail_load_balancer_ip"],
         )
         add_yaml_replacement(
-            "argocd/platform/stalwart/resources/mail-service.yaml",
+            "argocd/platform/messaging/stalwart/resources/mail-service.yaml",
             ("metadata", "annotations", "lbipam.cilium.io/ips"),
             env["platform"]["stalwart"]["mail_load_balancer_ip"],
         )
@@ -272,7 +272,7 @@ class Validator:
             env["storage"]["piraeus"]["storage_class"],
         )
         add_yaml_replacement(
-            "argocd/platform/authentik/postgresql/values.yaml",
+            "argocd/platform/identity/authentik/postgresql/values.yaml",
             ("primary", "persistence", "storageClass"),
             env["storage"]["piraeus"]["storage_class"],
         )
@@ -281,7 +281,7 @@ class Validator:
             env["platform"]["forgejo"]["admin_email"],
         )
         add_yaml_replacement(
-            "argocd/platform/forgejo/values.yaml",
+            "argocd/platform/delivery/forgejo/values.yaml",
             ("gitea", "admin", "email"),
             env["platform"]["forgejo"]["admin_email"],
         )
@@ -563,14 +563,14 @@ class Validator:
         self.expect_equal(
             "gateway class",
             env["platform"]["gateway"]["gateway_class_name"],
-            "argocd/platform/gateway/external-gateway.yaml",
+            "argocd/platform/core/gateway/external-gateway.yaml",
             "spec",
             "gatewayClassName",
         )
         self.expect_equal(
             "external gateway address",
             env["platform"]["gateway"]["addresses"]["external"],
-            "argocd/platform/gateway/external-gateway.yaml",
+            "argocd/platform/core/gateway/external-gateway.yaml",
             "spec",
             "infrastructure",
             "annotations",
@@ -579,21 +579,21 @@ class Validator:
         self.expect_equal(
             "gateway class",
             env["platform"]["gateway"]["gateway_class_name"],
-            "argocd/platform/gateway/internal-gateway.yaml",
+            "argocd/platform/core/gateway/internal-gateway.yaml",
             "spec",
             "gatewayClassName",
         )
         self.expect_equal(
             "internal gateway address",
             env["platform"]["gateway"]["addresses"]["internal"],
-            "argocd/platform/gateway/internal-gateway.yaml",
+            "argocd/platform/core/gateway/internal-gateway.yaml",
             "spec",
             "infrastructure",
             "annotations",
             "io.cilium/lb-ipam-ips",
         )
 
-        coredns_path = "argocd/platform/gateway/coredns-home-arpa-overrides.yaml"
+        coredns_path = "argocd/platform/core/gateway/coredns-home-arpa-overrides.yaml"
         for app_name, address_key in {
             "authentik": "authentik",
             "echo": "echo",
@@ -616,20 +616,20 @@ class Validator:
 
         storage_class = env["storage"]["piraeus"]["storage_class"]
         for relpath, parts in [
-            ("argocd/platform/authentik/postgresql/values.yaml", ("primary", "persistence", "storageClass")),
-            ("argocd/platform/authentik/redis/values.yaml", ("master", "persistence", "storageClass")),
-            ("argocd/platform/forgejo/postgresql/values.yaml", ("primary", "persistence", "storageClass")),
-            ("argocd/platform/forgejo/valkey/values.yaml", ("primary", "persistence", "storageClass")),
-            ("argocd/platform/harbor/postgresql/values.yaml", ("primary", "persistence", "storageClass")),
-            ("argocd/platform/harbor/valkey/values.yaml", ("primary", "persistence", "storageClass")),
-            ("argocd/platform/forgejo/values.yaml", ("persistence", "storageClass")),
+            ("argocd/platform/identity/authentik/postgresql/values.yaml", ("primary", "persistence", "storageClass")),
+            ("argocd/platform/identity/authentik/redis/values.yaml", ("master", "persistence", "storageClass")),
+            ("argocd/platform/delivery/forgejo/postgresql/values.yaml", ("primary", "persistence", "storageClass")),
+            ("argocd/platform/delivery/forgejo/valkey/values.yaml", ("primary", "persistence", "storageClass")),
+            ("argocd/platform/delivery/harbor/postgresql/values.yaml", ("primary", "persistence", "storageClass")),
+            ("argocd/platform/delivery/harbor/valkey/values.yaml", ("primary", "persistence", "storageClass")),
+            ("argocd/platform/delivery/forgejo/values.yaml", ("persistence", "storageClass")),
             ("argocd/platform/observability/grafana/values.yaml", ("persistence", "storageClassName")),
         ]:
             self.expect_equal("storage class", storage_class, relpath, *parts)
 
         cert_manager = env["platform"]["cert_manager"]
         issuer_path = (
-            "argocd/platform/gateway/letsencrypt-cloudflare-cluster-issuer.yaml"
+            "argocd/platform/core/gateway/letsencrypt-cloudflare-cluster-issuer.yaml"
         )
         self.expect_equal(
             "Cloudflare ACME issuer name",
@@ -678,7 +678,7 @@ class Validator:
         )
 
         cloudflare_external_secret = (
-            "argocd/platform/gateway/cloudflare-api-token-external-secret.yaml"
+            "argocd/platform/core/gateway/cloudflare-api-token-external-secret.yaml"
         )
         self.expect_equal(
             "Cloudflare API token target secret",
@@ -718,7 +718,7 @@ class Validator:
         self.expect_equal(
             "woodpecker server storage class",
             env["platform"]["woodpecker"]["server_storage_class"],
-            "argocd/platform/woodpecker/values.yaml",
+            "argocd/platform/delivery/woodpecker/values.yaml",
             "server",
             "persistentVolume",
             "storageClass",
@@ -726,7 +726,7 @@ class Validator:
         self.expect_equal(
             "woodpecker pipeline storage class",
             env["platform"]["woodpecker"]["server_storage_class"],
-            "argocd/platform/woodpecker/values.yaml",
+            "argocd/platform/delivery/woodpecker/values.yaml",
             "agent",
             "env",
             "WOODPECKER_BACKEND_K8S_STORAGE_CLASS",
@@ -734,7 +734,7 @@ class Validator:
         self.expect_equal(
             "woodpecker server storage size",
             env["platform"]["woodpecker"]["server_storage_size"],
-            "argocd/platform/woodpecker/values.yaml",
+            "argocd/platform/delivery/woodpecker/values.yaml",
             "server",
             "persistentVolume",
             "size",
@@ -742,7 +742,7 @@ class Validator:
         self.expect_equal(
             "woodpecker pipeline volume size",
             env["platform"]["woodpecker"]["pipeline_volume_size"],
-            "argocd/platform/woodpecker/values.yaml",
+            "argocd/platform/delivery/woodpecker/values.yaml",
             "agent",
             "env",
             "WOODPECKER_BACKEND_K8S_VOLUME_SIZE",
@@ -751,7 +751,7 @@ class Validator:
         self.expect_equal(
             "stalwart storage class",
             env["platform"]["stalwart"]["storage_class"],
-            "argocd/platform/stalwart/resources/statefulset.yaml",
+            "argocd/platform/messaging/stalwart/resources/statefulset.yaml",
             "spec",
             "volumeClaimTemplates",
             0,
@@ -761,7 +761,7 @@ class Validator:
         self.expect_equal(
             "stalwart storage size",
             env["platform"]["stalwart"]["storage_size"],
-            "argocd/platform/stalwart/resources/statefulset.yaml",
+            "argocd/platform/messaging/stalwart/resources/statefulset.yaml",
             "spec",
             "volumeClaimTemplates",
             0,
@@ -773,7 +773,7 @@ class Validator:
         self.expect_equal(
             "stalwart mail load balancer address",
             env["platform"]["stalwart"]["mail_load_balancer_ip"],
-            "argocd/platform/stalwart/resources/mail-service.yaml",
+            "argocd/platform/messaging/stalwart/resources/mail-service.yaml",
             "metadata",
             "annotations",
             "lbipam.cilium.io/ips",
@@ -781,7 +781,7 @@ class Validator:
         self.expect_equal(
             "stalwart mail hostname",
             env["platform"]["stalwart"]["mail_host"],
-            "argocd/platform/stalwart/resources/statefulset.yaml",
+            "argocd/platform/messaging/stalwart/resources/statefulset.yaml",
             "spec",
             "template",
             "spec",
@@ -794,7 +794,7 @@ class Validator:
         self.expect_equal(
             "stalwart public url",
             env["platform"]["stalwart"]["public_url"],
-            "argocd/platform/stalwart/resources/statefulset.yaml",
+            "argocd/platform/messaging/stalwart/resources/statefulset.yaml",
             "spec",
             "template",
             "spec",
@@ -807,7 +807,7 @@ class Validator:
         self.expect_equal(
             "garage secret name",
             env["platform"]["garage"]["runtime_secret_name"],
-            "argocd/platform/garage/resources/statefulset.yaml",
+            "argocd/platform/storage/garage/resources/statefulset.yaml",
             "spec",
             "template",
             "spec",
@@ -819,7 +819,7 @@ class Validator:
         self.expect_equal(
             "garage storage class",
             env["platform"]["garage"]["storage_class"],
-            "argocd/platform/garage/resources/statefulset.yaml",
+            "argocd/platform/storage/garage/resources/statefulset.yaml",
             "spec",
             "volumeClaimTemplates",
             0,
@@ -829,7 +829,7 @@ class Validator:
         self.expect_equal(
             "garage storage size",
             env["platform"]["garage"]["size"],
-            "argocd/platform/garage/resources/statefulset.yaml",
+            "argocd/platform/storage/garage/resources/statefulset.yaml",
             "spec",
             "volumeClaimTemplates",
             0,
@@ -842,14 +842,14 @@ class Validator:
         self.expect_equal(
             "authentik host",
             auth_url,
-            "argocd/platform/authentik/values.yaml",
+            "argocd/platform/identity/authentik/values.yaml",
             "authentik",
             "host",
         )
         self.expect_equal(
             "authentik outpost host",
             auth_url,
-            "argocd/platform/authentik/values.yaml",
+            "argocd/platform/identity/authentik/values.yaml",
             "authentik",
             "outposts",
             "authentik_host",
@@ -857,7 +857,7 @@ class Validator:
         self.expect_equal(
             "authentik outpost browser host",
             auth_url,
-            "argocd/platform/authentik/values.yaml",
+            "argocd/platform/identity/authentik/values.yaml",
             "authentik",
             "outposts",
             "authentik_host_browser",
@@ -865,7 +865,7 @@ class Validator:
         self.expect_equal(
             "authentik runtime secret name",
             env["platform"]["authentik"]["runtime_secret_name"],
-            "argocd/platform/authentik/values.yaml",
+            "argocd/platform/identity/authentik/values.yaml",
             "authentik",
             "existingSecret",
             "secretName",
@@ -873,7 +873,7 @@ class Validator:
         self.expect_equal(
             "authentik postgresql host",
             env["platform"]["authentik"]["postgresql"]["host"],
-            "argocd/platform/authentik/values.yaml",
+            "argocd/platform/identity/authentik/values.yaml",
             "authentik",
             "postgresql",
             "host",
@@ -881,7 +881,7 @@ class Validator:
         self.expect_equal(
             "authentik postgresql database",
             env["platform"]["authentik"]["postgresql"]["database"],
-            "argocd/platform/authentik/values.yaml",
+            "argocd/platform/identity/authentik/values.yaml",
             "authentik",
             "postgresql",
             "name",
@@ -889,7 +889,7 @@ class Validator:
         self.expect_equal(
             "authentik postgresql user",
             env["platform"]["authentik"]["postgresql"]["user"],
-            "argocd/platform/authentik/values.yaml",
+            "argocd/platform/identity/authentik/values.yaml",
             "authentik",
             "postgresql",
             "user",
@@ -897,7 +897,7 @@ class Validator:
         self.expect_equal(
             "authentik redis host",
             env["platform"]["authentik"]["redis"]["host"],
-            "argocd/platform/authentik/values.yaml",
+            "argocd/platform/identity/authentik/values.yaml",
             "authentik",
             "redis",
             "host",
@@ -906,7 +906,7 @@ class Validator:
         self.expect_equal(
             "forgejo admin secret name",
             env["platform"]["forgejo"]["admin_secret_name"],
-            "argocd/platform/forgejo/values.yaml",
+            "argocd/platform/delivery/forgejo/values.yaml",
             "gitea",
             "admin",
             "existingSecret",
@@ -914,7 +914,7 @@ class Validator:
         self.expect_equal(
             "forgejo admin email",
             env["platform"]["forgejo"]["admin_email"],
-            "argocd/platform/forgejo/values.yaml",
+            "argocd/platform/delivery/forgejo/values.yaml",
             "gitea",
             "admin",
             "email",
@@ -922,7 +922,7 @@ class Validator:
         self.expect_equal(
             "forgejo root url",
             env["platform"]["forgejo"]["root_url"],
-            "argocd/platform/forgejo/values.yaml",
+            "argocd/platform/delivery/forgejo/values.yaml",
             "gitea",
             "config",
             "server",
@@ -931,7 +931,7 @@ class Validator:
         self.expect_equal(
             "forgejo runtime config secret name",
             env["platform"]["forgejo"]["runtime_config_secret_name"],
-            "argocd/platform/forgejo/values.yaml",
+            "argocd/platform/delivery/forgejo/values.yaml",
             "gitea",
             "additionalConfigSources",
             0,
@@ -941,14 +941,14 @@ class Validator:
         self.expect_equal(
             "forgejo postgresql username",
             env["platform"]["forgejo"]["postgresql"]["user"],
-            "argocd/platform/forgejo/postgresql/values.yaml",
+            "argocd/platform/delivery/forgejo/postgresql/values.yaml",
             "auth",
             "username",
         )
         self.expect_equal(
             "forgejo postgresql database",
             env["platform"]["forgejo"]["postgresql"]["database"],
-            "argocd/platform/forgejo/postgresql/values.yaml",
+            "argocd/platform/delivery/forgejo/postgresql/values.yaml",
             "auth",
             "database",
         )
@@ -956,19 +956,19 @@ class Validator:
         self.expect_equal(
             "harbor external url",
             env["platform"]["harbor"]["external_url"],
-            "argocd/platform/harbor/values.yaml",
+            "argocd/platform/delivery/harbor/values.yaml",
             "externalURL",
         )
         self.expect_equal(
             "harbor runtime secret name",
             env["platform"]["harbor"]["runtime_secret_name"],
-            "argocd/platform/harbor/values.yaml",
+            "argocd/platform/delivery/harbor/values.yaml",
             "existingSecretAdminPassword",
         )
         self.expect_equal(
             "harbor postgresql host",
             env["platform"]["harbor"]["postgresql"]["host"],
-            "argocd/platform/harbor/values.yaml",
+            "argocd/platform/delivery/harbor/values.yaml",
             "database",
             "external",
             "host",
@@ -976,7 +976,7 @@ class Validator:
         self.expect_equal(
             "harbor postgresql database",
             env["platform"]["harbor"]["postgresql"]["database"],
-            "argocd/platform/harbor/values.yaml",
+            "argocd/platform/delivery/harbor/values.yaml",
             "database",
             "external",
             "coreDatabase",
@@ -984,7 +984,7 @@ class Validator:
         self.expect_equal(
             "harbor postgresql user",
             env["platform"]["harbor"]["postgresql"]["user"],
-            "argocd/platform/harbor/values.yaml",
+            "argocd/platform/delivery/harbor/values.yaml",
             "database",
             "external",
             "username",
@@ -992,7 +992,7 @@ class Validator:
         self.expect_equal(
             "harbor valkey address",
             env["platform"]["harbor"]["valkey"]["addr"],
-            "argocd/platform/harbor/values.yaml",
+            "argocd/platform/delivery/harbor/values.yaml",
             "redis",
             "external",
             "addr",
@@ -1027,7 +1027,7 @@ class Validator:
             self.expect_equal(
                 f"harbor derived valkey URL {key}",
                 expected,
-                "argocd/platform/harbor/prereqs/valkey-auth-external-secret.yaml",
+                "argocd/platform/delivery/harbor/prereqs/valkey-auth-external-secret.yaml",
                 "spec",
                 "target",
                 "template",
@@ -1038,7 +1038,7 @@ class Validator:
         self.expect_equal(
             "woodpecker runtime secret name",
             env["platform"]["woodpecker"]["runtime_secret_name"],
-            "argocd/platform/woodpecker/values.yaml",
+            "argocd/platform/delivery/woodpecker/values.yaml",
             "server",
             "extraSecretNamesForEnvFrom",
             0,
@@ -1046,7 +1046,7 @@ class Validator:
         self.expect_equal(
             "woodpecker runtime secret name",
             env["platform"]["woodpecker"]["runtime_secret_name"],
-            "argocd/platform/woodpecker/values.yaml",
+            "argocd/platform/delivery/woodpecker/values.yaml",
             "agent",
             "extraSecretNamesForEnvFrom",
             0,
@@ -1054,7 +1054,7 @@ class Validator:
         self.expect_equal(
             "woodpecker host",
             woodpecker_url,
-            "argocd/platform/woodpecker/values.yaml",
+            "argocd/platform/delivery/woodpecker/values.yaml",
             "server",
             "env",
             "WOODPECKER_HOST",
@@ -1062,7 +1062,7 @@ class Validator:
         self.expect_equal(
             "woodpecker forgejo url",
             env["platform"]["woodpecker"]["forgejo_url"],
-            "argocd/platform/woodpecker/values.yaml",
+            "argocd/platform/delivery/woodpecker/values.yaml",
             "server",
             "env",
             "WOODPECKER_FORGEJO_URL",
@@ -1095,14 +1095,14 @@ class Validator:
         self.expect_equal(
             "velero credentials secret name",
             env["platform"]["velero"]["credentials_secret_name"],
-            "argocd/platform/velero/values.yaml",
+            "argocd/platform/storage/velero/values.yaml",
             "credentials",
             "existingSecret",
         )
         self.expect_equal(
             "velero bucket",
             env["platform"]["velero"]["bucket"],
-            "argocd/platform/velero/values.yaml",
+            "argocd/platform/storage/velero/values.yaml",
             "configuration",
             "backupStorageLocation",
             0,
@@ -1111,7 +1111,7 @@ class Validator:
         self.expect_equal(
             "velero prefix",
             env["platform"]["velero"]["prefix"],
-            "argocd/platform/velero/values.yaml",
+            "argocd/platform/storage/velero/values.yaml",
             "configuration",
             "backupStorageLocation",
             0,
@@ -1120,7 +1120,7 @@ class Validator:
         self.expect_equal(
             "velero region",
             env["platform"]["velero"]["region"],
-            "argocd/platform/velero/values.yaml",
+            "argocd/platform/storage/velero/values.yaml",
             "configuration",
             "backupStorageLocation",
             0,
@@ -1130,7 +1130,7 @@ class Validator:
         self.expect_equal(
             "velero s3 url",
             env["platform"]["velero"]["s3_url"],
-            "argocd/platform/velero/values.yaml",
+            "argocd/platform/storage/velero/values.yaml",
             "configuration",
             "backupStorageLocation",
             0,
@@ -1139,109 +1139,109 @@ class Validator:
         )
 
         hostname_checks = [
-            ("authentik certificate", hosts["authentik"], "argocd/platform/authentik/prereqs/certificate.yaml", ("spec", "dnsNames", 0)),
-            ("authentik gateway", hosts["authentik"], "argocd/platform/authentik/prereqs/gateway.yaml", ("spec", "listeners", 0, "hostname")),
-            ("authentik https gateway", hosts["authentik"], "argocd/platform/authentik/prereqs/gateway.yaml", ("spec", "listeners", 1, "hostname")),
-            ("forgejo certificate", hosts["forgejo"], "argocd/platform/forgejo/prereqs/certificate.yaml", ("spec", "dnsNames", 0)),
-            ("forgejo gateway", hosts["forgejo"], "argocd/platform/forgejo/prereqs/gateway.yaml", ("spec", "listeners", 0, "hostname")),
-            ("forgejo https gateway", hosts["forgejo"], "argocd/platform/forgejo/prereqs/gateway.yaml", ("spec", "listeners", 1, "hostname")),
-            ("harbor certificate", hosts["harbor"], "argocd/platform/harbor/prereqs/certificate.yaml", ("spec", "dnsNames", 0)),
-            ("harbor gateway", hosts["harbor"], "argocd/platform/harbor/prereqs/gateway.yaml", ("spec", "listeners", 0, "hostname")),
-            ("harbor https gateway", hosts["harbor"], "argocd/platform/harbor/prereqs/gateway.yaml", ("spec", "listeners", 1, "hostname")),
-            ("woodpecker certificate", hosts["woodpecker"], "argocd/platform/woodpecker/prereqs/certificate.yaml", ("spec", "dnsNames", 0)),
-            ("woodpecker gateway", hosts["woodpecker"], "argocd/platform/woodpecker/prereqs/gateway.yaml", ("spec", "listeners", 0, "hostname")),
-            ("woodpecker https gateway", hosts["woodpecker"], "argocd/platform/woodpecker/prereqs/gateway.yaml", ("spec", "listeners", 1, "hostname")),
-            ("garage certificate", hosts["garage"], "argocd/platform/garage/prereqs/certificate.yaml", ("spec", "dnsNames", 0)),
-            ("garage gateway", hosts["garage"], "argocd/platform/garage/prereqs/gateway.yaml", ("spec", "listeners", 0, "hostname")),
-            ("garage https gateway", hosts["garage"], "argocd/platform/garage/prereqs/gateway.yaml", ("spec", "listeners", 1, "hostname")),
+            ("authentik certificate", hosts["authentik"], "argocd/platform/identity/authentik/prereqs/certificate.yaml", ("spec", "dnsNames", 0)),
+            ("authentik gateway", hosts["authentik"], "argocd/platform/identity/authentik/prereqs/gateway.yaml", ("spec", "listeners", 0, "hostname")),
+            ("authentik https gateway", hosts["authentik"], "argocd/platform/identity/authentik/prereqs/gateway.yaml", ("spec", "listeners", 1, "hostname")),
+            ("forgejo certificate", hosts["forgejo"], "argocd/platform/delivery/forgejo/prereqs/certificate.yaml", ("spec", "dnsNames", 0)),
+            ("forgejo gateway", hosts["forgejo"], "argocd/platform/delivery/forgejo/prereqs/gateway.yaml", ("spec", "listeners", 0, "hostname")),
+            ("forgejo https gateway", hosts["forgejo"], "argocd/platform/delivery/forgejo/prereqs/gateway.yaml", ("spec", "listeners", 1, "hostname")),
+            ("harbor certificate", hosts["harbor"], "argocd/platform/delivery/harbor/prereqs/certificate.yaml", ("spec", "dnsNames", 0)),
+            ("harbor gateway", hosts["harbor"], "argocd/platform/delivery/harbor/prereqs/gateway.yaml", ("spec", "listeners", 0, "hostname")),
+            ("harbor https gateway", hosts["harbor"], "argocd/platform/delivery/harbor/prereqs/gateway.yaml", ("spec", "listeners", 1, "hostname")),
+            ("woodpecker certificate", hosts["woodpecker"], "argocd/platform/delivery/woodpecker/prereqs/certificate.yaml", ("spec", "dnsNames", 0)),
+            ("woodpecker gateway", hosts["woodpecker"], "argocd/platform/delivery/woodpecker/prereqs/gateway.yaml", ("spec", "listeners", 0, "hostname")),
+            ("woodpecker https gateway", hosts["woodpecker"], "argocd/platform/delivery/woodpecker/prereqs/gateway.yaml", ("spec", "listeners", 1, "hostname")),
+            ("garage certificate", hosts["garage"], "argocd/platform/storage/garage/prereqs/certificate.yaml", ("spec", "dnsNames", 0)),
+            ("garage gateway", hosts["garage"], "argocd/platform/storage/garage/prereqs/gateway.yaml", ("spec", "listeners", 0, "hostname")),
+            ("garage https gateway", hosts["garage"], "argocd/platform/storage/garage/prereqs/gateway.yaml", ("spec", "listeners", 1, "hostname")),
             ("grafana certificate", hosts["grafana"], "argocd/platform/observability/prereqs/certificate.yaml", ("spec", "dnsNames", 0)),
             ("grafana gateway", hosts["grafana"], "argocd/platform/observability/prereqs/gateway.yaml", ("spec", "listeners", 0, "hostname")),
             ("grafana https gateway", hosts["grafana"], "argocd/platform/observability/prereqs/gateway.yaml", ("spec", "listeners", 1, "hostname")),
             ("echo certificate", hosts["echo"], "argocd/apps/echo/resources/certificate.yaml", ("spec", "dnsNames", 0)),
             ("echo gateway", hosts["echo"], "argocd/apps/echo/resources/gateway.yaml", ("spec", "listeners", 0, "hostname")),
             ("echo https gateway", hosts["echo"], "argocd/apps/echo/resources/gateway.yaml", ("spec", "listeners", 1, "hostname")),
-            ("hubble route", hosts["hubble"], "argocd/platform/hubble/httproute.yaml", ("spec", "hostnames", 0)),
-            ("stalwart admin certificate", hosts["stalwart"], "argocd/platform/gateway/stalwart-admin-certificate.yaml", ("spec", "dnsNames", 0)),
-            ("stalwart gateway listener", hosts["stalwart"], "argocd/platform/gateway/external-gateway.yaml", ("spec", "listeners", 1, "hostname")),
-            ("stalwart mail certificate", hosts["mail"], "argocd/platform/stalwart/prereqs/mail-certificate.yaml", ("spec", "dnsNames", 0)),
+            ("hubble route", hosts["hubble"], "argocd/platform/core/hubble/httproute.yaml", ("spec", "hostnames", 0)),
+            ("stalwart admin certificate", hosts["stalwart"], "argocd/platform/core/gateway/stalwart-admin-certificate.yaml", ("spec", "dnsNames", 0)),
+            ("stalwart gateway listener", hosts["stalwart"], "argocd/platform/core/gateway/external-gateway.yaml", ("spec", "listeners", 1, "hostname")),
+            ("stalwart mail certificate", hosts["mail"], "argocd/platform/messaging/stalwart/prereqs/mail-certificate.yaml", ("spec", "dnsNames", 0)),
         ]
         for label, expected, relpath, parts in hostname_checks:
             self.expect_equal(label, expected, relpath, *parts)
 
         for relpath, hostname in [
-            ("argocd/platform/authentik/prereqs/httproute.yaml", hosts["authentik"]),
-            ("argocd/platform/authentik/prereqs/redirect-httproute.yaml", hosts["authentik"]),
-            ("argocd/platform/forgejo/prereqs/httproute.yaml", hosts["forgejo"]),
-            ("argocd/platform/forgejo/prereqs/redirect-httproute.yaml", hosts["forgejo"]),
-            ("argocd/platform/harbor/prereqs/httproute.yaml", hosts["harbor"]),
-            ("argocd/platform/harbor/prereqs/redirect-httproute.yaml", hosts["harbor"]),
-            ("argocd/platform/woodpecker/prereqs/httproute.yaml", hosts["woodpecker"]),
-            ("argocd/platform/woodpecker/prereqs/redirect-httproute.yaml", hosts["woodpecker"]),
-            ("argocd/platform/garage/prereqs/httproute.yaml", hosts["garage"]),
-            ("argocd/platform/garage/prereqs/redirect-httproute.yaml", hosts["garage"]),
+            ("argocd/platform/identity/authentik/prereqs/httproute.yaml", hosts["authentik"]),
+            ("argocd/platform/identity/authentik/prereqs/redirect-httproute.yaml", hosts["authentik"]),
+            ("argocd/platform/delivery/forgejo/prereqs/httproute.yaml", hosts["forgejo"]),
+            ("argocd/platform/delivery/forgejo/prereqs/redirect-httproute.yaml", hosts["forgejo"]),
+            ("argocd/platform/delivery/harbor/prereqs/httproute.yaml", hosts["harbor"]),
+            ("argocd/platform/delivery/harbor/prereqs/redirect-httproute.yaml", hosts["harbor"]),
+            ("argocd/platform/delivery/woodpecker/prereqs/httproute.yaml", hosts["woodpecker"]),
+            ("argocd/platform/delivery/woodpecker/prereqs/redirect-httproute.yaml", hosts["woodpecker"]),
+            ("argocd/platform/storage/garage/prereqs/httproute.yaml", hosts["garage"]),
+            ("argocd/platform/storage/garage/prereqs/redirect-httproute.yaml", hosts["garage"]),
             ("argocd/platform/observability/prereqs/httproute.yaml", hosts["grafana"]),
             ("argocd/platform/observability/prereqs/redirect-httproute.yaml", hosts["grafana"]),
             ("argocd/apps/echo/resources/httproute.yaml", hosts["echo"]),
             ("argocd/apps/echo/resources/redirect-httproute.yaml", hosts["echo"]),
-            ("argocd/platform/stalwart/resources/httproute.yaml", hosts["stalwart"]),
-            ("argocd/platform/stalwart/resources/redirect-httproute.yaml", hosts["stalwart"]),
+            ("argocd/platform/messaging/stalwart/resources/httproute.yaml", hosts["stalwart"]),
+            ("argocd/platform/messaging/stalwart/resources/redirect-httproute.yaml", hosts["stalwart"]),
         ]:
             self.expect_equal("route hostname", hostname, relpath, "spec", "hostnames", 0)
 
         self.expect_equal(
             "forgejo sso provider name",
             env["platform"]["forgejo"]["sso"]["provider_name"],
-            "argocd/platform/authentik/prereqs/forgejo-sso-configmap.yaml",
+            "argocd/platform/identity/authentik/prereqs/forgejo-sso-configmap.yaml",
             "data",
             "provider_name",
         )
         self.expect_equal(
             "forgejo sso application slug",
             env["platform"]["forgejo"]["sso"]["application_slug"],
-            "argocd/platform/authentik/prereqs/forgejo-sso-configmap.yaml",
+            "argocd/platform/identity/authentik/prereqs/forgejo-sso-configmap.yaml",
             "data",
             "application_slug",
         )
         self.expect_equal(
             "forgejo sso discovery url",
             env["platform"]["forgejo"]["sso"]["discovery_url"],
-            "argocd/platform/authentik/prereqs/forgejo-sso-configmap.yaml",
+            "argocd/platform/identity/authentik/prereqs/forgejo-sso-configmap.yaml",
             "data",
             "discovery_url",
         )
         self.expect_equal(
             "forgejo sso authentik host",
             env["platform"]["forgejo"]["sso"]["authentik_host"],
-            "argocd/platform/authentik/prereqs/forgejo-sso-configmap.yaml",
+            "argocd/platform/identity/authentik/prereqs/forgejo-sso-configmap.yaml",
             "data",
             "authentik_host",
         )
         self.expect_equal(
             "forgejo sso forgejo root url",
             env["platform"]["forgejo"]["sso"]["forgejo_root_url"],
-            "argocd/platform/authentik/prereqs/forgejo-sso-configmap.yaml",
+            "argocd/platform/identity/authentik/prereqs/forgejo-sso-configmap.yaml",
             "data",
             "forgejo_root_url",
         )
         self.expect_equal(
             "forgejo sso discovery url",
             env["platform"]["forgejo"]["sso"]["discovery_url"],
-            "argocd/platform/forgejo/prereqs/forgejo-sso-configmap.yml",
+            "argocd/platform/delivery/forgejo/prereqs/forgejo-sso-configmap.yml",
             "data",
             "discovery_url",
         )
         self.expect_contains(
             "forgejo sso blueprint callback url",
-            "argocd/platform/authentik/prereqs/platform-sso-blueprint-templates.yaml",
+            "argocd/platform/identity/authentik/prereqs/platform-sso-blueprint-templates.yaml",
             f'https://{hosts["forgejo"]}/user/oauth2/authentik/callback',
         )
         self.expect_contains(
             "forgejo sso blueprint launch url",
-            "argocd/platform/authentik/prereqs/platform-sso-blueprint-templates.yaml",
+            "argocd/platform/identity/authentik/prereqs/platform-sso-blueprint-templates.yaml",
             env["platform"]["forgejo"]["root_url"],
         )
         blueprint_path = (
-            "argocd/platform/authentik/prereqs/"
+            "argocd/platform/identity/authentik/prereqs/"
             "platform-sso-blueprint-templates.yaml"
         )
         for label, hostname, callback_path in [
@@ -1255,7 +1255,7 @@ class Validator:
                 f"https://{hostname}{callback_path}",
             )
         stalwart_blueprint_path = (
-            "argocd/platform/authentik/prereqs/"
+            "argocd/platform/identity/authentik/prereqs/"
             "stalwart-sso-blueprint-configmap.yaml"
         )
         for label, callback_path in [
@@ -1274,29 +1274,29 @@ class Validator:
         )
         self.expect_contains(
             "stalwart oidc directory issuer",
-            "argocd/platform/stalwart/resources/authentik-oidc-plan-configmap.yaml",
+            "argocd/platform/messaging/stalwart/resources/authentik-oidc-plan-configmap.yaml",
             f'https://{hosts["authentik"]}/application/o/stalwart/',
         )
 
         external_secret_checks = [
-            ("authentik runtime secret target", env["platform"]["authentik"]["runtime_secret_name"], "argocd/platform/authentik/prereqs/runtime-external-secret.yaml", ("metadata", "name")),
-            ("authentik runtime secret target", env["platform"]["authentik"]["runtime_secret_name"], "argocd/platform/authentik/prereqs/runtime-external-secret.yaml", ("spec", "target", "name")),
-            ("authentik postgresql secret name", env["platform"]["authentik"]["postgresql_auth_secret_name"], "argocd/platform/authentik/prereqs/postgresql-auth-external-secret.yaml", ("metadata", "name")),
-            ("authentik redis secret name", env["platform"]["authentik"]["redis_auth_secret_name"], "argocd/platform/authentik/prereqs/redis-auth-external-secret.yaml", ("metadata", "name")),
-            ("forgejo admin secret name", env["platform"]["forgejo"]["admin_secret_name"], "argocd/platform/forgejo/prereqs/admin-external-secret.yaml", ("metadata", "name")),
-            ("forgejo oidc secret name", env["platform"]["forgejo"]["oidc_secret_name"], "argocd/platform/forgejo/prereqs/oidc-external-secret.yaml", ("metadata", "name")),
-            ("forgejo runtime config secret name", env["platform"]["forgejo"]["runtime_config_secret_name"], "argocd/platform/forgejo/prereqs/runtime-config-external-secret.yaml", ("metadata", "name")),
-            ("forgejo postgresql auth secret name", env["platform"]["forgejo"]["postgresql_auth_secret_name"], "argocd/platform/forgejo/prereqs/postgresql-auth-external-secret.yaml", ("metadata", "name")),
-            ("forgejo valkey auth secret name", env["platform"]["forgejo"]["valkey_auth_secret_name"], "argocd/platform/forgejo/prereqs/valkey-auth-external-secret.yaml", ("metadata", "name")),
-            ("harbor runtime secret name", env["platform"]["harbor"]["runtime_secret_name"], "argocd/platform/harbor/prereqs/runtime-external-secret.yaml", ("metadata", "name")),
-            ("harbor postgresql auth secret name", env["platform"]["harbor"]["postgresql_auth_secret_name"], "argocd/platform/harbor/prereqs/postgresql-auth-external-secret.yaml", ("metadata", "name")),
-            ("harbor valkey auth secret name", env["platform"]["harbor"]["valkey_auth_secret_name"], "argocd/platform/harbor/prereqs/valkey-auth-external-secret.yaml", ("metadata", "name")),
-            ("stalwart runtime secret name", env["platform"]["stalwart"]["runtime_secret_name"], "argocd/platform/stalwart/prereqs/runtime-external-secret.yaml", ("metadata", "name")),
-            ("stalwart runtime secret target", env["platform"]["stalwart"]["runtime_secret_name"], "argocd/platform/stalwart/prereqs/runtime-external-secret.yaml", ("spec", "target", "name")),
-            ("woodpecker runtime secret name", env["platform"]["woodpecker"]["runtime_secret_name"], "argocd/platform/woodpecker/prereqs/runtime-external-secret.yaml", ("metadata", "name")),
+            ("authentik runtime secret target", env["platform"]["authentik"]["runtime_secret_name"], "argocd/platform/identity/authentik/prereqs/runtime-external-secret.yaml", ("metadata", "name")),
+            ("authentik runtime secret target", env["platform"]["authentik"]["runtime_secret_name"], "argocd/platform/identity/authentik/prereqs/runtime-external-secret.yaml", ("spec", "target", "name")),
+            ("authentik postgresql secret name", env["platform"]["authentik"]["postgresql_auth_secret_name"], "argocd/platform/identity/authentik/prereqs/postgresql-auth-external-secret.yaml", ("metadata", "name")),
+            ("authentik redis secret name", env["platform"]["authentik"]["redis_auth_secret_name"], "argocd/platform/identity/authentik/prereqs/redis-auth-external-secret.yaml", ("metadata", "name")),
+            ("forgejo admin secret name", env["platform"]["forgejo"]["admin_secret_name"], "argocd/platform/delivery/forgejo/prereqs/admin-external-secret.yaml", ("metadata", "name")),
+            ("forgejo oidc secret name", env["platform"]["forgejo"]["oidc_secret_name"], "argocd/platform/delivery/forgejo/prereqs/oidc-external-secret.yaml", ("metadata", "name")),
+            ("forgejo runtime config secret name", env["platform"]["forgejo"]["runtime_config_secret_name"], "argocd/platform/delivery/forgejo/prereqs/runtime-config-external-secret.yaml", ("metadata", "name")),
+            ("forgejo postgresql auth secret name", env["platform"]["forgejo"]["postgresql_auth_secret_name"], "argocd/platform/delivery/forgejo/prereqs/postgresql-auth-external-secret.yaml", ("metadata", "name")),
+            ("forgejo valkey auth secret name", env["platform"]["forgejo"]["valkey_auth_secret_name"], "argocd/platform/delivery/forgejo/prereqs/valkey-auth-external-secret.yaml", ("metadata", "name")),
+            ("harbor runtime secret name", env["platform"]["harbor"]["runtime_secret_name"], "argocd/platform/delivery/harbor/prereqs/runtime-external-secret.yaml", ("metadata", "name")),
+            ("harbor postgresql auth secret name", env["platform"]["harbor"]["postgresql_auth_secret_name"], "argocd/platform/delivery/harbor/prereqs/postgresql-auth-external-secret.yaml", ("metadata", "name")),
+            ("harbor valkey auth secret name", env["platform"]["harbor"]["valkey_auth_secret_name"], "argocd/platform/delivery/harbor/prereqs/valkey-auth-external-secret.yaml", ("metadata", "name")),
+            ("stalwart runtime secret name", env["platform"]["stalwart"]["runtime_secret_name"], "argocd/platform/messaging/stalwart/prereqs/runtime-external-secret.yaml", ("metadata", "name")),
+            ("stalwart runtime secret target", env["platform"]["stalwart"]["runtime_secret_name"], "argocd/platform/messaging/stalwart/prereqs/runtime-external-secret.yaml", ("spec", "target", "name")),
+            ("woodpecker runtime secret name", env["platform"]["woodpecker"]["runtime_secret_name"], "argocd/platform/delivery/woodpecker/prereqs/runtime-external-secret.yaml", ("metadata", "name")),
             ("grafana admin secret name", env["platform"]["observability"]["grafana"]["admin_secret_name"], "argocd/platform/observability/prereqs/grafana-admin-external-secret.yaml", ("metadata", "name")),
-            ("garage runtime secret name", env["platform"]["garage"]["runtime_secret_name"], "argocd/platform/garage/prereqs/runtime-external-secret.yaml", ("metadata", "name")),
-            ("velero credentials secret name", env["platform"]["velero"]["credentials_secret_name"], "argocd/platform/velero/prereqs/credentials-external-secret.yaml", ("metadata", "name")),
+            ("garage runtime secret name", env["platform"]["garage"]["runtime_secret_name"], "argocd/platform/storage/garage/prereqs/runtime-external-secret.yaml", ("metadata", "name")),
+            ("velero credentials secret name", env["platform"]["velero"]["credentials_secret_name"], "argocd/platform/storage/velero/prereqs/credentials-external-secret.yaml", ("metadata", "name")),
         ]
         for label, expected, relpath, parts in external_secret_checks:
             self.expect_equal(label, expected, relpath, *parts)

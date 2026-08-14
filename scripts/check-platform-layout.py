@@ -13,7 +13,16 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 PLATFORM = ROOT / "argocd/platform"
-APPLICATIONS = PLATFORM / "applications"
+DOMAINS = (
+    "core",
+    "identity",
+    "delivery",
+    "storage",
+    "observability",
+    "policy",
+    "messaging",
+)
+APPLICATION_DIRS = tuple(PLATFORM / domain / "applications" for domain in DOMAINS)
 
 
 def load_yaml(path: Path) -> Any:
@@ -29,19 +38,28 @@ def load_yaml(path: Path) -> Any:
 def main() -> int:
     issues: list[str] = []
     root_index = load_yaml(PLATFORM / "kustomization.yaml")
-    if root_index.get("resources") != ["applications"]:
+    expected_root_resources = [f"{domain}/applications" for domain in DOMAINS]
+    if root_index.get("resources") != expected_root_resources:
         issues.append(
-            "platform/kustomization.yaml must include only the applications index"
+            "platform/kustomization.yaml must include only the ordered domain "
+            "application indexes"
         )
 
-    app_index = load_yaml(APPLICATIONS / "kustomization.yaml")
-    listed_paths = [APPLICATIONS / item for item in app_index.get("resources", [])]
+    listed_paths: list[Path] = []
+    manifests: list[Path] = []
+    for applications in APPLICATION_DIRS:
+        app_index = load_yaml(applications / "kustomization.yaml")
+        listed_paths.extend(
+            applications / item for item in app_index.get("resources", [])
+        )
+        manifests.extend(
+            path
+            for path in applications.rglob("*.yaml")
+            if path.name != "kustomization.yaml"
+        )
+
     listed_set = set(listed_paths)
-    manifests = sorted(
-        path
-        for path in APPLICATIONS.rglob("*.yaml")
-        if path.name != "kustomization.yaml"
-    )
+    manifests = sorted(manifests)
     manifest_set = set(manifests)
 
     for path in sorted(listed_set - manifest_set):
@@ -49,13 +67,13 @@ def main() -> int:
     for path in sorted(manifest_set - listed_set):
         issues.append(f"Application manifest is absent from index: {path}")
     if len(listed_paths) != len(listed_set):
-        issues.append("application index contains duplicate resource paths")
+        issues.append("domain application indexes contain duplicate resource paths")
 
     names: dict[str, Path] = {}
     for path in manifests:
         document = load_yaml(path)
         if document.get("kind") != "Application":
-            issues.append(f"non-Application resource found in applications/: {path}")
+            issues.append(f"non-Application resource found in an applications/: {path}")
             continue
 
         name = document.get("metadata", {}).get("name")
@@ -81,17 +99,22 @@ def main() -> int:
                 issues.append(
                     f"{path}: source path does not exist: {payload_path}"
                 )
-            if resolved == APPLICATIONS or APPLICATIONS in resolved.parents:
+            if any(
+                resolved == applications or applications in resolved.parents
+                for applications in APPLICATION_DIRS
+            ):
                 issues.append(
                     f"{path}: child Application cannot use applications/ as payload"
                 )
 
     for path in sorted(PLATFORM.rglob("*.yaml")):
-        if path == APPLICATIONS / "kustomization.yaml" or path in manifest_set:
+        if path.name == "kustomization.yaml" or path in manifest_set:
             continue
         document = load_yaml(path)
         if isinstance(document, dict) and document.get("kind") == "Application":
-            issues.append(f"Application must live under platform/applications: {path}")
+            issues.append(
+                f"Application must live under a platform domain applications/: {path}"
+            )
 
     if issues:
         print("[platform-layout] validation failed", file=sys.stderr)

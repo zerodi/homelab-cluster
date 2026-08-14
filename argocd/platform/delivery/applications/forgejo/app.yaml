@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: forgejo
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  project: platform
+  sources:
+    - repoURL: code.forgejo.org/forgejo-helm
+      chart: forgejo
+      targetRevision: "17.1.4"
+      helm:
+        releaseName: forgejo
+        valueFiles:
+          - $values/platform/delivery/forgejo/values.yaml
+    - repoURL: https://git.home.arpa/platform/gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://git.home.arpa/platform/gitops.git
+      targetRevision: main
+      path: platform/delivery/forgejo/sso
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: forgejo
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
