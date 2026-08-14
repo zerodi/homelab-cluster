@@ -9,7 +9,7 @@ spec:
       namespace: gateway
       sectionName: http
   hostnames:
-    - hubble.lab.zerodi.ru
+    - hubble.home.arpa
   rules:
     - filters:
         - type: RequestRedirect

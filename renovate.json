@@ -51,7 +51,8 @@
       "cluster/versions.generated.tf",
       "infrastructure/versions.generated.tf",
       ".github/workflows/ci.yaml",
-      "argocd/platform/**/*.yaml"
+      "argocd/**/*.yaml",
+      "argocd/**/*.yml"
     ],
     "executionMode": "branch"
   }

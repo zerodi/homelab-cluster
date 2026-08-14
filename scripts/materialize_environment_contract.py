@@ -54,6 +54,7 @@ def materialize_contract(raw_contract: dict[str, Any]) -> dict[str, Any]:
     contract = copy.deepcopy(raw_contract)
 
     try:
+        cluster = contract["cluster"]
         base_domain = contract["cluster"]["base_domain"].strip(".")
         ipv4_cidr = contract["cluster"]["ipv4_cidr"]
         subdomains = contract["service_subdomains"]
@@ -61,6 +62,11 @@ def materialize_contract(raw_contract: dict[str, Any]) -> dict[str, Any]:
         raise ContractError(
             "contract requires cluster.base_domain, cluster.ipv4_cidr, and service_subdomains"
         ) from exc
+
+    cluster_name = str(cluster.get("name") or "talos-pve").strip(".")
+    if not cluster_name:
+        raise ContractError("cluster.name must not be empty")
+    validate_dns_name(cluster_name, "cluster.name")
 
     if not base_domain:
         raise ContractError("cluster.base_domain must not be empty")
@@ -94,6 +100,7 @@ def materialize_contract(raw_contract: dict[str, Any]) -> dict[str, Any]:
     if len(set(hosts.values())) != len(hosts):
         raise ContractError("service_subdomains must generate unique hostnames")
 
+    contract["cluster"]["name"] = cluster_name
     contract["cluster"]["base_domain"] = base_domain
     contract["hosts"] = hosts
     contract["platform"]["cert_manager"]["acme_email"] = (

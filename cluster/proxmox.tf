@@ -37,7 +37,6 @@ resource "proxmox_virtual_environment_vm" "node" {
     bridge      = "vmbr0"
     model       = "virtio"
     mac_address = each.value.mac_address
-    vlan_id     = 110
   }
 
   efi_disk {

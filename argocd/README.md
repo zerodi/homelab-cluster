@@ -1,141 +1,73 @@
 # Argo CD runtime deployment
 
-Этот runbook описывает развёртывание runtime/GitOps слоя после завершения
-`cluster/` и `infrastructure/`.
+Этот каталог содержит отдельный runtime/GitOps слой. Он применяется только
+после завершения `cluster/` и `infrastructure/` и не является частью OpenTofu
+bootstrap entrypoint.
 
-## Структура platform
+## Структура и ownership
 
-`platform/` разделён на orchestration и payload:
+- `bootstrap/` содержит root Applications, AppProjects и repository metadata;
+- `platform/applications/` индексирует дочерние platform Applications;
+- `platform/<component>/` содержит Helm values или Kustomize payload;
+- `apps/` содержит application workloads вне platform baseline.
 
-- `platform/applications/` содержит только дочерние Argo CD Applications;
-- `platform/<component>/` содержит Helm values или Kustomize payload этого
-  компонента;
-- `platform/kustomization.yaml` подключает только application index, поэтому
-  root Application не становится совладельцем runtime-ресурсов дочерних apps.
+`platform/kustomization.yaml` подключает только application index, поэтому root
+Application не становится совладельцем ресурсов дочерних приложений. Правила
+добавления компонентов описаны в [`platform/README.md`](platform/README.md).
 
-Правила добавления компонентов и структура каталогов описаны в
-[`platform/README.md`](platform/README.md).
+Runtime secrets остаются в OpenBao и доставляются через ESO. В `argocd/`
+хранятся только `ExternalSecret` references, но не secret values.
 
-## Предварительные условия
+## Перед bootstrap
 
-Перед запуском должны быть готовы:
-
-- `cert-manager`
-- `trust-manager`
-- `OpenBao`
-- `External Secrets Operator`
-- `Piraeus` / LINSTOR storage class
-- `Argo CD`
-
-Проверьте platform bootstrap:
+Должны быть готовы cert-manager, trust-manager, OpenBao, ESO, LINSTOR
+StorageClass и Argo CD:
 
 ```bash
 task infra:health
 ```
 
-## Настройка окружения
-
-Замените scaffold-значения в [envs/homelab.yaml](../envs/homelab.yaml) либо
-environment-specific `envs/homelab.override.yaml`, затем обновите их consumers в
-`argocd/`:
-
-- repository URL, `repoURL` и `sourceRepos`
-- `cluster.base_domain` и короткие `service_subdomains`
-- `cluster.ipv4_cidr`; адреса Gateway генерируются из неё
-- OAuth/OIDC coordinates
-
-Краткий порядок синхронизации consumers приведён в
-[environment contract](../docs/environment-contract.md).
-
-Проверьте согласованность:
+Синхронизируйте non-secret environment consumers по
+[environment contract](../docs/environment-contract.md), затем проверьте
+runtime secret contract из [day-0 runbook](../docs/day0-bootstrap.md#5-запись-стартовых-runtime-secrets):
 
 ```bash
 task sync-env-contract
 task check:env-contract
 task check:versions
-```
-
-## Runtime secrets
-
-Runtime secrets должны быть записаны в OpenBao до применения root application.
-Создать только отсутствующие paths и выполнить preflight можно так:
-
-```bash
-task ops:seed-runtime-secrets
 task gitops:preflight
 ```
 
-Для выпуска публичных сертификатов перед seed требуется Cloudflare API token.
-Полная настройка DNS-01 описана в
-[Cloudflare runbook](../docs/cloudflare-dns01.md).
+`gitops:preflight` отклоняет scaffold coordinates и проверяет обязательные
+OpenBao paths/keys без вывода значений.
 
-Команда не перезаписывает существующие paths. Для аудита полного набора
-`bao kv put` без записи используйте `task ops:generate-runtime-secret-puts`.
-Сгенерированные Woodpecker OAuth и Velero S3 credentials являются временными:
-после появления Forgejo OAuth application и S3 key замените соответствующие
-значения в OpenBao и удалите marker `bootstrap_provisional`, записав path
-целиком через `bao kv put`. Финальная проверка:
+## Первичный bootstrap
 
-```bash
-task ops:openbao-runtime-preflight-final
-```
+Выберите один Git source.
 
-`task gitops:preflight` проверяет environment contract и обязательные
-OpenBao paths/keys, не печатая secret values.
-
-## Применение
-
-Для первичного развёртывания через временный локальный Git-over-SSH repository:
+### Временный test-SSH
 
 ```bash
 export TEST_SSH_GIT_HOSTNAME='192.168.100.10'
 task gitops:test-ssh-bootstrap
 ```
 
-Команда собирает `test-ssh-git`, запускает сервер, регистрирует repository в
-Argo CD и ждёт `Application/root-ssh` в состояниях `Synced` и `Healthy`.
-Временный seed tree не включает `forgejo-gitops-repository`: этот
-`ExternalSecret` требует token уже работающего Forgejo и подключается только
-при последующем cutover.
+Команда применяет `Application/root-ssh` и ждёт `Synced`/`Healthy`. Endpoint
+должен быть доступен из Argo CD pods. Устройство стенда и ручной recovery
+описаны в [`test-ssh-git/README.md`](../test-ssh-git/README.md).
 
-Для уже доступного постоянного Git repository:
+### Готовый постоянный repository
 
 ```bash
 task gitops:apply-bootstrap
 ```
 
-Команда проверяет readiness Argo CD, повторяет preflight, применяет
-`argocd/bootstrap/root-application.yaml` и ждёт `Application/root` в состояниях
-`Synced` и `Healthy`.
+Команда повторяет preflight, применяет
+`bootstrap/root-application.yaml` и ждёт `Application/root`.
 
-## Публикация последующих изменений
+## Cutover на Forgejo
 
-После cutover закоммитьте изменения runtime-дерева и отправьте только
-`argocd/` subtree в настроенный Forgejo repository:
-
-```bash
-git add argocd
-git commit -m 'update runtime GitOps'
-task gitops:push
-```
-
-Команда запускает проверки environment contract и Kustomize, запрещает push
-при незакоммиченных изменениях внутри `argocd/`, проверяет Forgejo TLS через
-кластерный Certificate и не выполняет force-push. По умолчанию write-доступ
-берётся из bootstrap admin Secret Forgejo. Для отдельного операторского token
-передайте `FORGEJO_GIT_USERNAME` и `FORGEJO_GIT_PASSWORD`; оба значения должны
-быть заданы вместе и не сохраняются в Git config или repository URL.
-
-Явный test bootstrap создаёт:
-
-- `argocd-ssh-known-hosts-cm`
-- repository Secret
-- `Application/root-ssh`
-
-После развёртывания Forgejo переведите Argo CD с временного SSH server на
-постоянный repository по отдельному
-[cutover runbook](../docs/forgejo-argocd-cutover.md). Основной путь полностью
-автоматизирован:
+После появления Forgejo выполните проверяемый cutover временного source:
 
 ```bash
 task ops:openbao-port-forward-start
@@ -144,12 +76,25 @@ export BAO_TOKEN='...'
 task gitops:forgejo-cutover
 ```
 
-Task создаёт Forgejo organization, private repository и restricted service
-account, выпускает repository-scoped read token, сохраняет его в OpenBao,
-публикует committed `argocd/`, настраивает внутренний CA и ESO, безопасно
-заменяет `root-ssh` на `root` и только после проверки останавливает временный
-Git server. Перед запуском `argocd/` должен быть закоммичен без локальных
-изменений.
+Перед запуском `argocd/` должен быть закоммичен без локальных изменений. Полный
+сценарий, security properties и recovery находятся в
+[Forgejo cutover runbook](../docs/forgejo-argocd-cutover.md).
+
+## Публикация последующих изменений
+
+После cutover публикуйте только закоммиченный `argocd/` subtree:
+
+```bash
+git add argocd
+git commit -m 'update runtime GitOps'
+task gitops:push
+```
+
+Task проверяет environment contract и Kustomize, запрещает push при
+незакоммиченных изменениях в `argocd/`, валидирует Forgejo TLS и не выполняет
+force-push. По умолчанию write credential читается из bootstrap admin Secret.
+Отдельные `FORGEJO_GIT_USERNAME` и `FORGEJO_GIT_PASSWORD` должны передаваться
+вместе и не сохраняются в Git config или repository URL.
 
 ## Проверка результата
 
@@ -158,87 +103,41 @@ task ops:post-argocd-check
 kubectl -n argocd get applications
 ```
 
-Все первичные интерактивные admin credentials можно вывести одной командой
-после запуска OpenBao port-forward и экспорта `BAO_TOKEN`:
-
-```bash
-task ops:initial-app-credentials
-```
-
-Команда выводит доступы к Authentik, Argo CD, Forgejo, Grafana, Harbor и
-Stalwart. Она намеренно не показывает OAuth client secrets, пароли баз данных,
-registry credentials и service tokens. Пароль Argo CD доступен только пока в
-кластере существует `argocd-initial-admin-secret`.
-
-Начальный пользователь Authentik — `akadmin`. В greenfield bootstrap его
-пароль генерируется в OpenBao и получается без чтения других runtime secrets:
-
-```bash
-task ops:authentik-admin-password
-```
-
-Переменная bootstrap применяется только при первом запуске Authentik. Для уже
-инициализированного instance используйте recovery-команду из
-[day-0 runbook](../docs/day0-bootstrap.md).
-
-Stalwart доступен по `https://stalwart.lab.zerodi.ru/admin`. Recovery login —
-`admin`, пароль выводится из OpenBao без чтения остальных secret values:
-
-```bash
-task ops:stalwart-admin-password
-```
-
-После создания постоянного администратора recovery credential нужно убрать из
-pod environment. Настройка mail LB, TLS и публичных DNS records описана в
-[Stalwart runbook](../docs/stalwart.md).
+Проверка должна подтверждать `Synced` и `Healthy` для root и дочерних
+Applications, готовность ClusterSecretStore/ExternalSecrets и runtime
+workloads. Day-1 команды собраны в
+[operations runbook](../docs/day1-operations.md).
 
 ## Первичный доступ к Argo CD
 
-Основной URL публикуется через Ingress и берётся из effective environment
-contract. После `task infra:apply` его можно получить из Terraform output:
+Получите URL и состояние Ingress:
 
 ```bash
 tofu -chdir=infrastructure output -raw argocd_url && echo
 kubectl -n argocd get ingress argocd-server
 ```
 
-Настройте DNS для выведенного hostname на адрес Ingress. Сертификат подписан
-внутренним homelab CA; экспортировать CA для добавления в trust store клиентской
-машины можно командой:
+Для клиентского DNS/hosts и доверия внутреннему CA используйте:
 
 ```bash
 task ops:hosts-entries
 task ops:export-root-ca
 ```
 
-Первая команда читает фактически назначенные LoadBalancer IP из Kubernetes
-status и выводит полный набор строк `IP hostname` для клиентского `/etc/hosts`.
-Если хотя бы один адрес ещё не назначен, команда перечислит Pending-ресурсы и
-не напечатает неполный набор. Проверьте вывод и добавьте нужные строки в
-hosts-файл клиентской машины.
-
-Для первого входа используйте логин `admin`. Сгенерированный Helm chart пароль
-хранится только в Kubernetes Secret и выводится так:
+Начальный логин — `admin`; пароль существует в bootstrap Secret до ротации:
 
 ```bash
 kubectl -n argocd get secret argocd-initial-admin-secret \
   -o jsonpath='{.data.password}' | base64 -d && echo
 ```
 
-Если DNS или доверие CA ещё не настроены, откройте временный локальный доступ:
+До настройки DNS и CA можно открыть локальный port-forward:
 
 ```bash
 kubectl -n argocd port-forward svc/argocd-server 8080:80
 ```
 
-Затем откройте `http://127.0.0.1:8080` и войдите как `admin`. После первого
-входа смените пароль в `User Info -> Update Password`. Secret
-`argocd-initial-admin-secret` предназначен только для начального доступа и
-может быть удалён после проверки нового пароля.
-
-Day-1 проверки собраны в
-[коротком operations runbook](../docs/day1-operations.md).
-
-Единая схема пользователей, групп, OIDC applications, callback URLs и
-break-glass доступа описана в
-[runbook авторизации платформы](../docs/platform-authentication.md).
+После проверки нового пароля bootstrap Secret можно удалить. Общая модель
+пользователей, OIDC и break-glass доступа находится в
+[runbook авторизации](../docs/platform-authentication.md); application-specific
+операции — в соответствующих runbook из [индекса документации](../docs/README.md).

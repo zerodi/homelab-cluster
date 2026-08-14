@@ -22,7 +22,7 @@ task sync-versions
 
 ```bash
 task check:versions
-git diff -- versions.yaml cluster/versions.generated.tf infrastructure/versions.generated.tf .github/workflows/ci.yaml argocd/platform
+git diff -- versions.yaml cluster/versions.generated.tf infrastructure/versions.generated.tf .github/workflows/ci.yaml argocd test-ssh-git
 ```
 
 Не редактируйте generated mirrors отдельно от `versions.yaml`.
@@ -37,8 +37,8 @@ Root [`renovate.json`](../renovate.json) управляет автоматиче
 - regex manager для всех pins из `versions.yaml`
 - GitHub Actions
 
-Release pins обновляются только в `versions.yaml`. После обновления Renovate
-запускает:
+Release и container image pins обновляются только в `versions.yaml`. После
+обновления Renovate запускает:
 
 ```bash
 flox activate -- task sync-versions

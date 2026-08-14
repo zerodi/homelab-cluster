@@ -5,12 +5,12 @@ metadata:
   namespace: authentik
 data:
   provider_name: Authentik
-  discovery_url: https://auth.lab.zerodi.ru/application/o/forgejo/.well-known/openid-configuration
-  authentik_host: https://auth.lab.zerodi.ru
+  discovery_url: https://auth.home.arpa/application/o/forgejo/.well-known/openid-configuration
+  authentik_host: https://auth.home.arpa
   application_slug: forgejo
-  forgejo_root_url: https://git.lab.zerodi.ru
+  forgejo_root_url: https://git.home.arpa
   values.yaml: |
     provider_name: Authentik
-    authentik_host: https://auth.lab.zerodi.ru
+    authentik_host: https://auth.home.arpa
     application_slug: forgejo
-    forgejo_root_url: https://git.lab.zerodi.ru
+    forgejo_root_url: https://git.home.arpa

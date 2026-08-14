@@ -6,7 +6,7 @@ metadata:
 spec:
   description: Bootstrap metadata and root applications managed by ArgoCD
   sourceRepos:
-    - https://git.lab.zerodi.ru/platform/gitops.git
+    - https://git.home.arpa/platform/gitops.git
   destinations:
     - namespace: argocd
       server: https://kubernetes.default.svc

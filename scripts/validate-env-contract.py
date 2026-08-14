@@ -749,28 +749,6 @@ class Validator:
         )
 
         self.expect_equal(
-            "garage image",
-            f"{env['platform']['garage']['image']}:{env['platform']['garage']['image_tag']}",
-            "argocd/platform/garage/resources/statefulset.yaml",
-            "spec",
-            "template",
-            "spec",
-            "containers",
-            0,
-            "image",
-        )
-        self.expect_equal(
-            "stalwart image",
-            f"{env['platform']['stalwart']['image']}:{env['platform']['stalwart']['image_tag']}",
-            "argocd/platform/stalwart/resources/statefulset.yaml",
-            "spec",
-            "template",
-            "spec",
-            "containers",
-            0,
-            "image",
-        )
-        self.expect_equal(
             "stalwart storage class",
             env["platform"]["stalwart"]["storage_class"],
             "argocd/platform/stalwart/resources/statefulset.yaml",

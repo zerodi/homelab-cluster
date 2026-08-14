@@ -8,7 +8,7 @@ expose:
       httpPort: 80
       httpsPort: 443
 
-externalURL: https://harbor.lab.zerodi.ru
+externalURL: https://harbor.home.arpa
 
 existingSecretAdminPassword: harbor-runtime
 existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD

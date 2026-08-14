@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: authentik-tls
   dnsNames:
-    - auth.lab.zerodi.ru
+    - auth.home.arpa
   issuerRef:
     name: letsencrypt-cloudflare
     kind: ClusterIssuer

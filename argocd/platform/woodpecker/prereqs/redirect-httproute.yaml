@@ -8,7 +8,7 @@ spec:
     - name: woodpecker
       sectionName: http
   hostnames:
-    - ci.lab.zerodi.ru
+    - ci.home.arpa
   rules:
     - filters:
         - type: RequestRedirect

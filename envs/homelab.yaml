@@ -82,8 +82,6 @@ platform:
   stalwart:
     namespace: stalwart
     runtime_secret_name: stalwart-runtime
-    image: stalwartlabs/stalwart
-    image_tag: v0.16.16
     storage_class: linstor-pool1-r1
     storage_size: 20Gi
   woodpecker:
@@ -101,8 +99,6 @@ platform:
   garage:
     namespace: garage
     runtime_secret_name: garage-config
-    image: dxflrs/garage
-    image_tag: v2.1.0
     storage_class: linstor-pool1-r1
     size: 20Gi
     s3_service: garage-s3.garage.svc.cluster.local:3900

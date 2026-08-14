@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: echo-tls
   dnsNames:
-    - echo.lab.zerodi.ru
+    - echo.home.arpa
   issuerRef:
     name: letsencrypt-cloudflare
     kind: ClusterIssuer

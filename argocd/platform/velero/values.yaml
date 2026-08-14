@@ -45,7 +45,7 @@ configuration:
       config:
         region: us-east-1
         s3ForcePathStyle: "true"
-        s3Url: "https://minio.lab.zerodi.ru"
+        s3Url: "https://minio.home.arpa"
   volumeSnapshotLocation: []
   uploaderType: kopia
   backupSyncPeriod: 1m

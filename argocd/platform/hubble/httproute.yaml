@@ -9,7 +9,7 @@ spec:
       namespace: gateway
       sectionName: hubble-https
   hostnames:
-    - hubble.lab.zerodi.ru
+    - hubble.home.arpa
   rules:
     - matches:
         - path:

@@ -5,4 +5,4 @@ metadata:
   namespace: forgejo
 data:
   provider_name: Authentik
-  discovery_url: https://auth.lab.zerodi.ru/application/o/forgejo/.well-known/openid-configuration
+  discovery_url: https://auth.home.arpa/application/o/forgejo/.well-known/openid-configuration

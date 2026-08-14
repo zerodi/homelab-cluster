@@ -28,10 +28,10 @@ data:
             - urn:ietf:params:oauth:grant-type:device_code
           redirect_uris:
             - matching_mode: strict
-              url: "https://stalwart.lab.zerodi.ru/admin/oauth/callback"
+              url: "https://stalwart.home.arpa/admin/oauth/callback"
               redirect_uri_type: authorization
             - matching_mode: strict
-              url: "https://stalwart.lab.zerodi.ru/account/oauth/callback"
+              url: "https://stalwart.home.arpa/account/oauth/callback"
               redirect_uri_type: authorization
           access_token_validity: "minutes=30"
           refresh_token_validity: "days=30"
@@ -52,5 +52,5 @@ data:
           slug: stalwart
           policy_engine_mode: any
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, "Stalwart"]]
-          meta_launch_url: "https://stalwart.lab.zerodi.ru/account/"
+          meta_launch_url: "https://stalwart.home.arpa/account/"
           open_in_new_tab: true

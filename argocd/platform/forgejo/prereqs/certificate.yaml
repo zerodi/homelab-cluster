@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: forgejo-tls
   dnsNames:
-    - git.lab.zerodi.ru
+    - git.home.arpa
   issuerRef:
     name: letsencrypt-cloudflare
     kind: ClusterIssuer

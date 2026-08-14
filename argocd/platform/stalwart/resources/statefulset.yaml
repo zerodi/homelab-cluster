@@ -34,9 +34,9 @@ spec:
             - /etc/stalwart/config.json
           env:
             - name: STALWART_HOSTNAME
-              value: mail.lab.zerodi.ru
+              value: mail.home.arpa
             - name: STALWART_PUBLIC_URL
-              value: https://stalwart.lab.zerodi.ru
+              value: https://stalwart.home.arpa
             - name: STALWART_RECOVERY_ADMIN
               valueFrom:
                 secretKeyRef:

@@ -258,7 +258,7 @@ data "helm_template" "cilium" {
 data "talos_machine_configuration" "node" {
   for_each = local.all_nodes
 
-  cluster_name       = var.cluster_name
+  cluster_name       = local.cluster_name
   cluster_endpoint   = local.kubernetes_endpoint
   machine_type       = each.value.machine_type
   machine_secrets    = talos_machine_secrets.this.machine_secrets
@@ -348,7 +348,7 @@ resource "talos_cluster_kubeconfig" "this" {
 
 // see https://registry.terraform.io/providers/siderolabs/talos/0.10.1/docs/data-sources/client_configuration
 data "talos_client_configuration" "this" {
-  cluster_name         = var.cluster_name
+  cluster_name         = local.cluster_name
   client_configuration = talos_machine_secrets.this.client_configuration
   endpoints            = [for node in values(local.controlplane_nodes) : node.ip]
   nodes = concat(

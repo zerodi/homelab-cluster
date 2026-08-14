@@ -32,7 +32,7 @@ data:
           issuer_mode: per_provider
           redirect_uris:
             - matching_mode: strict
-              url: "https://git.lab.zerodi.ru/user/oauth2/authentik/callback"
+              url: "https://git.home.arpa/user/oauth2/authentik/callback"
               redirect_uri_type: authorization
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
@@ -48,7 +48,7 @@ data:
           slug: forgejo
           policy_engine_mode: any
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, "Authentik"]]
-          meta_launch_url: "https://git.lab.zerodi.ru/"
+          meta_launch_url: "https://git.home.arpa/"
           open_in_new_tab: true
   grafana.yaml: |
     version: 1
@@ -79,7 +79,7 @@ data:
           issuer_mode: per_provider
           redirect_uris:
             - matching_mode: strict
-              url: "https://grafana.lab.zerodi.ru/login/generic_oauth"
+              url: "https://grafana.home.arpa/login/generic_oauth"
               redirect_uri_type: authorization
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
@@ -97,7 +97,7 @@ data:
           slug: grafana
           policy_engine_mode: any
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, "Grafana"]]
-          meta_launch_url: "https://grafana.lab.zerodi.ru/"
+          meta_launch_url: "https://grafana.home.arpa/"
           open_in_new_tab: true
   argocd.yaml: |
     version: 1
@@ -127,7 +127,7 @@ data:
           issuer_mode: per_provider
           redirect_uris:
             - matching_mode: strict
-              url: "https://argocd.lab.zerodi.ru/auth/callback"
+              url: "https://argocd.home.arpa/auth/callback"
               redirect_uri_type: authorization
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
@@ -143,7 +143,7 @@ data:
           slug: argocd
           policy_engine_mode: any
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, "Argo CD"]]
-          meta_launch_url: "https://argocd.lab.zerodi.ru/"
+          meta_launch_url: "https://argocd.home.arpa/"
           open_in_new_tab: true
   harbor.yaml: |
     version: 1
@@ -174,7 +174,7 @@ data:
           issuer_mode: per_provider
           redirect_uris:
             - matching_mode: strict
-              url: "https://harbor.lab.zerodi.ru/c/oidc/callback"
+              url: "https://harbor.home.arpa/c/oidc/callback"
               redirect_uri_type: authorization
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
@@ -191,5 +191,5 @@ data:
           slug: harbor
           policy_engine_mode: any
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, "Harbor"]]
-          meta_launch_url: "https://harbor.lab.zerodi.ru/"
+          meta_launch_url: "https://harbor.home.arpa/"
           open_in_new_tab: true

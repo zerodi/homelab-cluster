@@ -5,7 +5,7 @@ metadata:
   namespace: stalwart
 spec:
   hostnames:
-    - stalwart.lab.zerodi.ru
+    - stalwart.home.arpa
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway

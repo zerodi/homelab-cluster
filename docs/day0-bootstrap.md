@@ -34,16 +34,8 @@ platform-layer с нуля.
 1. `age`-ключ для `SOPS`, если вы используете SOPS для day-0 артефактов
 2. bootstrap-доступ к `OpenBao`
 3. план хранения `unseal keys` и recovery material вне repo и вне Terraform state
-4. runtime credentials для приложений:
-   `platform/cert-manager/cloudflare`,
-   `platform/authentik/runtime`, `platform/authentik/postgresql`, `platform/authentik/redis`,
-   `platform/forgejo/admin`, `platform/forgejo/oidc`, `platform/forgejo/postgresql`, `platform/forgejo/valkey`,
-   `platform/argocd/oidc`,
-   `platform/harbor/runtime`, `platform/harbor/postgresql`, `platform/harbor/valkey`, `platform/harbor/oidc`,
-   `platform/stalwart/runtime`,
-   `platform/woodpecker/runtime`,
-   `platform/observability/grafana`, `platform/observability/grafana-oidc`,
-   `platform/garage/runtime`, `platform/velero/s3`
+4. Cloudflare API token и credentials внешних OAuth/S3 интеграций; полный
+   OpenBao contract перечислен в шаге 5
 
 ## Порядок шагов
 
@@ -54,7 +46,7 @@ task init
 cp terraform.tfvars.example terraform.tfvars
 cp .env.example .env
 # заполните terraform.tfvars только несекретными значениями
-# версии OpenTofu, providers, Talos Linux и Kubernetes меняйте в versions.yaml
+# версии OpenTofu, providers, Talos Linux, Kubernetes, charts и images меняйте в versions.yaml
 # заполните .env локальными credentials; Taskfile загружает его автоматически
 # оставьте в tracked homelab.override.yaml только environment-specific
 # non-secret отличия
@@ -86,20 +78,25 @@ sops -d secrets.sops.tfvars > cluster/secrets.auto.tfvars
 файлом. Он создаётся внутри фактического OpenTofu entrypoint, поэтому
 автоматически загружается командами `task cluster:*`.
 
-`talos_version` и `kubernetes_version` не являются environment inputs. Если они
-остались в локальном `terraform.tfvars` от прежнего контракта, удалите эти две
-строки: bootstrap читает обе версии из root `versions.yaml`.
+`cluster_name` — optional OpenTofu override: по умолчанию имя читается из
+environment contract, а при отсутствии поля используется fallback `talos-pve`.
+`talos_version` и `kubernetes_version` не являются OpenTofu inputs; удалите их
+из старого локального `terraform.tfvars`, поскольку версии читаются из root
+`versions.yaml`.
 
-Сетевой контракт задаётся вместе с общим доменом в
+Имя кластера и сетевой контракт задаются вместе с общим доменом в
 `envs/homelab.yaml` или environment-specific override:
 
 ```yaml
 cluster:
+  name: homelab-talos
   base_domain: lab.example.net
   ipv4_cidr: 192.168.100.0/24
 ```
 
-В `terraform.tfvars` остаётся только количество узлов:
+`terraform.tfvars.example` перечисляет все inputs `cluster/`, включая optional
+значения с безопасными defaults. Обычно после настройки Proxmox и schematic ID
+достаточно менять количество узлов:
 
 ```hcl
 controlplane_nodes = 3
@@ -496,40 +493,23 @@ task ops:openbao-runtime-preflight-final
 
 ### 6. GitOps bootstrap
 
-После записи runtime secrets:
+Сначала синхронизируйте tracked consumers по
+[environment contract](environment-contract.md), затем выберите временный или
+постоянный Git source.
 
-1. обновите [envs/homelab.yaml](../envs/homelab.yaml) или environment-specific
-   `envs/homelab.override.yaml`
-2. запустите `task sync-env-contract`, чтобы обновить repository coordinates,
-   домены и остальные tracked mirrors в `argocd/`
-3. запустите `task check:env-contract`, чтобы проверить результат
-4. укажите адрес машины с Docker, доступный из Argo CD pods
-5. соберите test-ssh-git и примените root application из него
+Для первого bootstrap через test-SSH укажите адрес машины с Docker, доступный
+из Argo CD pods:
 
 ```bash
 export TEST_SSH_GIT_HOSTNAME='192.168.100.10'
 task gitops:test-ssh-bootstrap
 ```
 
-Этот сценарий:
-
-- запускает scaffold effective contract validation против `argocd/`
-- валидирует наличие required runtime secret paths/keys в `OpenBao`
-- не печатает secret values
-- создаёт seed repository из текущего `argocd/` и переписывает его Git source
-  URL на локальный SSH endpoint
-- исключает из временного seed tree `forgejo-gitops-repository`, поскольку
-  credential постоянного Forgejo создаётся только во время cutover
-- собирает и запускает `test-ssh-git` в Docker
-- проверяет repository через `git ls-remote`
-- проверяет readiness `argocd`
-- создаёт known-hosts ConfigMap и repository Secret
-- применяет сгенерированный `Application/root-ssh`
-- ждёт `Application/root-ssh` в состояниях `Synced` и `Healthy`
-
-`TEST_SSH_GIT_HOSTNAME` не может быть loopback-адресом: endpoint должен быть
-доступен из Argo CD pods. Держите test server запущенным до завершения sync или
-до перевода Applications на постоянный Git repository.
+Команда выполняет environment/OpenBao preflight, поднимает временный Git source
+и ждёт `Application/root-ssh` в состояниях `Synced` и `Healthy`. Ограничения,
+создаваемые артефакты и ручной recovery описаны в
+[test-SSH runbook](../test-ssh-git/README.md). Держите server запущенным до
+завершения sync или cutover.
 
 После создания Forgejo перенесите GitOps tree и переключите Argo CD по
 [cutover runbook](forgejo-argocd-cutover.md). После commit текущего `argocd/`
@@ -541,10 +521,8 @@ export BAO_TOKEN='...'
 task gitops:forgejo-cutover
 ```
 
-Task создаёт постоянный repository и read-only service credential, сохраняет
-его в OpenBao, публикует GitOps tree, переключает `root-ssh` на Forgejo,
-применяет канонический `root` и останавливает временный server только после
-успешной проверки. Ручные шаги сохранены в runbook для recovery и аудита.
+Task выполняет проверяемый cutover и останавливает временный server только
+после успешной проверки. Детали и recovery-путь находятся в отдельном runbook.
 
 Если постоянный repository доступен до первого sync, используйте обычный путь:
 
@@ -553,132 +531,16 @@ task gitops:preflight
 task gitops:apply-bootstrap
 ```
 
-#### Первичный вход в Argo CD
+#### Первичный доступ
 
-Получите опубликованный URL и состояние Ingress:
-
-```bash
-tofu -chdir=infrastructure output -raw argocd_url && echo
-kubectl -n argocd get ingress argocd-server
-```
-
-Hostname должен разрешаться в адрес Ingress. Для доверия выпущенному внутренним
-CA TLS-сертификату экспортируйте homelab CA командой `task ops:export-root-ca`
-и добавьте `out/homelab-root-ca.crt` в trust store клиентской машины.
-
-Полный набор строк для клиентского `/etc/hosts` по фактически назначенным
-LoadBalancer IP из Kubernetes status выводится командой:
-
-```bash
-task ops:hosts-entries
-```
-
-Если хотя бы один Ingress или Gateway ещё не получил адрес, команда перечислит
-Pending-ресурсы и не выведет неполный набор.
-
-Начальный логин — `admin`. Пароль хранится в Kubernetes Secret:
-
-```bash
-kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath='{.data.password}' | base64 -d && echo
-```
-
-До настройки DNS и CA можно использовать локальный доступ:
-
-```bash
-kubectl -n argocd port-forward svc/argocd-server 8080:80
-```
-
-Откройте `http://127.0.0.1:8080`, войдите как `admin`, затем смените пароль в
-`User Info -> Update Password`. После проверки нового пароля initial Secret
-можно удалить:
-
-```bash
-kubectl -n argocd delete secret argocd-initial-admin-secret
-```
-
-После этого можно проверить, что ESO начал синхронизацию:
-
-```bash
-kubectl -n authentik get secret authentik-runtime
-kubectl -n forgejo get secret forgejo-admin-secret
-kubectl -n forgejo get secret forgejo-oidc
-kubectl -n harbor get secret harbor-runtime harbor-postgresql-auth harbor-valkey-auth
-kubectl -n stalwart get secret stalwart-runtime
-kubectl -n woodpecker get secret woodpecker-runtime woodpecker-default-agent-secret
-```
-
-Данные для первого входа администратора:
-
-Authentik (`akadmin`):
-
-```bash
-task ops:authentik-admin-password
-```
-
-То же значение из materialized Kubernetes Secret:
-
-```bash
-kubectl -n authentik get secret authentik-runtime \
-  -o jsonpath='{.data.AUTHENTIK_BOOTSTRAP_PASSWORD}' | base64 -d && echo
-```
-
-`AUTHENTIK_BOOTSTRAP_PASSWORD` читается Authentik только при первом старте.
-Если instance уже запускался без этого значения, существующий пароль получить
-нельзя: он хранится в базе как verifier. Задайте новый пароль интерактивно и
-затем сохраните согласованное значение в OpenBao:
-
-```bash
-kubectl -n authentik exec -it deployment/authentik-server -c server -- \
-  ak changepassword akadmin
-```
-
-Не перезаписывайте весь `platform/authentik/runtime`, не сохранив существующий
-`secret_key`; для добавления поля в существующий KV v2 path используйте
-`bao kv patch`.
-
-Forgejo:
-
-```bash
-kubectl -n forgejo get secret forgejo-admin-secret -o jsonpath='{.data.username}' | base64 -d && echo
-kubectl -n forgejo get secret forgejo-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo
-```
-
-Harbor:
-
-```bash
-kubectl -n harbor get secret harbor-runtime -o jsonpath='{.data.HARBOR_ADMIN_PASSWORD}' | base64 -d && echo
-```
-
-Harbor получает пароль Valkey из `OpenBao` через `ExternalSecret`
-`harbor-valkey-auth`. ESO формирует в этом Secret готовые Redis URL, а
-Harbor-компоненты читают их через runtime environment variables. Это необходимо,
-потому что Argo CD выполняет client-side Helm render и не может обработать
-`lookup` секрета из Harbor chart. Не переносите пароль в
-`redis.external.password` внутри `values.yaml`.
-
-Stalwart (`admin`):
-
-```bash
-task ops:stalwart-admin-password
-```
-
-Recovery administrator нужен только для первоначальной настройки и аварийного
-доступа. После создания постоянного администратора удалите его `envFrom` из
-StatefulSet и синхронизируйте Argo CD. Полная настройка LB, TLS и DNS описана в
-[Stalwart runbook](stalwart.md).
-
-Woodpecker:
-
-- до первого входа должен существовать OAuth application в Forgejo
-- callback URL должен быть `https://ci.lab.zerodi.ru/authorize`
-- `forgejo_client` и `forgejo_secret` в `secret/platform/woodpecker/runtime` должны совпадать с этой application
-- после sync полезно открыть `https://ci.lab.zerodi.ru/` и завершить OAuth login через Forgejo
-
-Authentik:
-
-- отдельный admin `Secret` в Kubernetes не создаётся
-- на первом входе используйте initial setup flow в `https://auth.lab.zerodi.ru`
+- URL, начальный пароль и временный port-forward Argo CD описаны в
+  [`argocd/README.md`](../argocd/README.md#первичный-доступ-к-argo-cd).
+- Сводный вывод интерактивных bootstrap credentials доступен через
+  `task ops:initial-app-credentials`.
+- Модель Authentik/OIDC и break-glass доступ описаны в
+  [runbook авторизации](platform-authentication.md).
+- Специфичные recovery и DNS шаги Stalwart находятся в
+  [Stalwart runbook](stalwart.md).
 
 После завершения day-0 операций закройте port-forward:
 

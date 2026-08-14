@@ -19,7 +19,7 @@ spec:
       data:
         type: git
         name: forgejo-gitops
-        url: https://git.lab.zerodi.ru/platform/gitops.git
+        url: https://git.home.arpa/platform/gitops.git
         username: "{{ .username }}"
         password: "{{ .token }}"
   data:

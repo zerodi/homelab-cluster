@@ -18,7 +18,7 @@ variable "environment_contract_path" {
 # Cluster state overrides
 ###
 
-variable "kubeconfig_path" {
+variable "kubeconfig_file_path" {
   description = "Optional kubeconfig override for recovery or non-standard state layouts."
   type        = string
   default     = null

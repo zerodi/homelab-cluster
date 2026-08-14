@@ -1,5 +1,19 @@
 # Документация
 
+## Канонические документы
+
+- root [`README`](../README.md) — краткая точка входа и локальная validation;
+- [deployment map](deployment-map.md) — владельцы слоёв и ручные границы;
+- [day-0 bootstrap](day0-bootstrap.md) — единственная полная последовательность
+  greenfield-развёртывания;
+- [environment contract](environment-contract.md) — изменение non-secret
+  координат и синхронизация consumers;
+- [`argocd/README`](../argocd/README.md) — runtime/GitOps workflow после
+  platform bootstrap.
+
+Специализированные runbook не должны повторять полный day-0 сценарий: они
+описывают только собственную область и ссылаются на канонический документ.
+
 ## Развёртывание
 
 Greenfield-развёртывание кластера и platform bootstrap:

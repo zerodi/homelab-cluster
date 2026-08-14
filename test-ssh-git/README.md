@@ -1,22 +1,9 @@
-# Test SSH Git Server For ArgoCD
+# Test SSH Git server for Argo CD
 
-Этот каталог поднимает минимальный Git-over-SSH сервер для тестирования ArgoCD с приватным репозиторием.
-
-Это локальный стенд. Он не является частью tracked GitOps source of truth и не должен менять содержимое `argocd/`.
-
-Что делает стенд:
-
-- поднимает `sshd` + `git-shell` в контейнере
-- создаёт bare repo `gitops.git`
-- заливает в него только tracked GitOps-каркас из `argocd/`:
-  - `bootstrap/`
-  - `platform/`
-  - `apps/`
-  - `README.md`
-- генерирует клиентский SSH-ключ для ArgoCD
-- генерирует манифесты:
-  - ArgoCD repository secret
-  - root application с `repoURL` по SSH
+Этот локальный стенд предоставляет временный приватный Git source для первого
+Argo CD sync. Он не является tracked source of truth и не изменяет содержимое
+`argocd/`; все ключи, repository data и сгенерированные manifests остаются в
+игнорируемых каталогах `test-ssh-git/`.
 
 ## Автоматизированный bootstrap
 
@@ -33,7 +20,7 @@ TEST_SSH_GIT_PORT='2222'
 task gitops:test-ssh-bootstrap
 ```
 
-Сценарий автоматически:
+Сценарий:
 
 1. генерирует SSH host/client keys и Argo CD manifests;
 2. создаёт bare `gitops.git` из текущего `argocd/`;
@@ -54,13 +41,12 @@ Loopback-адреса запрещены: `127.0.0.1` внутри Argo CD pod �
 task gitops:test-ssh-stop
 ```
 
-Последовательность создания постоянного repository в Forgejo, настройки
-Argo CD credentials и безопасного переключения `root-ssh` приведена в
+Постоянный repository и безопасное переключение `root-ssh` описаны в
 [Forgejo cutover runbook](../docs/forgejo-argocd-cutover.md).
 
-## Подготовка
+## Ручной recovery
 
-Ручной вариант подготовки стенда:
+Если Task-сценарий недоступен, подготовьте стенд вручную:
 
 ```bash
 cd test-ssh-git
@@ -87,7 +73,8 @@ docker compose up -d --build
 ssh://git@git.localtest.me:2222/home/git/repos/gitops.git
 ```
 
-`git.localtest.me` резолвится в `127.0.0.1`. Если ArgoCD находится не на той же машине, задайте перед `setup.sh` другой hostname:
+`git.localtest.me` резолвится в `127.0.0.1`. Если Argo CD находится не на той
+же машине, задайте перед `setup.sh` другой hostname:
 
 ```bash
 TEST_SSH_GIT_HOSTNAME=192.168.1.10 ./setup.sh
@@ -100,7 +87,7 @@ GIT_SSH_COMMAND='ssh -i keys/argocd_test_client_ed25519 -o UserKnownHostsFile=ke
   git ls-remote ssh://git@git.localtest.me:2222/home/git/repos/gitops.git
 ```
 
-## Подключение ArgoCD
+## Подключение Argo CD
 
 1. Добавьте `known_hosts` в `argocd-ssh-known-hosts-cm`.
 2. Примените `templates/argocd-repository-secret.yaml`.

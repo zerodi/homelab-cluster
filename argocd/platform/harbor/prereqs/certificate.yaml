@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: harbor-tls
   dnsNames:
-    - harbor.lab.zerodi.ru
+    - harbor.home.arpa
   issuerRef:
     name: letsencrypt-cloudflare
     kind: ClusterIssuer

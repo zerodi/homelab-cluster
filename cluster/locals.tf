@@ -4,7 +4,12 @@ locals {
   chart_versions       = local.version_contract.charts
   talos_version        = local.version_contract.platform.talos_linux
   kubernetes_version   = local.version_contract.platform.kubernetes
-  cluster_ipv4_cidr    = local.environment_contract.cluster.ipv4_cidr
+  cluster_name = coalesce(
+    var.cluster_name,
+    try(local.environment_contract.cluster.name, null),
+    "talos-pve",
+  )
+  cluster_ipv4_cidr = local.environment_contract.cluster.ipv4_cidr
 
   effective_proxmox = merge(
     var.proxmox,

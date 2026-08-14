@@ -72,7 +72,7 @@ Forgejo позволяет ограничить token конкретным repos
 Для текущего environment постоянный URL выглядит так:
 
 ```bash
-export FORGEJO_HOST='git.lab.zerodi.ru'
+export FORGEJO_HOST='git.home.arpa'
 export FORGEJO_GITOPS_URL="https://${FORGEJO_HOST}/platform/gitops.git"
 ```
 
@@ -81,7 +81,7 @@ export FORGEJO_GITOPS_URL="https://${FORGEJO_HOST}/platform/gitops.git"
 ## 2. Подготовка GitOps tree
 
 Замените `gitops.repo_url` в `envs/homelab.override.yaml` на
-`https://git.lab.zerodi.ru/platform/gitops.git`, затем синхронизируйте все
+`https://git.home.arpa/platform/gitops.git`, затем синхронизируйте все
 tracked consumers:
 
 ```bash
@@ -160,7 +160,7 @@ spec:
       data:
         type: git
         name: forgejo-gitops
-        url: https://git.lab.zerodi.ru/platform/gitops.git
+        url: https://git.home.arpa/platform/gitops.git
         username: "{{ .username }}"
         password: "{{ .token }}"
   data:

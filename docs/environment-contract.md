@@ -6,7 +6,7 @@ tracked environment-specific отличия и рекурсивно наклад
 
 В нём хранятся:
 
-- имя кластера, общий base domain и IPv4 `/24` подсеть
+- optional имя кластера (fallback `talos-pve`), общий base domain и IPv4 `/24` подсеть
 - только короткие поддомены сервисов
 - GitOps repository URL и revision
 - Piraeus/LINSTOR naming
@@ -37,7 +37,7 @@ service_subdomains:
 - пароли, tokens и private keys
 - OpenBao secret values
 - day-0 Terraform credentials
-- release/tool versions — они находятся в [`versions.yaml`](../versions.yaml)
+- release/tool/container versions — они находятся в [`versions.yaml`](../versions.yaml)
 
 ## Изменение contract
 

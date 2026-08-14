@@ -45,15 +45,15 @@ browser
 
 | Компонент | Публичный endpoint | Текущий вход | Целевая модель | Состояние |
 | --- | --- | --- | --- | --- |
-| Authentik | `https://auth.lab.zerodi.ru` | `akadmin` | центральный IdP | реализовано |
-| Forgejo | `https://git.lab.zerodi.ru` | local admin + Authentik OIDC | Authentik OIDC, local admin как break-glass | реализовано, требуется доводка регистрации |
-| Woodpecker | `https://ci.lab.zerodi.ru` | Forgejo OAuth2 | Forgejo OAuth2 поверх Authentik SSO | реализовано, OAuth application создаётся вручную |
+| Authentik | `https://auth.home.arpa` | `akadmin` | центральный IdP | реализовано |
+| Forgejo | `https://git.home.arpa` | local admin + Authentik OIDC | Authentik OIDC, local admin как break-glass | реализовано, требуется доводка регистрации |
+| Woodpecker | `https://ci.home.arpa` | Forgejo OAuth2 | Forgejo OAuth2 поверх Authentik SSO | реализовано, OAuth application создаётся вручную |
 | Argo CD | environment contract | local `admin` | прямой Authentik OIDC + Argo CD RBAC | provider/application реализованы; consumer остаётся в `infrastructure/` |
-| Harbor | `https://harbor.lab.zerodi.ru` | local `admin` | Authentik OIDC + Harbor groups | provider/application реализованы; переход после bootstrap |
-| Grafana | `https://grafana.lab.zerodi.ru` | local admin | Authentik Generic OAuth + entitlements | provider/application реализованы; consumer ещё не включён |
-| Stalwart | `https://stalwart.lab.zerodi.ru` | recovery admin + Authentik OIDC | Authentik OIDC для WebUI и совместимых клиентов, app passwords для остальных | provider, callbacks и OIDC Directory реализованы декларативно |
-| Hubble UI | `https://hubble.lab.zerodi.ru` | отсутствует | Authentik proxy/outpost или сетевое ограничение | известный gap |
-| echo | `https://echo.lab.zerodi.ru` | отсутствует | оставить diagnostic endpoint либо закрыть proxy policy | осознанное решение |
+| Harbor | `https://harbor.home.arpa` | local `admin` | Authentik OIDC + Harbor groups | provider/application реализованы; переход после bootstrap |
+| Grafana | `https://grafana.home.arpa` | local admin | Authentik Generic OAuth + entitlements | provider/application реализованы; consumer ещё не включён |
+| Stalwart | `https://stalwart.home.arpa` | recovery admin + Authentik OIDC | Authentik OIDC для WebUI и совместимых клиентов, app passwords для остальных | provider, callbacks и OIDC Directory реализованы декларативно |
+| Hubble UI | `https://hubble.home.arpa` | отсутствует | Authentik proxy/outpost или сетевое ограничение | известный gap |
+| echo | `https://echo.home.arpa` | отсутствует | оставить diagnostic endpoint либо закрыть proxy policy | осознанное решение |
 | Garage | S3/admin API | S3 keys/admin token | service credentials, не пользовательский OIDC | реализовано |
 | OpenBao | только operator access | token + Kubernetes auth | сохранить bootstrap auth; OIDC возможен только как day-1 дополнение | реализовано |
 | Velero, Kyverno, Loki, Tempo, VictoriaMetrics, OTel | ClusterIP/API | Kubernetes service identity | Kubernetes RBAC и service credentials | реализовано |
@@ -127,17 +127,17 @@ URI. Blueprints явно задают `redirect_uri_type: authorization` и то
 
 | Consumer | Authentik slug | Redirect URI |
 | --- | --- | --- |
-| Forgejo | `forgejo` | `https://git.lab.zerodi.ru/user/oauth2/authentik/callback` |
+| Forgejo | `forgejo` | `https://git.home.arpa/user/oauth2/authentik/callback` |
 | Argo CD, direct OIDC | `argocd` | `<ARGOCD_URL>/auth/callback` |
-| Harbor | `harbor` | `https://harbor.lab.zerodi.ru/c/oidc/callback` |
-| Grafana | `grafana` | `https://grafana.lab.zerodi.ru/login/generic_oauth` |
+| Harbor | `harbor` | `https://harbor.home.arpa/c/oidc/callback` |
+| Grafana | `grafana` | `https://grafana.home.arpa/login/generic_oauth` |
 | Stalwart | `stalwart` | отсутствует: public Device Authorization client |
 
 Per-provider issuer и discovery URL имеют вид:
 
 ```text
-https://auth.lab.zerodi.ru/application/o/<slug>/
-https://auth.lab.zerodi.ru/application/o/<slug>/.well-known/openid-configuration
+https://auth.home.arpa/application/o/<slug>/
+https://auth.home.arpa/application/o/<slug>/.well-known/openid-configuration
 ```
 
 Blueprint-модель и специальные YAML tags сверены с официальными разделами
@@ -241,7 +241,7 @@ Woodpecker -> Forgejo OAuth2 -> Authentik OIDC
 
 ```text
 Name: Woodpecker CI
-Redirect URI: https://ci.lab.zerodi.ru/authorize
+Redirect URI: https://ci.home.arpa/authorize
 ```
 
 Используйте раздел site administration
@@ -264,7 +264,7 @@ server:
 `WOODPECKER_ORGS` проверяет membership в Forgejo, поэтому Authentik group
 сначала должна быть сопоставлена с team в организации `platform`.
 
-Если `ci.lab.zerodi.ru` разрешается в private IP, разрешите Forgejo webhook
+Если `ci.home.arpa` разрешается в private IP, разрешите Forgejo webhook
 доступ к этому точному hostname. Не отключайте TLS verification: Woodpecker и
 Forgejo уже получают homelab CA.
 
@@ -281,7 +281,7 @@ configs:
     url: <ARGOCD_URL>
     oidc.config: |
       name: Authentik
-      issuer: https://auth.lab.zerodi.ru/application/o/argocd/
+      issuer: https://auth.home.arpa/application/o/argocd/
       clientID: $argocd-oidc:client_id
       clientSecret: $argocd-oidc:client_secret
       requestedScopes: ["openid", "profile", "email", "groups"]
@@ -312,7 +312,7 @@ greenfield deployment.
 
 В Authentik создайте provider `harbor`:
 
-- redirect URI: `https://harbor.lab.zerodi.ru/c/oidc/callback`;
+- redirect URI: `https://harbor.home.arpa/c/oidc/callback`;
 - scopes: `openid,profile,email,offline_access`;
 - group claim: `groups`;
 - optional entitlement `harbor-admin`.
@@ -328,7 +328,7 @@ Administration -> Configuration -> Authentication
 ```text
 Auth Mode: OIDC
 OIDC Provider Name: authentik
-OIDC Endpoint: https://auth.lab.zerodi.ru/application/o/harbor/
+OIDC Endpoint: https://auth.home.arpa/application/o/harbor/
 Group Claim Name: groups
 OIDC Admin Group: harbor-admin
 OIDC Scope: openid,profile,email,offline_access
@@ -347,7 +347,7 @@ Docker и Helm CLI не выполняют browser redirect. После перв
 ## 6. Grafana через Authentik
 
 Создайте provider `grafana` с redirect URI
-`https://grafana.lab.zerodi.ru/login/generic_oauth`. Добавьте scope
+`https://grafana.home.arpa/login/generic_oauth`. Добавьте scope
 `entitlements` и entitlements `Grafana Admins`, `Grafana Editors`,
 `Grafana Viewers`.
 
@@ -357,14 +357,14 @@ Docker и Helm CLI не выполняют browser redirect. После перв
 grafana.ini:
   auth:
     oauth_auto_login: true
-    signout_redirect_url: https://auth.lab.zerodi.ru/application/o/grafana/end-session/
+    signout_redirect_url: https://auth.home.arpa/application/o/grafana/end-session/
   auth.generic_oauth:
     enabled: true
     name: Authentik
     scopes: openid profile email entitlements
-    auth_url: https://auth.lab.zerodi.ru/application/o/authorize/
-    token_url: https://auth.lab.zerodi.ru/application/o/token/
-    api_url: https://auth.lab.zerodi.ru/application/o/userinfo/
+    auth_url: https://auth.home.arpa/application/o/authorize/
+    token_url: https://auth.home.arpa/application/o/token/
+    api_url: https://auth.home.arpa/application/o/userinfo/
     role_attribute_path: "contains(entitlements[*], 'Grafana Admins') && 'Admin' || contains(entitlements[*], 'Grafana Editors') && 'Editor' || 'Viewer'"
 ```
 
@@ -382,7 +382,7 @@ authorization code, refresh token и device code grants. Разрешены то
 PostSync Job идемпотентно применяет через `stalwart-cli apply`:
 
 ```text
-issuerUrl: https://auth.lab.zerodi.ru/application/o/stalwart/
+issuerUrl: https://auth.home.arpa/application/o/stalwart/
 requireAudience: stalwart-webui
 requireScopes: [openid, email]
 claimUsername: email

@@ -73,7 +73,7 @@ OIDC не предоставляет offline directory lookup: почтовые 
 
 ## Первичный доступ
 
-Откройте `https://stalwart.lab.zerodi.ru/admin`. Начальный login — `admin`,
+Откройте `https://stalwart.home.arpa/admin`. Начальный login — `admin`,
 пароль получите из OpenBao:
 
 ```bash
@@ -144,5 +144,5 @@ task sync-env-contract
 task check:env-contract
 ```
 
-Версия контейнера фиксируется minor-тегом `platform.stalwart.image_tag`.
+Версия контейнера фиксируется в `images.stalwart` корневого `versions.yaml`.
 Обновляйте её осознанно и проверяйте release notes перед Argo CD sync.

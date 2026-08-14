@@ -15,7 +15,7 @@ spec:
         releaseName: authentik
         valueFiles:
           - $values/platform/authentik/values.yaml
-    - repoURL: https://git.lab.zerodi.ru/platform/gitops.git
+    - repoURL: https://git.home.arpa/platform/gitops.git
       targetRevision: main
       ref: values
   destination:

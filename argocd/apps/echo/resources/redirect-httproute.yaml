@@ -8,7 +8,7 @@ spec:
     - name: echo
       sectionName: http
   hostnames:
-    - echo.lab.zerodi.ru
+    - echo.home.arpa
   rules:
     - filters:
         - type: RequestRedirect

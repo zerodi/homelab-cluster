@@ -72,3 +72,22 @@ charts:
   victoria_metrics_single: "0.43.0"
   # renovate: datasource=docker depName=ghcr.io/woodpecker-ci/helm/woodpecker versioning=semver-coerced
   woodpecker: "3.7.0"
+
+# Container image versions are release policy, not environment inputs.
+images:
+  # renovate: datasource=docker depName=alpine versioning=semver-coerced
+  test_ssh_git_alpine: "3.22"
+  # renovate: datasource=docker depName=ealen/echo-server versioning=semver-coerced
+  echo_server: "0.9.2"
+  # renovate: datasource=docker depName=dxflrs/garage versioning=semver-coerced
+  garage: "v2.1.0"
+  # renovate: datasource=docker depName=bitnami/kubectl versioning=docker
+  kubectl: "latest"
+  # renovate: datasource=docker depName=ghcr.io/stalwartlabs/cli versioning=semver-coerced
+  stalwart_cli: "1.0.12"
+  # renovate: datasource=docker depName=stalwartlabs/stalwart versioning=semver-coerced
+  stalwart: "v0.16.16"
+  # renovate: datasource=docker depName=velero/velero versioning=semver-coerced
+  velero: "v1.18.0"
+  # renovate: datasource=docker depName=velero/velero-plugin-for-aws versioning=semver-coerced
+  velero_plugin_aws: "v1.13.1"

@@ -1,3 +1,5 @@
+# cluster/ entrypoint inputs
+
 proxmox = {
   endpoint        = "https://pve.example.com:8006"
   insecure        = true
@@ -7,26 +9,34 @@ proxmox = {
   ssh_username    = "terraform"
 }
 
-# Sensitive Terraform inputs should not live here.
-# Use either:
-#   export TF_VAR_proxmox_api_token='terraform@pve!talos=...'
+# Sensitive input: never commit a real value here. Use either:
+#   proxmox_api_token='terraform@pve!talos=...'
 # or an encrypted SOPS file based on secrets.sops.tfvars.example.
+# proxmox_api_token = "REDACTED"
+
+# Task renders this file and exports an absolute path automatically. Override
+# only for a non-standard layout.
+# environment_contract_path = "../out/homelab.effective.yaml"
+
+# Optional. Falls back to cluster.name in the environment contract, then to
+# "talos-pve" when the contract does not define a name.
+# cluster_name = "homelab-talos"
 
 talos_schematic_id = "<SCHEMATIC_ID>"
 
-cluster_name = "homelab-talos"
-# Optional. If null, cluster endpoint uses the generated .200 control plane VIP.
-# cluster_endpoint = "https://192.168.10.200:6443"
-
-# Cluster subnet, base domain, service subdomains, Argo CD host, and Piraeus
-# settings live in envs/homelab.yaml plus its optional override.
+# Optional. If null, the Kubernetes API endpoint uses the generated .200 VIP.
+# cluster_endpoint = null
+# cluster_health_check_timeout = "20m"
+# node_prefix                  = "talos"
+# cilium_interface             = "eth0"
+# talosconfig_file_path        = "../out/talosconfig"
+# kubeconfig_file_path         = "../out/kubeconfig"
 
 controlplane_node_defaults = {
   cpu_cores = 4
   memory_mb = 8192
   disk_gb   = 40
 }
-
 controlplane_nodes = 3
 
 worker_node_defaults = {
@@ -35,5 +45,14 @@ worker_node_defaults = {
   disk_gb            = 40
   additional_disk_gb = 80
 }
-
 worker_nodes = 2
+
+# infrastructure/ entrypoint inputs
+# cluster_state_path           = '../cluster/terraform.tfstate'
+# piraeus_storage_nodes        = '["wk-01", "wk-02"]'
+# argocd_host                  = 'argocd.home.arpa'
+# piraeus_namespace            = 'piraeus-datastore'
+# piraeus_storage_device       = '/dev/sdb'
+# piraeus_storage_pool_name    = 'pool1'
+# piraeus_replica_count        = '1'
+# crd_backed_resources_enabled = 'true'

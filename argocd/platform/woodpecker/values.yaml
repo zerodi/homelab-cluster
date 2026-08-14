@@ -7,9 +7,9 @@ server:
   extraSecretNamesForEnvFrom:
     - woodpecker-runtime
   env:
-    WOODPECKER_HOST: https://ci.lab.zerodi.ru
+    WOODPECKER_HOST: https://ci.home.arpa
     WOODPECKER_FORGEJO: "true"
-    WOODPECKER_FORGEJO_URL: https://git.lab.zerodi.ru
+    WOODPECKER_FORGEJO_URL: https://git.home.arpa
     WOODPECKER_FORGEJO_SKIP_VERIFY: "false"
     WOODPECKER_OPEN: "true"
   persistentVolume:

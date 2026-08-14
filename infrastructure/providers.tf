@@ -13,7 +13,7 @@ locals {
   cluster_outputs      = data.terraform_remote_state.cluster.outputs
 
   effective_kubeconfig_path = coalesce(
-    var.kubeconfig_path,
+    var.kubeconfig_file_path,
     try(local.cluster_outputs.kubeconfig_path, null),
   )
 

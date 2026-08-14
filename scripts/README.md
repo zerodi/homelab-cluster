@@ -27,6 +27,8 @@
 | `render-environment-contract.sh` | `deploy-support` | Атомарно материализует effective environment contract. |
 | `task-vars.sh` | `deploy-support` | Разрешает один запрошенный Taskfile input за вызов. |
 | `check-chart-versions.py` | `no-deploy: validation` | Проверяет или синхронизирует mirrors версий charts. |
+| `check-image-versions.py` | `no-deploy: validation` | Проверяет или синхронизирует container image pins. |
+| `check-tfvars-example.py` | `no-deploy: validation` | Проверяет полноту каталога OpenTofu inputs в `terraform.tfvars.example`. |
 | `check-cluster-isolation.py` | `no-deploy: validation` | Проверяет ownership boundary слоя `cluster/`. |
 | `check-documentation.py` | `no-deploy: validation` | Проверяет структуру документации и локальные ссылки. |
 | `check-infrastructure-isolation.py` | `no-deploy: validation` | Проверяет ownership boundary слоя `infrastructure/`. |

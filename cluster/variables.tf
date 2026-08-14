@@ -33,9 +33,10 @@ variable "environment_contract_path" {
 }
 
 variable "cluster_name" {
-  description = "Talos and Kubernetes cluster name."
+  description = "Optional Talos and Kubernetes cluster name override. Defaults to cluster.name in the environment contract, then talos-pve."
   type        = string
-  default     = "talos-pve"
+  default     = null
+  nullable    = true
 }
 
 variable "talos_schematic_id" {
