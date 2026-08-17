@@ -153,6 +153,7 @@ run_check "authentik runtime secret exists" kubectl -n authentik get secret auth
 run_check "authentik tls secret exists" kubectl -n authentik get secret authentik-tls >/dev/null || failed=1
 run_check "authentik postgresql auth secret exists" kubectl -n authentik get secret authentik-postgresql-auth >/dev/null || failed=1
 run_check "authentik redis auth secret exists" kubectl -n authentik get secret authentik-redis-auth >/dev/null || failed=1
+run_check "authentik platform identity blueprint exists" kubectl -n authentik get secret platform-identity-blueprint >/dev/null || failed=1
 run_check "authentik gateway exists" kubectl -n authentik get gateway authentik >/dev/null || failed=1
 run_check "authentik route exists" kubectl -n authentik get httproute authentik >/dev/null || failed=1
 run_check "authentik redirect route exists" kubectl -n authentik get httproute authentik-http-redirect >/dev/null || failed=1
@@ -164,6 +165,9 @@ run_check "forgejo postgresql auth secret exists" kubectl -n forgejo get secret 
 run_check "forgejo valkey auth secret exists" kubectl -n forgejo get secret forgejo-valkey-auth >/dev/null || failed=1
 run_check "forgejo runtime config secret exists" kubectl -n forgejo get secret forgejo-runtime-config >/dev/null || failed=1
 run_check "forgejo oidc secret exists" kubectl -n forgejo get secret forgejo-oidc >/dev/null || failed=1
+run_check "argocd oidc secret exists" kubectl -n argocd get secret argocd-oidc >/dev/null || failed=1
+run_check "harbor oidc config secret exists" kubectl -n harbor get secret harbor-oidc-config >/dev/null || failed=1
+run_check "grafana oidc secret exists" kubectl -n observability get secret grafana-oidc >/dev/null || failed=1
 run_check "forgejo gateway exists" kubectl -n forgejo get gateway forgejo >/dev/null || failed=1
 run_check "forgejo route exists" kubectl -n forgejo get httproute forgejo >/dev/null || failed=1
 run_check "forgejo redirect route exists" kubectl -n forgejo get httproute forgejo-http-redirect >/dev/null || failed=1

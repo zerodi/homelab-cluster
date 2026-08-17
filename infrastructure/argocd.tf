@@ -18,6 +18,19 @@ resource "helm_release" "argocd" {
     configs = {
       cm = {
         "application.resourceTrackingMethod" = "annotation+label"
+        url                                  = "https://${local.effective_argocd_host}"
+        "oidc.config" = yamlencode({
+          name            = "Authentik"
+          issuer          = "https://${local.effective_identity_provider_host}/application/o/argocd/"
+          clientID        = "$argocd-oidc:client_id"
+          clientSecret    = "$argocd-oidc:client_secret"
+          requestedScopes = ["openid", "profile", "email", "groups"]
+        })
+      }
+      rbac = {
+        scopes           = "[groups]"
+        "policy.default" = "role:readonly"
+        "policy.csv"     = "g, ${local.effective_platform_admin_group}, role:admin\n"
       }
       params = {
         "controller.diff.server.side"                    = "true"

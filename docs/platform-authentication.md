@@ -46,11 +46,11 @@ browser
 | Компонент | Публичный endpoint | Текущий вход | Целевая модель | Состояние |
 | --- | --- | --- | --- | --- |
 | Authentik | `https://auth.home.arpa` | `akadmin` | центральный IdP | реализовано |
-| Forgejo | `https://git.home.arpa` | local admin + Authentik OIDC | Authentik OIDC, local admin как break-glass | реализовано, требуется доводка регистрации |
-| Woodpecker | `https://ci.home.arpa` | Forgejo OAuth2 | Forgejo OAuth2 поверх Authentik SSO | реализовано, OAuth application создаётся вручную |
-| Argo CD | environment contract | local `admin` | прямой Authentik OIDC + Argo CD RBAC | provider/application реализованы; consumer остаётся в `infrastructure/` |
-| Harbor | `https://harbor.home.arpa` | local `admin` | Authentik OIDC + Harbor groups | provider/application реализованы; переход после bootstrap |
-| Grafana | `https://grafana.home.arpa` | local admin | Authentik Generic OAuth + entitlements | provider/application реализованы; consumer ещё не включён |
+| Forgejo | `https://git.home.arpa` | local admin + Authentik OIDC | Authentik OIDC, local admin как break-glass | реализовано декларативно |
+| Woodpecker | `https://ci.home.arpa` | Forgejo OAuth2 | Forgejo OAuth2 поверх Authentik SSO | system-wide application создаёт operator helper |
+| Argo CD | environment contract | local `admin` | прямой Authentik OIDC + Argo CD RBAC | реализовано; consumer остаётся в `infrastructure/` |
+| Harbor | `https://harbor.home.arpa` | local `admin` | Authentik OIDC + Harbor groups | реализовано для greenfield через `CONFIG_OVERWRITE_JSON` |
+| Grafana | `https://grafana.home.arpa` | local admin | Authentik Generic OAuth | реализовано декларативно |
 | Stalwart | `https://stalwart.home.arpa` | recovery admin + Authentik OIDC | Authentik OIDC для WebUI и совместимых клиентов, app passwords для остальных | provider, callbacks и OIDC Directory реализованы декларативно |
 | Hubble UI | `https://hubble.home.arpa` | отсутствует | Authentik proxy/outpost или сетевое ограничение | известный gap |
 | echo | `https://echo.home.arpa` | отсутствует | оставить diagnostic endpoint либо закрыть proxy policy | осознанное решение |
@@ -79,25 +79,19 @@ task ops:post-argocd-check
 
 ## Пользователи, группы и роли
 
-Создайте в Authentik минимальный набор глобальных групп:
+Текущий greenfield bootstrap декларативно создаёт минимальную административную
+группу:
 
 | Группа | Назначение |
 | --- | --- |
 | `platform-admins` | администраторы платформы |
-| `platform-operators` | эксплуатация без управления identity |
-| `platform-developers` | Forgejo, Woodpecker и developer endpoints |
-| `platform-viewers` | read-only dashboards |
-| `mail-users` | почтовые учётные записи |
 
-Для ролей конкретного приложения предпочтительнее Authentik Application
-Entitlements, а не размножение глобальных групп. Рекомендуемые entitlements:
-
-| Application | Entitlements |
-| --- | --- |
-| Argo CD | `argocd-admin`, `argocd-readonly` |
-| Harbor | `harbor-admin`, `harbor-user` |
-| Grafana | `Grafana Admins`, `Grafana Editors`, `Grafana Viewers` |
-| Forgejo | команды организации Forgejo, синхронизированные из OIDC groups |
+Пользователь `administrator` автоматически включается в `platform-admins`.
+Все реализованные OIDC applications ограничены этой группой, а Forgejo,
+Argo CD, Harbor и Grafana отображают её в локальную административную роль.
+При дальнейшем добавлении операторов, разработчиков и наблюдателей используйте
+отдельные группы или Authentik Application Entitlements и выдавайте только
+необходимые права конкретного приложения.
 
 Не назначайте административную роль всем аутентифицированным пользователям.
 У каждого приложения должен остаться один локальный break-glass administrator,
@@ -158,7 +152,7 @@ Stalwart provider и directory — на актуальных контракта�
 
 | OpenBao path | Keys | Consumer |
 | --- | --- | --- |
-| `secret/platform/authentik/platform-admin` | `password` | постоянный Authentik administrator; consumer подключается на следующем этапе identity automation |
+| `secret/platform/authentik/platform-admin` | `password` | постоянный Authentik administrator через ESO-backed blueprint |
 | `secret/platform/forgejo/oidc` | `client_id`, `client_secret` | Authentik и Forgejo |
 | `secret/platform/argocd/oidc` | `client_id`, `client_secret` | Authentik; Argo CD подключается в `infrastructure/` |
 | `secret/platform/harbor/oidc` | `client_id`, `client_secret` | Authentik; Harbor подключается после greenfield bootstrap |
@@ -177,19 +171,33 @@ environment contract: username `administrator`, display name `Администр
 
 ## 1. Authentik
 
-Первичный пользователь — `akadmin`. Получите bootstrap password:
+Первичный recovery-пользователь — `akadmin`. Получите bootstrap password:
 
 ```bash
 task ops:authentik-admin-password
 ```
 
-После первого входа:
+После GitOps sync Authentik автоматически и идемпотентно создаёт:
 
-1. создайте постоянного пользователя из `platform-admins`;
-2. включите MFA для административных пользователей;
-3. проверьте доступ нового администратора;
-4. оставьте `akadmin` только как recovery account;
-5. создайте группы и entitlements из этого runbook.
+- superuser group `platform-admins`;
+- пользователя `administrator` с display name и email из effective environment
+  contract;
+- membership пользователя в `platform-admins`;
+- пароль из `secret/platform/authentik/platform-admin`.
+
+Blueprint повторно применяется Authentik при изменении materialized Secret,
+поэтому изменение contract обновляет профиль, а явная ротация пароля в
+OpenBao обновляет Authentik после ESO refresh. Удаление пользователя из
+contract намеренно не выполняет destructive delete: для deprovisioning
+сначала отключите учётную запись и завершите её sessions.
+
+После первого входа постоянного администратора:
+
+1. включите MFA;
+2. проверьте superuser access;
+3. оставьте `akadmin` только как recovery account;
+4. проверьте доступ к каждому application через binding группы
+   `platform-admins`.
 
 `AUTHENTIK_BOOTSTRAP_PASSWORD` применяется только при первом запуске. Recovery
 существующего instance выполняйте командой из `day0-bootstrap.md`, а не
@@ -228,11 +236,14 @@ gitea:
 Не используйте `ACCOUNT_LINKING=auto`: совпадение email или username не должно
 автоматически давать доступ к существующему локальному аккаунту.
 
-Для централизованной авторизации настройте на Forgejo authentication source:
+Forgejo authentication source автоматически получает:
 
 - group claim: `groups`;
-- mapping Authentik groups в Forgejo organization teams;
-- удаление пользователя из синхронизируемых teams при исчезновении группы.
+- admin group: `platform-admins`.
+
+Организационные team mappings добавляйте отдельно, когда появятся сами
+организации и команды. Административный доступ постоянного пользователя от
+них не зависит.
 
 Локальный Forgejo administrator из `secret/platform/forgejo/admin` остаётся
 break-glass account.
@@ -245,32 +256,47 @@ break-glass account.
 Woodpecker -> Forgejo OAuth2 -> Authentik OIDC
 ```
 
-Создайте в Forgejo system-wide OAuth2 application:
+После готовности Forgejo, OpenBao и Woodpecker prereqs выполните:
+
+```bash
+export BAO_ADDR='http://127.0.0.1:8200'
+export BAO_TOKEN='...'
+task ops:forgejo-woodpecker-oauth
+```
+
+Helper создаёт в Forgejo system-wide OAuth2 application:
 
 ```text
 Name: Woodpecker CI
 Redirect URI: https://ci.home.arpa/authorize
 ```
 
-Используйте раздел site administration
-`/admin/settings/applications`, а не OAuth application отдельного пользователя.
-Полученные credentials заменяют provisional значения
-`forgejo_client`/`forgejo_secret` в полном OpenBao path
-`secret/platform/woodpecker/runtime`; существующий `agent_secret` нужно
-сохранить.
+Он использует раздел site administration `/admin/applications` закреплённой
+Forgejo 15, а не
+OAuth application отдельного пользователя. Полученные credentials атомарно
+заменяют provisional значения `forgejo_client`/`forgejo_secret` в полном
+OpenBao path `secret/platform/woodpecker/runtime`, сохраняя существующий
+`agent_secret`. Затем helper запрашивает ESO refresh и перезапускает сервер
+Woodpecker. Секреты не выводятся.
+
+Если application была создана, но сохранение в OpenBao не завершилось,
+восстановление требует явной ротации:
+
+```bash
+task ops:forgejo-woodpecker-oauth -- --rotate
+```
 
 Ограничьте регистрацию и задайте administrator явно:
 
 ```yaml
 server:
   env:
-    WOODPECKER_OPEN: "true"
-    WOODPECKER_ORGS: platform
-    WOODPECKER_ADMIN: <forgejo-username>
+    WOODPECKER_OPEN: "false"
+    WOODPECKER_ADMIN: administrator
 ```
 
-`WOODPECKER_ORGS` проверяет membership в Forgejo, поэтому Authentik group
-сначала должна быть сопоставлена с team в организации `platform`.
+Закрытая регистрация разрешает первый вход явно указанному administrator и не
+зависит от предварительного создания Forgejo organization/team.
 
 Если `ci.home.arpa` разрешается в private IP, разрешите Forgejo webhook
 доступ к этому точному hostname. Не отключайте TLS verification: Woodpecker и
@@ -278,8 +304,10 @@ Forgejo уже получают homelab CA.
 
 ## 4. Argo CD через Authentik
 
-Argo CD принадлежит `infrastructure/`, поэтому его OIDC configuration и
-ExternalSecret нельзя переносить в `argocd/`.
+Argo CD принадлежит `infrastructure/`, поэтому его OIDC configuration остаётся
+в Helm release этого слоя. Доставка runtime secret является GitOps
+prerequisite в `argocd/bootstrap/`: она появляется после ClusterSecretStore и
+не блокирует начальный local-admin bootstrap Argo CD.
 
 Для текущей архитектуры с `dex.enabled=false` используйте прямой OIDC:
 
@@ -296,8 +324,7 @@ configs:
   rbac:
     scopes: '[groups]'
     policy.csv: |
-      g, argocd-admin, role:admin
-      g, argocd-readonly, role:readonly
+      g, platform-admins, role:admin
 ```
 
 Secret `argocd-oidc` должен иметь label
@@ -318,35 +345,32 @@ Harbor допускает переход с database auth на OIDC только
 локальных пользователей кроме `admin`. Поэтому выполняйте этот шаг сразу после
 greenfield deployment.
 
-В Authentik создайте provider `harbor`:
+Декларативный Authentik provider `harbor` содержит:
 
 - redirect URI: `https://harbor.home.arpa/c/oidc/callback`;
 - scopes: `openid,profile,email,offline_access`;
 - group claim: `groups`;
-- optional entitlement `harbor-admin`.
+- application policy для `platform-admins`.
 
-В Harbor откройте:
-
-```text
-Administration -> Configuration -> Authentication
-```
-
-Установите:
+ESO формирует `harbor-oidc-config`, а Helm передаёт его core container как
+`CONFIG_OVERWRITE_JSON` со следующей конфигурацией:
 
 ```text
 Auth Mode: OIDC
-OIDC Provider Name: authentik
+OIDC Provider Name: Authentik
 OIDC Endpoint: https://auth.home.arpa/application/o/harbor/
 Group Claim Name: groups
-OIDC Admin Group: harbor-admin
+OIDC Admin Group: platform-admins
 OIDC Scope: openid,profile,email,offline_access
 Automatic onboarding: enabled
 Username Claim: preferred_username
 Verify Certificate: enabled
 ```
 
-Нажмите `Test OIDC Server`, затем `Save`. Local database login для recovery
-остаётся доступен через `/account/sign-in`.
+Этот механизм намеренно рассчитан на greenfield: при наличии legacy users
+Harbor не разрешит сменить auth mode. Local database login для recovery
+остаётся доступен через `/account/sign-in`; UI/API не должны менять параметры,
+пока задан `CONFIG_OVERWRITE_JSON`.
 
 Docker и Helm CLI не выполняют browser redirect. После первого OIDC login
 пользователь должен получить Harbor CLI secret в своём профиле и использовать
@@ -354,10 +378,10 @@ Docker и Helm CLI не выполняют browser redirect. После перв
 
 ## 6. Grafana через Authentik
 
-Создайте provider `grafana` с redirect URI
-`https://grafana.home.arpa/login/generic_oauth`. Добавьте scope
-`entitlements` и entitlements `Grafana Admins`, `Grafana Editors`,
-`Grafana Viewers`.
+Provider `grafana` использует redirect URI
+`https://grafana.home.arpa/login/generic_oauth`. Роль назначается по общей
+claim `groups`: член `platform-admins` получает `GrafanaAdmin`, остальные
+пользователи не проходят application policy Authentik.
 
 Целевая конфигурация Helm values:
 
@@ -369,16 +393,16 @@ grafana.ini:
   auth.generic_oauth:
     enabled: true
     name: Authentik
-    scopes: openid profile email entitlements
+    scopes: openid profile email
     auth_url: https://auth.home.arpa/application/o/authorize/
     token_url: https://auth.home.arpa/application/o/token/
     api_url: https://auth.home.arpa/application/o/userinfo/
-    role_attribute_path: "contains(entitlements[*], 'Grafana Admins') && 'Admin' || contains(entitlements[*], 'Grafana Editors') && 'Editor' || 'Viewer'"
+    role_attribute_path: "contains(groups[*], 'platform-admins') && 'GrafanaAdmin' || 'Viewer'"
+    allow_assign_grafana_admin: true
 ```
 
-Client secret нельзя добавлять в values. Доставьте его ExternalSecret и
-передайте Grafana через secret-backed environment. До удаления local admin
-создайте отдельного OAuth-backed администратора и проверьте его роль.
+Client secret не находится в values: ExternalSecret передаёт его Grafana через
+secret-backed environment. Local admin остаётся break-glass account.
 
 ## 7. Stalwart и почтовые клиенты
 
@@ -399,10 +423,11 @@ claimGroups: groups
 ```
 
 Тот же план назначает созданный Directory в `Authentication.directoryId`.
-Recovery credential остаётся доступен для декларативного Job и аварийного
-входа. Почтовые principals необходимо создать заранее: OIDC не предоставляет
-Stalwart offline directory lookup, и письмо неизвестному до первого входа
-адресу будет отклонено.
+Перед включением Directory план создаёт почтовый домен из
+`cluster.base_domain` и account для `identity.administrator`, назначая ему
+встроенную роль `Admin`. Это компенсирует отсутствие offline lookup в OIDC:
+адрес известен Stalwart ещё до первого входа. Recovery credential остаётся
+доступен для декларативного Job и аварийного входа.
 
 Многие распространённые почтовые клиенты не умеют third-party OIDC через
 `OAUTHBEARER`. Для них используйте отдельные Stalwart app passwords, а не пароль
@@ -448,18 +473,13 @@ Machine credentials должны иметь отдельный lifecycle и не
 ## Порядок внедрения
 
 1. Завершите greenfield bootstrap и настройте CA/DNS.
-2. Создайте постоянного Authentik administrator, группы и MFA.
-3. Проверьте уже декларативную связку Authentik -> Forgejo.
-4. Создайте system-wide Forgejo OAuth application для Woodpecker и замените
-   provisional secret.
-5. Добавьте Forgejo auto-registration, group/team mapping и ограничения
-   Woodpecker.
-6. Настройте Argo CD OIDC и RBAC, не меняя ownership `infrastructure/`.
-7. Переключите новый Harbor на OIDC до создания локальных пользователей.
-8. Настройте Grafana Generic OAuth и role mapping.
-9. Проверьте Stalwart WebUI OIDC и список поддерживаемых mail clients.
-10. Закройте Hubble UI и при необходимости echo через Authentik proxy или сеть.
-11. Выполните финальные проверки и только затем ограничивайте local login.
+2. Дождитесь декларативного создания administrator и `platform-admins`.
+3. Проверьте связку Authentik -> Forgejo и application access policies.
+4. Выполните `task ops:forgejo-woodpecker-oauth`.
+5. Проверьте Argo CD RBAC, Harbor OIDC, Grafana role mapping и Stalwart Admin.
+6. Включите MFA постоянному administrator.
+7. Закройте Hubble UI и при необходимости echo через Authentik proxy или сеть.
+8. Выполните финальные проверки и только затем ограничивайте local login.
 
 ## Проверка
 
@@ -512,10 +532,10 @@ OIDC Single Logout поддерживается приложениями нео�
 Authentik не следует считать немедленным отзывом всех уже выданных application
 sessions и CLI credentials.
 
-При rotation client secret сначала обновите OpenBao, дождитесь ESO refresh и
-rollout consumer, затем обновите provider/consumer в согласованном порядке.
-Для ручной Harbor configuration обновите сохранённый secret и в OpenBao, и в
-Harbor, после чего выполните `Test OIDC Server`.
+Для ротации Woodpecker client secret используйте operator helper с явным
+`--rotate`: он согласованно обновит Forgejo, OpenBao, ESO и rollout consumer.
+Остальные client secrets ротируйте через OpenBao и соответствующий
+declarative provider/consumer rollout.
 
 ## Официальные руководства
 

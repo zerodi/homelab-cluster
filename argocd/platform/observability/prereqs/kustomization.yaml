@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - grafana-admin-external-secret.yaml
+  - grafana-oidc-external-secret.yaml
   - certificate.yaml
   - gateway.yaml
   - redirect-httproute.yaml

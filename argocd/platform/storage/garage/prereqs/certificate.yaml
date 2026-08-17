@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: garage-tls
   dnsNames:
-    - garage.home.arpa
+    - garage.lab.zerodi.ru
   issuerRef:
     name: letsencrypt-cloudflare
     kind: ClusterIssuer

@@ -11,6 +11,8 @@ resources:
   - redis-auth-external-secret.yaml
   - runtime-external-secret.yaml
   - forgejo-sso-configmap.yaml
+  - platform-identity-blueprint-templates.yaml
+  - platform-identity-blueprint-external-secret.yaml
   - platform-sso-blueprint-templates.yaml
   - forgejo-sso-blueprint-external-secret.yaml
   - grafana-sso-blueprint-external-secret.yaml

@@ -542,6 +542,20 @@ task gitops:preflight
 task gitops:apply-bootstrap
 ```
 
+После готовности Forgejo и materialized Woodpecker Secret замените provisional
+OAuth credentials одной операторской командой:
+
+```bash
+export BAO_ADDR='http://127.0.0.1:8200'
+export BAO_TOKEN='...'
+task ops:forgejo-woodpecker-oauth
+task ops:openbao-runtime-preflight-final
+```
+
+Команда создаёт system-wide application, сохраняет credentials в OpenBao,
+запрашивает ESO refresh и перезапускает Woodpecker server. Для восстановления
+после частично выполненного создания используйте только явный `--rotate`.
+
 #### Первичный доступ
 
 - URL, начальный пароль и временный port-forward Argo CD описаны в

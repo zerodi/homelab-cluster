@@ -8,6 +8,18 @@ admin:
   userKey: admin-user
   passwordKey: admin-password
 
+envFromSecret: grafana-oidc
+
+env:
+  SSL_CERT_FILE: /etc/ssl/certs/homelab-root-ca.crt
+
+extraConfigmapMounts:
+  - name: homelab-root-ca
+    mountPath: /etc/ssl/certs/homelab-root-ca.crt
+    configMap: homelab-root-ca
+    subPath: ca-bundle.crt
+    readOnly: true
+
 service:
   type: ClusterIP
 
@@ -26,8 +38,23 @@ resources:
 
 grafana.ini:
   server:
-    root_url: https://grafana.home.arpa/
-    domain: grafana.home.arpa
+    root_url: https://grafana.lab.zerodi.ru/
+    domain: grafana.lab.zerodi.ru
+  auth:
+    oauth_auto_login: true
+    signout_redirect_url: https://auth.lab.zerodi.ru/application/o/grafana/end-session/
+  auth.generic_oauth:
+    enabled: true
+    name: Authentik
+    scopes: openid profile email
+    auth_url: https://auth.lab.zerodi.ru/application/o/authorize/
+    token_url: https://auth.lab.zerodi.ru/application/o/token/
+    api_url: https://auth.lab.zerodi.ru/application/o/userinfo/
+    login_attribute_path: preferred_username
+    groups_attribute_path: groups
+    role_attribute_path: contains(groups[*], 'platform-admins') && 'GrafanaAdmin' || 'Viewer'
+    allow_assign_grafana_admin: true
+    allow_sign_up: true
   metrics:
     enabled: true
   unified_alerting:

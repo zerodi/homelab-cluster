@@ -8,7 +8,7 @@ expose:
       httpPort: 80
       httpsPort: 443
 
-externalURL: https://harbor.home.arpa
+externalURL: https://harbor.lab.zerodi.ru
 
 existingSecretAdminPassword: harbor-runtime
 existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
@@ -61,6 +61,11 @@ core:
   existingSecret: harbor-runtime
   existingXsrfSecret: harbor-runtime
   extraEnvVars:
+    - name: CONFIG_OVERWRITE_JSON
+      valueFrom:
+        secretKeyRef:
+          name: harbor-oidc-config
+          key: CONFIG_OVERWRITE_JSON
     - name: _REDIS_URL_CORE
       valueFrom:
         secretKeyRef:

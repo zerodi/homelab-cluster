@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: hubble-tls
   dnsNames:
-    - hubble.home.arpa
+    - hubble.lab.zerodi.ru
   issuerRef:
     name: letsencrypt-cloudflare
     kind: ClusterIssuer

@@ -21,7 +21,7 @@ repository inputs
 | Kubernetes bootstrap | `cluster/` | `task cluster:apply` | Нет после подготовки inputs |
 | Platform bootstrap | `infrastructure/` | `task infra:apply` | Не инициализирует OpenBao |
 | OpenBao post-init | operator + `scripts/` | `task ops:openbao-day0` | Init, unseal и хранение recovery material |
-| Runtime secrets | OpenBao + ESO | Seed и contract checks автоматизированы | OAuth/S3 credentials и их финальная ротация |
+| Runtime secrets | OpenBao + ESO | Seed, contract checks и Forgejo/Woodpecker OAuth helper автоматизированы | S3 credentials и явная recovery-ротация OAuth |
 | GitOps bootstrap | `argocd/` + temporary/persistent Git | Test SSH и постоянный Git поддерживаются Task-командами | Доступный Git endpoint и Forgejo cutover |
 | Финальная готовность | все слои | Health, preflight и smoke checks | Исправление внешних DNS/OAuth/storage зависимостей |
 
@@ -43,10 +43,10 @@ Argo CD. Raw block device выбирает оператор до запуска;
 ## Намеренно ручные операции
 
 - OpenBao init/unseal и хранение root token/recovery material;
-- создание внешних OAuth applications;
+- запуск operator helper для system-wide Forgejo OAuth application и явное подтверждение recovery-ротации;
 - Garage layout, bucket и S3 key;
 - настройка внешних DNS records и клиентских trust stores;
-- ротация provisional Woodpecker и Velero credentials.
+- ротация provisional Velero credentials.
 
 `task from-scratch` автоматизирует только cluster и infrastructure layers и
 останавливается перед OpenBao init/unseal. Полностью unattended deployment до

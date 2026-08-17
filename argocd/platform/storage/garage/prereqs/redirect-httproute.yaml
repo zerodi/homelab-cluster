@@ -8,7 +8,7 @@ spec:
     - name: garage
       sectionName: http
   hostnames:
-    - garage.home.arpa
+    - garage.lab.zerodi.ru
   rules:
     - filters:
         - type: RequestRedirect

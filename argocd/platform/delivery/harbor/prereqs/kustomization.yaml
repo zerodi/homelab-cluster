@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - runtime-external-secret.yaml
+  - oidc-config-external-secret.yaml
   - postgresql-auth-external-secret.yaml
   - valkey-auth-external-secret.yaml
   - certificate.yaml

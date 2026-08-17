@@ -77,7 +77,8 @@ Environment-specific override коммитится, чтобы локальна�
 
 `task sync-env-contract` изменяет tracked mirrors в `argocd/`: repository
 coordinates, сгенерированные hostnames и Gateway addresses, storage settings,
-runtime naming и другие поля из machine-checkable mapping. После команды
+runtime naming, Authentik blueprint и Stalwart accounts из identity contract.
+После команды
 проверьте `git diff` и закоммитьте изменения вместе с environment contract.
 
 Пути можно изменить через:

@@ -18,7 +18,7 @@ spec:
     - name: hubble-https
       protocol: HTTPS
       port: 443
-      hostname: hubble.home.arpa
+      hostname: hubble.lab.zerodi.ru
       tls:
         certificateRefs:
           - group: ""

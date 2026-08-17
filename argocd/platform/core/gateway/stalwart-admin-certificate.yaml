@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: stalwart-admin-tls
   dnsNames:
-    - stalwart.home.arpa
+    - stalwart.lab.zerodi.ru
   issuerRef:
     name: letsencrypt-cloudflare
     kind: ClusterIssuer

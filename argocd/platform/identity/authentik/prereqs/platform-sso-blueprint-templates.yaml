@@ -12,6 +12,14 @@ data:
         blueprints.goauthentik.io/instantiate: "true"
         blueprints.goauthentik.io/description: "Forgejo OIDC provider and application"
     entries:
+      - model: authentik_core.group
+        id: platform-admins
+        state: present
+        identifiers:
+          name: "platform-admins"
+        attrs:
+          name: "platform-admins"
+          is_superuser: true
       - model: authentik_providers_oauth2.oauth2provider
         state: present
         identifiers:
@@ -32,7 +40,7 @@ data:
           issuer_mode: per_provider
           redirect_uris:
             - matching_mode: strict
-              url: "https://git.home.arpa/user/oauth2/authentik/callback"
+              url: "https://git.lab.zerodi.ru/user/oauth2/authentik/callback"
               redirect_uri_type: authorization
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
@@ -40,6 +48,7 @@ data:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
       - model: authentik_core.application
+        id: forgejo-application
         state: present
         identifiers:
           slug: forgejo
@@ -48,8 +57,16 @@ data:
           slug: forgejo
           policy_engine_mode: any
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, "Authentik"]]
-          meta_launch_url: "https://git.home.arpa/"
+          meta_launch_url: "https://git.lab.zerodi.ru/"
           open_in_new_tab: true
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf forgejo-application
+          group: !KeyOf platform-admins
+          order: 0
+        attrs:
+          enabled: true
   grafana.yaml: |
     version: 1
     metadata:
@@ -58,6 +75,14 @@ data:
         blueprints.goauthentik.io/instantiate: "true"
         blueprints.goauthentik.io/description: "Grafana OIDC provider and application"
     entries:
+      - model: authentik_core.group
+        id: platform-admins
+        state: present
+        identifiers:
+          name: "platform-admins"
+        attrs:
+          name: "platform-admins"
+          is_superuser: true
       - model: authentik_providers_oauth2.oauth2provider
         state: present
         identifiers:
@@ -79,7 +104,7 @@ data:
           issuer_mode: per_provider
           redirect_uris:
             - matching_mode: strict
-              url: "https://grafana.home.arpa/login/generic_oauth"
+              url: "https://grafana.lab.zerodi.ru/login/generic_oauth"
               redirect_uri_type: authorization
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
@@ -89,6 +114,7 @@ data:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, entitlements]]
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
       - model: authentik_core.application
+        id: grafana-application
         state: present
         identifiers:
           slug: grafana
@@ -97,8 +123,16 @@ data:
           slug: grafana
           policy_engine_mode: any
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, "Grafana"]]
-          meta_launch_url: "https://grafana.home.arpa/"
+          meta_launch_url: "https://grafana.lab.zerodi.ru/"
           open_in_new_tab: true
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf grafana-application
+          group: !KeyOf platform-admins
+          order: 0
+        attrs:
+          enabled: true
   argocd.yaml: |
     version: 1
     metadata:
@@ -107,6 +141,14 @@ data:
         blueprints.goauthentik.io/instantiate: "true"
         blueprints.goauthentik.io/description: "Argo CD OIDC provider and application"
     entries:
+      - model: authentik_core.group
+        id: platform-admins
+        state: present
+        identifiers:
+          name: "platform-admins"
+        attrs:
+          name: "platform-admins"
+          is_superuser: true
       - model: authentik_providers_oauth2.oauth2provider
         state: present
         identifiers:
@@ -127,7 +169,7 @@ data:
           issuer_mode: per_provider
           redirect_uris:
             - matching_mode: strict
-              url: "https://argocd.home.arpa/auth/callback"
+              url: "https://argocd.lab.zerodi.ru/auth/callback"
               redirect_uri_type: authorization
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
@@ -135,6 +177,7 @@ data:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
       - model: authentik_core.application
+        id: argocd-application
         state: present
         identifiers:
           slug: argocd
@@ -143,8 +186,16 @@ data:
           slug: argocd
           policy_engine_mode: any
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, "Argo CD"]]
-          meta_launch_url: "https://argocd.home.arpa/"
+          meta_launch_url: "https://argocd.lab.zerodi.ru/"
           open_in_new_tab: true
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf argocd-application
+          group: !KeyOf platform-admins
+          order: 0
+        attrs:
+          enabled: true
   harbor.yaml: |
     version: 1
     metadata:
@@ -153,6 +204,14 @@ data:
         blueprints.goauthentik.io/instantiate: "true"
         blueprints.goauthentik.io/description: "Harbor OIDC provider and application"
     entries:
+      - model: authentik_core.group
+        id: platform-admins
+        state: present
+        identifiers:
+          name: "platform-admins"
+        attrs:
+          name: "platform-admins"
+          is_superuser: true
       - model: authentik_providers_oauth2.oauth2provider
         state: present
         identifiers:
@@ -174,7 +233,7 @@ data:
           issuer_mode: per_provider
           redirect_uris:
             - matching_mode: strict
-              url: "https://harbor.home.arpa/c/oidc/callback"
+              url: "https://harbor.lab.zerodi.ru/c/oidc/callback"
               redirect_uri_type: authorization
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
@@ -183,6 +242,7 @@ data:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, offline_access]]
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
       - model: authentik_core.application
+        id: harbor-application
         state: present
         identifiers:
           slug: harbor
@@ -191,5 +251,13 @@ data:
           slug: harbor
           policy_engine_mode: any
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, "Harbor"]]
-          meta_launch_url: "https://harbor.home.arpa/"
+          meta_launch_url: "https://harbor.lab.zerodi.ru/"
           open_in_new_tab: true
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf harbor-application
+          group: !KeyOf platform-admins
+          order: 0
+        attrs:
+          enabled: true

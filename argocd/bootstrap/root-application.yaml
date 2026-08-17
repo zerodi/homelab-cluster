@@ -6,7 +6,7 @@ metadata:
 spec:
   project: bootstrap
   source:
-    repoURL: https://git.home.arpa/platform/gitops.git
+    repoURL: https://git.lab.zerodi.ru/platform/gitops.git
     targetRevision: main
     path: bootstrap
   destination:

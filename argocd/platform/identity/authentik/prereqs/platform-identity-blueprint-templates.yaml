@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-identity-blueprint-templates
+  namespace: authentik
+data:
+  platform-administrator.yaml: |
+    version: 1
+    metadata:
+      name: platform-identity
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+        blueprints.goauthentik.io/description: "Platform users and groups"
+    entries:
+      - model: authentik_core.group
+        id: platform-admins
+        state: present
+        identifiers:
+          name: "platform-admins"
+        attrs:
+          name: "platform-admins"
+          is_superuser: true
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: "administrator"
+        attrs:
+          name: "Администратор"
+          email: "administrator@lab.zerodi.ru"
+          is_active: true
+          password: {{ .password | toJson }}
+          groups:
+            - !KeyOf platform-admins

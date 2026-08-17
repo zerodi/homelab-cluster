@@ -34,7 +34,7 @@ tasks:
           '  9. Проверьте contract: task gitops:preflight.' \
           ' 10. Синхронизируйте env contract: task sync-env-contract.' \
           ' 11. Запустите task gitops:apply-bootstrap.' \
-          ' 12. Замените временные Woodpecker OAuth и Velero S3 credentials.' \
+          ' 12. Выполните task ops:forgejo-woodpecker-oauth и замените временные Velero S3 credentials.' \
           ' 13. Закройте port-forward: task ops:openbao-port-forward-stop.' \
           ' 14. Полный runbook: docs/day0-bootstrap.md'
 
@@ -140,6 +140,18 @@ tasks:
     desc: Create missing OpenBao runtime secret paths without overwriting existing paths
     cmds:
       - bash ./scripts/generate-runtime-secret-puts.sh --apply-missing
+
+  forgejo-woodpecker-oauth:
+    desc: Create or rotate the system-wide Forgejo OAuth2 application for Woodpecker
+    cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - test -n "{{.ENVIRONMENT_CONTRACT_PATH}}"
+      - test -n "${BAO_TOKEN:-}"
+      - >-
+        ./scripts/forgejo-woodpecker-oauth.py
+        --kubeconfig "{{.KUBECONFIG_PATH}}"
+        --contract "{{.ENVIRONMENT_CONTRACT_PATH}}"
+        {{.CLI_ARGS}}
 
   openbao-day0:
     desc: Run the OpenBao post-init day-0 helper for External Secrets

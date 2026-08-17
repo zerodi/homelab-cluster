@@ -166,6 +166,21 @@ def line_number(text: str, offset: int) -> int:
     return text.count("\n", 0, offset) + 1
 
 
+def approved_runtime_identifier(path: Path, text: str, offset: int) -> bool:
+    line_start = text.rfind("\n", 0, offset) + 1
+    line_end = text.find("\n", offset)
+    if line_end == -1:
+        line_end = len(text)
+    line = text[line_start:line_end]
+    return (
+        path.name == "providers.tf"
+        and "local.environment_contract.hosts.authentik" in line
+    ) or (
+        path.name == "argocd.tf"
+        and re.search(r'^\s*name\s*=\s*"Authentik"\s*$', line) is not None
+    )
+
+
 def find_block_end(text: str, opening_brace: int) -> int:
     depth = 0
     in_string = False
@@ -232,6 +247,11 @@ def scan_source(
 
     for pattern, message in FORBIDDEN_SOURCE_PATTERNS:
         for match in pattern.finditer(active):
+            if (
+                message == "application/runtime identifiers belong to argocd/"
+                and approved_runtime_identifier(path, active, match.start())
+            ):
+                continue
             violations.append(
                 Violation(path, line_number(active, match.start()), message)
             )
@@ -536,6 +556,33 @@ resource "terraform_data" "argocd_ready" {
 '''
     if scan_source(allowed, Path("allowed.tf")):
         failures.append("rejected approved platform resources or readiness command")
+
+    approved_oidc_contract = '''
+locals {
+  effective_identity_provider_host = try(
+    local.environment_contract.hosts.authentik,
+    "auth.home.arpa",
+  )
+}
+'''
+    if scan_source(approved_oidc_contract, Path("providers.tf")):
+        failures.append("rejected the approved Argo CD identity-provider host input")
+
+    approved_argocd_oidc = '''
+resource "helm_release" "argocd" {
+  values = [yamlencode({
+    configs = {
+      cm = {
+        "oidc.config" = yamlencode({
+          name = "Authentik"
+        })
+      }
+    }
+  })]
+}
+'''
+    if scan_source(approved_argocd_oidc, Path("argocd.tf")):
+        failures.append("rejected the approved Argo CD OIDC provider name")
 
     forbidden_samples = {
         'resource "kubernetes_deployment_v1" "authentik" {}': "runtime resource",

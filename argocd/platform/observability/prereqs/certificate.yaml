@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: grafana-tls
   dnsNames:
-    - grafana.home.arpa
+    - grafana.lab.zerodi.ru
   issuerRef:
     name: letsencrypt-cloudflare
     kind: ClusterIssuer

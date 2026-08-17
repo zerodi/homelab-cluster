@@ -12,6 +12,14 @@ data:
         blueprints.goauthentik.io/instantiate: "true"
         blueprints.goauthentik.io/description: "Stalwart WebUI and mail OIDC provider"
     entries:
+      - model: authentik_core.group
+        id: platform-admins
+        state: present
+        identifiers:
+          name: "platform-admins"
+        attrs:
+          name: "platform-admins"
+          is_superuser: true
       - model: authentik_providers_oauth2.oauth2provider
         state: present
         identifiers:
@@ -28,10 +36,10 @@ data:
             - urn:ietf:params:oauth:grant-type:device_code
           redirect_uris:
             - matching_mode: strict
-              url: "https://stalwart.home.arpa/admin/oauth/callback"
+              url: "https://stalwart.lab.zerodi.ru/admin/oauth/callback"
               redirect_uri_type: authorization
             - matching_mode: strict
-              url: "https://stalwart.home.arpa/account/oauth/callback"
+              url: "https://stalwart.lab.zerodi.ru/account/oauth/callback"
               redirect_uri_type: authorization
           access_token_validity: "minutes=30"
           refresh_token_validity: "days=30"
@@ -44,6 +52,7 @@ data:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, offline_access]]
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
       - model: authentik_core.application
+        id: stalwart-application
         state: present
         identifiers:
           slug: stalwart
@@ -52,5 +61,13 @@ data:
           slug: stalwart
           policy_engine_mode: any
           provider: !Find [authentik_providers_oauth2.oauth2provider, [name, "Stalwart"]]
-          meta_launch_url: "https://stalwart.home.arpa/account/"
+          meta_launch_url: "https://stalwart.lab.zerodi.ru/account/"
           open_in_new_tab: true
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf stalwart-application
+          group: !KeyOf platform-admins
+          order: 0
+        attrs:
+          enabled: true

@@ -93,6 +93,11 @@ tasks:
     cmds:
       - shellcheck -x scripts/*.sh scripts/lib/*.sh
 
+  operator-helpers:
+    desc: Run side-effect-free parser tests for operator helpers
+    cmds:
+      - ./scripts/forgejo-woodpecker-oauth.py --self-test
+
   kustomize-bootstrap:
     desc: Build argocd/bootstrap with kustomize or kubectl fallback
     cmds:
@@ -129,5 +134,6 @@ tasks:
       - task check:tofu-validate-infrastructure
       - task check:yamllint
       - task check:shellcheck
+      - task check:operator-helpers
       - task check:kustomize-bootstrap
       - task check:kustomize-platform

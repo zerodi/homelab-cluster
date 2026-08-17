@@ -20,8 +20,9 @@ Stalwart разворачивается как runtime-приложение по
 - Recovery credential хранится в `secret/platform/stalwart/runtime` в OpenBao
   и доставляется через External Secrets Operator.
 - Authentik OIDC provider использует public client `stalwart-webui`, PKCE и
-  строгие callbacks WebUI. PostSync Job декларативно создаёт OIDC Directory и
-  назначает его активным через актуальный `stalwart-cli apply`.
+  строгие callbacks WebUI. PostSync Job декларативно создаёт почтовый домен,
+  синхронизирует account администратора из environment contract, создаёт OIDC
+  Directory и назначает его активным через актуальный `stalwart-cli apply`.
 
 Поддомены, образ, storage class и размер PVC задаются в `envs/homelab.yaml` с
 environment-specific override в `envs/homelab.override.yaml`. Полные hostname
@@ -63,9 +64,12 @@ task ops:hosts-entries
 kubectl -n stalwart logs job/stalwart-authentik-oidc-configuration
 ```
 
-OIDC не предоставляет offline directory lookup: почтовые accounts нужно
-создать в Stalwart до первого входа, иначе входящая почта для ещё неизвестного
-адреса будет отклонена.
+OIDC не предоставляет offline directory lookup. Поэтому GitOps plan заранее
+создаёт account `identity.administrator` в Stalwart и выдаёт встроенную роль
+`Admin`; входящая почта для этого адреса не зависит от первого OIDC-входа.
+Перед добавлением дополнительных почтовых пользователей расширьте
+declarative identity contract и оба renderer-а тем же образом; один лишь
+первый OIDC-вход не гарантирует приём почты до появления account.
 
 `task ops:hosts-entries` читает фактические адреса из Kubernetes status и
 добавляет обе записи: web hostname с адресом общего Gateway и mail hostname с
@@ -98,7 +102,8 @@ kubectl -n stalwart get secret stalwart-runtime \
 
 Второй вариант выводит строку `admin:<password>`. После первого входа:
 
-1. завершите setup wizard и создайте постоянного администратора;
+1. войдите синхронизированным пользователем `identity.administrator` и
+   проверьте роль `Admin`;
 2. в `Settings -> TLS -> Certificates` добавьте certificate с file references
    `/etc/stalwart/tls/tls.crt` и `/etc/stalwart/tls/tls.key` и назначьте его
    default certificate;

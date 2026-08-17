@@ -23,6 +23,16 @@ locals {
     "argocd.home.arpa",
   )
 
+  effective_identity_provider_host = try(
+    local.environment_contract.hosts.authentik,
+    "auth.home.arpa",
+  )
+
+  effective_platform_admin_group = try(
+    local.environment_contract.identity.administrator.group,
+    "platform-admins",
+  )
+
   effective_piraeus_namespace = coalesce(
     var.piraeus_namespace,
     try(local.environment_contract.storage.piraeus.namespace, null),

@@ -6,7 +6,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "-1"
 spec:
   acme:
-    email: cert-manager@home.arpa
+    email: cert-manager@lab.zerodi.ru
     server: https://acme-v02.api.letsencrypt.org/directory
     privateKeySecretRef:
       name: letsencrypt-cloudflare-account-key

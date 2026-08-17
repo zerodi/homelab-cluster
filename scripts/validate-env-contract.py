@@ -59,6 +59,110 @@ def yq_path(parts: tuple[Any, ...]) -> str:
     return expression
 
 
+def render_platform_identity_blueprint(identity: dict[str, Any]) -> str:
+    administrator = identity["administrator"]
+    group = json.dumps(administrator["group"], ensure_ascii=False)
+    username = json.dumps(administrator["username"], ensure_ascii=False)
+    display_name = json.dumps(administrator["display_name"], ensure_ascii=False)
+    email = json.dumps(administrator["email"], ensure_ascii=False)
+    return f'''version: 1
+metadata:
+  name: platform-identity
+  labels:
+    blueprints.goauthentik.io/instantiate: "true"
+    blueprints.goauthentik.io/description: "Platform users and groups"
+entries:
+  - model: authentik_core.group
+    id: platform-admins
+    state: present
+    identifiers:
+      name: {group}
+    attrs:
+      name: {group}
+      is_superuser: true
+  - model: authentik_core.user
+    state: present
+    identifiers:
+      username: {username}
+    attrs:
+      name: {display_name}
+      email: {email}
+      is_active: true
+      password: {{{{ .password | toJson }}}}
+      groups:
+        - !KeyOf platform-admins
+'''
+
+
+def compact_json(value: dict[str, Any]) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def render_stalwart_identity_plan(env: dict[str, Any]) -> str:
+    administrator = env["identity"]["administrator"]
+    domain_key = "platform-identity-domain"
+    account_key = "platform-administrator"
+    operations = [
+        {
+            "@type": "upsert",
+            "object": "Domain",
+            "matchOn": ["name"],
+            "value": {
+                domain_key: {
+                    "name": env["cluster"]["base_domain"],
+                    "description": "Platform identity domain",
+                }
+            },
+        },
+        {
+            "@type": "upsert",
+            "object": "Account",
+            "matchOn": ["name"],
+            "value": {
+                account_key: {
+                    "@type": "User",
+                    "name": administrator["email_localpart"],
+                    "domainId": f"#{domain_key}",
+                    "credentials": {},
+                    "memberGroupIds": {},
+                    "roles": {"@type": "Admin"},
+                    "permissions": {"@type": "Inherit"},
+                    "quotas": {},
+                    "aliases": {},
+                    "description": administrator["display_name"],
+                    "encryptionAtRest": {"@type": "Disabled"},
+                }
+            },
+        },
+        {
+            "@type": "upsert",
+            "object": "Directory",
+            "matchOn": ["description"],
+            "value": {
+                "authentik": {
+                    "@type": "Oidc",
+                    "description": "Authentik",
+                    "issuerUrl": (
+                        f'https://{env["hosts"]["authentik"]}'
+                        "/application/o/stalwart/"
+                    ),
+                    "requireAudience": "stalwart-webui",
+                    "requireScopes": ["openid", "email"],
+                    "claimUsername": "email",
+                    "claimName": "name",
+                    "claimGroups": "groups",
+                }
+            },
+        },
+        {
+            "@type": "update",
+            "object": "Authentication",
+            "value": {"directoryId": "#authentik"},
+        },
+    ]
+    return "".join(f"{compact_json(operation)}\n" for operation in operations)
+
+
 class Validator:
     def __init__(
         self,
@@ -363,6 +467,11 @@ class Validator:
                 "derived mail load balancer address",
                 env.get("platform", {}).get("stalwart", {}).get("mail_load_balancer_ip"),
                 derived_env["platform"]["stalwart"]["mail_load_balancer_ip"],
+            ),
+            (
+                "derived administrator email",
+                env.get("identity", {}).get("administrator", {}).get("email"),
+                derived_env["identity"]["administrator"]["email"],
             ),
         ]:
             if actual != expected:
@@ -1067,6 +1176,14 @@ class Validator:
             "env",
             "WOODPECKER_FORGEJO_URL",
         )
+        self.expect_equal(
+            "woodpecker administrator",
+            env["identity"]["administrator"]["username"],
+            "argocd/platform/delivery/woodpecker/values.yaml",
+            "server",
+            "env",
+            "WOODPECKER_ADMIN",
+        )
 
         self.expect_equal(
             "grafana admin secret name",
@@ -1091,6 +1208,27 @@ class Validator:
             "server",
             "domain",
         )
+        self.expect_equal(
+            "grafana sign-out url",
+            f'https://{hosts["authentik"]}/application/o/grafana/end-session/',
+            "argocd/platform/observability/grafana/values.yaml",
+            "grafana.ini",
+            "auth",
+            "signout_redirect_url",
+        )
+        for key, suffix in (
+            ("auth_url", "/application/o/authorize/"),
+            ("token_url", "/application/o/token/"),
+            ("api_url", "/application/o/userinfo/"),
+        ):
+            self.expect_equal(
+                f"grafana OIDC {key}",
+                f'https://{hosts["authentik"]}{suffix}',
+                "argocd/platform/observability/grafana/values.yaml",
+                "grafana.ini",
+                "auth.generic_oauth",
+                key,
+            )
 
         self.expect_equal(
             "velero credentials secret name",
@@ -1272,10 +1410,43 @@ class Validator:
             stalwart_blueprint_path,
             f'https://{hosts["stalwart"]}/account/',
         )
+        administrator_group = env["identity"]["administrator"]["group"]
+        for label, relpath in (
+            ("platform SSO access bindings", blueprint_path),
+            ("Stalwart SSO access binding", stalwart_blueprint_path),
+            (
+                "Harbor OIDC administrator group",
+                "argocd/platform/delivery/harbor/prereqs/oidc-config-external-secret.yaml",
+            ),
+            (
+                "Grafana administrator group",
+                "argocd/platform/observability/grafana/values.yaml",
+            ),
+        ):
+            self.expect_contains(label, relpath, administrator_group)
+        self.expect_contains(
+            "Harbor OIDC endpoint",
+            "argocd/platform/delivery/harbor/prereqs/oidc-config-external-secret.yaml",
+            f'https://{hosts["authentik"]}/application/o/harbor/',
+        )
         self.expect_contains(
             "stalwart oidc directory issuer",
             "argocd/platform/messaging/stalwart/resources/authentik-oidc-plan-configmap.yaml",
             f'https://{hosts["authentik"]}/application/o/stalwart/',
+        )
+        self.expect_equal(
+            "authentik platform identity blueprint",
+            render_platform_identity_blueprint(env["identity"]),
+            "argocd/platform/identity/authentik/prereqs/platform-identity-blueprint-templates.yaml",
+            "data",
+            "platform-administrator.yaml",
+        )
+        self.expect_equal(
+            "stalwart platform identity plan",
+            render_stalwart_identity_plan(env),
+            "argocd/platform/messaging/stalwart/resources/authentik-oidc-plan-configmap.yaml",
+            "data",
+            "plan.ndjson",
         )
 
         external_secret_checks = [

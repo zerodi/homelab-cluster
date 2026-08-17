@@ -25,6 +25,19 @@ kubectl get clustersecretstore openbao
 Не записывайте runtime secrets в Git, `terraform.tfvars`, Helm values или
 Terraform state.
 
+## Forgejo OAuth для Woodpecker
+
+При greenfield bootstrap или плановой ротации:
+
+```bash
+task ops:forgejo-woodpecker-oauth
+task ops:forgejo-woodpecker-oauth -- --rotate  # только явная ротация
+```
+
+Нужны `BAO_TOKEN`, доступный `BAO_ADDR`, kubeconfig и рабочее DNS/CA-доверие к
+Forgejo. Helper не печатает credentials и сохраняет существующий Woodpecker
+`agent_secret`.
+
 ## Сертификаты и storage
 
 ```bash
