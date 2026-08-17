@@ -21,20 +21,22 @@ tasks:
           '  2. Инициализируйте и разлочьте OpenBao.' \
           '  3. Экспортируйте BAO_TOKEN и запустите task ops:openbao-day0.' \
           '  4. Экспортируйте CLOUDFLARE_API_TOKEN для DNS-01.' \
-          '  5. Создайте только отсутствующие paths: task ops:seed-runtime-secrets.' \
-          '  6. При необходимости просмотрите команды: task ops:generate-runtime-secret-puts.' \
-          '  7. Runtime secrets:' \
+          '  5. Задайте PLATFORM_ADMIN_PASSWORD в root .env.' \
+          '  6. Создайте только отсутствующие paths: task ops:seed-runtime-secrets.' \
+          '  7. При необходимости просмотрите команды: task ops:generate-runtime-secret-puts.' \
+          '  8. Runtime secrets:' \
           '     - secret/platform/cert-manager/cloudflare' \
           '     - secret/platform/authentik/runtime' \
+          '     - secret/platform/authentik/platform-admin' \
           '     - secret/platform/forgejo/admin' \
           '     - secret/platform/forgejo/oidc' \
           '     - secret/platform/garage/runtime' \
-          '  8. Проверьте contract: task gitops:preflight.' \
-          '  9. Синхронизируйте env contract: task sync-env-contract.' \
-          ' 10. Запустите task gitops:apply-bootstrap.' \
-          ' 11. Замените временные Woodpecker OAuth и Velero S3 credentials.' \
-          ' 12. Закройте port-forward: task ops:openbao-port-forward-stop.' \
-          ' 13. Полный runbook: docs/day0-bootstrap.md'
+          '  9. Проверьте contract: task gitops:preflight.' \
+          ' 10. Синхронизируйте env contract: task sync-env-contract.' \
+          ' 11. Запустите task gitops:apply-bootstrap.' \
+          ' 12. Замените временные Woodpecker OAuth и Velero S3 credentials.' \
+          ' 13. Закройте port-forward: task ops:openbao-port-forward-stop.' \
+          ' 14. Полный runbook: docs/day0-bootstrap.md'
 
   garage-velero-guide:
     desc: Print the manual Garage bootstrap sequence for Velero cutover

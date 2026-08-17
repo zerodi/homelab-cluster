@@ -7,6 +7,13 @@ gitops:
   repo_url: https://git.example.invalid/replace-me/gitops.git
   revision: main
 
+identity:
+  administrator:
+    username: administrator
+    display_name: Администратор
+    email_localpart: administrator
+    group: platform-admins
+
 service_subdomains:
   argocd: argocd
   authentik: auth

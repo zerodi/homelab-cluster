@@ -18,7 +18,7 @@
 | `argocd-push.sh` | `deploy` | Публикует закоммиченный `argocd/` subtree в настроенный Forgejo GitOps repository без force-push. |
 | `bootstrap-linstor-storage.sh` | `deploy` | Создаёт LINSTOR device pool на заданных узлах. |
 | `forgejo-argocd-cutover.sh` | `deploy` | Оркестрирует проверяемый GitOps cutover с временного Git на Forgejo. |
-| `generate-runtime-secret-puts.sh` | `deploy` | Создаёт только отсутствующие runtime secrets при `--apply-missing`; без флага только печатает команды. |
+| `generate-runtime-secret-puts.sh` | `deploy` | Создаёт только отсутствующие runtime secrets при `--apply-missing`; обязательный пароль platform administrator читает из `.env`, без флага только печатает команды. |
 | `openbao-day0.sh` | `deploy` | Настраивает day-0 OpenBao для ESO после ручного init/unseal. |
 | `reconcile-cilium-lb-pool.sh` | `deploy` | Применяет минимальный Cilium LoadBalancer pool после cluster apply. |
 | `test-ssh-git-bootstrap.sh` | `deploy` | Поднимает временный Git source и запускает первичный Argo CD sync. |

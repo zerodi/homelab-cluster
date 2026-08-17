@@ -9,6 +9,8 @@ tracked environment-specific отличия и рекурсивно наклад
 - optional имя кластера (fallback `talos-pve`), общий base domain и IPv4 `/24` подсеть
 - только короткие поддомены сервисов
 - GitOps repository URL и revision
+- техническая identity администратора: username, display name, email localpart
+  и группа; effective email формируется с `cluster.base_domain`
 - Piraeus/LINSTOR naming
 - namespace и Secret names
 - non-secret coordinates для Garage, Velero и runtime services
@@ -30,6 +32,13 @@ cluster:
 
 service_subdomains:
   argocd: cd
+
+identity:
+  administrator:
+    username: administrator
+    display_name: Администратор
+    email_localpart: administrator
+    group: platform-admins
 ```
 
 В нём не хранятся:
@@ -38,6 +47,11 @@ service_subdomains:
 - OpenBao secret values
 - day-0 Terraform credentials
 - release/tool/container versions — они находятся в [`versions.yaml`](../versions.yaml)
+
+Пароль `administrator` не является частью environment contract. Он
+задаётся локально в root `.env` как `PLATFORM_ADMIN_PASSWORD`, а helper
+записывает его в OpenBao. `.env` не коммитится и служит только day-0 входом;
+после seed источником истины для runtime-пароля остаётся OpenBao.
 
 ## Изменение contract
 

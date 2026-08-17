@@ -26,8 +26,9 @@ Optional final integration credentials:
   VELERO_S3_ACCESS_KEY_ID
   VELERO_S3_SECRET_ACCESS_KEY
 
-Required external credential:
+Required external credentials:
   CLOUDFLARE_API_TOKEN
+  PLATFORM_ADMIN_PASSWORD
 
 Each pair must be supplied together. When omitted, random bootstrap credentials
 are created with bootstrap_provisional=true.
@@ -61,6 +62,7 @@ esac
 runtime_secret_contract=(
   "platform/cert-manager/cloudflare:api_token"
   "platform/authentik/runtime:secret_key,bootstrap_password"
+  "platform/authentik/platform-admin:password"
   "platform/authentik/postgresql:password"
   "platform/authentik/redis:password"
   "platform/forgejo/admin:username,password"
@@ -105,6 +107,10 @@ fi
 
 if [[ -z "${CLOUDFLARE_API_TOKEN:-}" ]]; then
   echo "CLOUDFLARE_API_TOKEN is required for cert-manager DNS-01." >&2
+  exit 1
+fi
+if [[ -z "${PLATFORM_ADMIN_PASSWORD:-}" ]]; then
+  echo "PLATFORM_ADMIN_PASSWORD is required for the permanent Authentik administrator." >&2
   exit 1
 fi
 
@@ -272,6 +278,8 @@ write_entry "$mount_path/platform/cert-manager/cloudflare" \
 write_entry "$mount_path/platform/authentik/runtime" \
   "secret_key=$authentik_secret_key" \
   "bootstrap_password=$authentik_bootstrap_password"
+write_entry "$mount_path/platform/authentik/platform-admin" \
+  "password=$PLATFORM_ADMIN_PASSWORD"
 write_entry "$mount_path/platform/authentik/postgresql" \
   "password=$authentik_postgresql_password"
 write_entry "$mount_path/platform/authentik/redis" \

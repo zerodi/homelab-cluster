@@ -26,6 +26,11 @@ EXPECTED_CONTRACT: dict[str, dict[str, Any]] = {
             "bootstrap_password": "nonempty",
         },
     },
+    "platform/authentik/platform-admin": {
+        "app": "authentik/platform-administrator",
+        "properties": {"password": "nonempty"},
+        "manifest_required": False,
+    },
     "platform/authentik/postgresql": {
         "app": "authentik",
         "properties": {"password": "nonempty"},
@@ -234,6 +239,8 @@ def main() -> int:
         for issue in validate_internal_shape_contract()
     ]
     for secret_path, meta in EXPECTED_CONTRACT.items():
+        if not meta.get("manifest_required", True):
+            continue
         expected_props = set(meta["properties"].keys())
         actual_props = manifest_contract.get(secret_path, set())
         missing_props = sorted(expected_props - actual_props)

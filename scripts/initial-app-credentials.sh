@@ -86,6 +86,10 @@ host_for() {
 
 # Resolve every OpenBao value before printing anything to avoid partial output.
 authentik_password="$(read_bao_field platform/authentik/runtime bootstrap_password)"
+platform_admin_password="$(read_bao_field platform/authentik/platform-admin password)"
+platform_admin_username="$(yq eval -r '.identity.administrator.username // ""' "$contract")"
+[[ -n "$platform_admin_username" ]] || common::die "$SCRIPT_COMPONENT" \
+  "Environment contract does not define identity.administrator.username"
 forgejo_login="$(read_bao_field platform/forgejo/admin username)"
 forgejo_password="$(read_bao_field platform/forgejo/admin password)"
 grafana_login="$(read_bao_field platform/observability/grafana username)"
@@ -110,6 +114,8 @@ printf 'WARNING: sensitive bootstrap credentials; do not save this output in Git
 printf 'APPLICATION\tURL\tLOGIN\tPASSWORD\n'
 printf 'Authentik\thttps://%s/if/admin/\takadmin\t%s\n' \
   "$(host_for authentik)" "$authentik_password"
+printf 'Authentik Administrator\thttps://%s/\t%s\t%s\n' \
+  "$(host_for authentik)" "$platform_admin_username" "$platform_admin_password"
 printf 'Argo CD\thttps://%s\tadmin\t%s\n' \
   "$(host_for argocd)" "$argocd_password"
 printf 'Forgejo\thttps://%s\t%s\t%s\n' \

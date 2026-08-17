@@ -100,9 +100,46 @@ def materialize_contract(raw_contract: dict[str, Any]) -> dict[str, Any]:
     if len(set(hosts.values())) != len(hosts):
         raise ContractError("service_subdomains must generate unique hostnames")
 
+    try:
+        administrator = contract["identity"]["administrator"]
+        administrator_username = administrator["username"]
+        administrator_display_name = administrator["display_name"]
+        administrator_email_localpart = administrator["email_localpart"]
+        administrator_group = administrator["group"]
+    except (KeyError, TypeError) as exc:
+        raise ContractError(
+            "contract requires identity.administrator username, display_name, "
+            "email_localpart, and group"
+        ) from exc
+
+    technical_name_pattern = r"[a-z0-9][a-z0-9_.-]*"
+    for field, value in (
+        ("identity.administrator.username", administrator_username),
+        ("identity.administrator.email_localpart", administrator_email_localpart),
+        ("identity.administrator.group", administrator_group),
+    ):
+        if (
+            not isinstance(value, str)
+            or re.fullmatch(technical_name_pattern, value) is None
+        ):
+            raise ContractError(
+                f"{field} must use lowercase ASCII letters, digits, dot, underscore, or hyphen"
+            )
+    if (
+        not isinstance(administrator_display_name, str)
+        or not administrator_display_name.strip()
+    ):
+        raise ContractError("identity.administrator.display_name must not be empty")
+
     contract["cluster"]["name"] = cluster_name
     contract["cluster"]["base_domain"] = base_domain
     contract["hosts"] = hosts
+    contract["identity"]["administrator"]["display_name"] = (
+        administrator_display_name.strip()
+    )
+    contract["identity"]["administrator"]["email"] = (
+        f"{administrator_email_localpart}@{base_domain}"
+    )
     contract["platform"]["cert_manager"]["acme_email"] = (
         f"{contract['platform']['cert_manager']['acme_email_localpart']}@{base_domain}"
     )

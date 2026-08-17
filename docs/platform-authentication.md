@@ -158,6 +158,7 @@ Stalwart provider и directory — на актуальных контракта�
 
 | OpenBao path | Keys | Consumer |
 | --- | --- | --- |
+| `secret/platform/authentik/platform-admin` | `password` | постоянный Authentik administrator; consumer подключается на следующем этапе identity automation |
 | `secret/platform/forgejo/oidc` | `client_id`, `client_secret` | Authentik и Forgejo |
 | `secret/platform/argocd/oidc` | `client_id`, `client_secret` | Authentik; Argo CD подключается в `infrastructure/` |
 | `secret/platform/harbor/oidc` | `client_id`, `client_secret` | Authentik; Harbor подключается после greenfield bootstrap |
@@ -166,6 +167,13 @@ Stalwart provider и directory — на актуальных контракта�
 
 Все paths создаются `task ops:seed-runtime-secrets`, проверяются runtime secret
 contract и не содержат значений в Git.
+
+Техническая identity постоянного администратора находится в non-secret
+environment contract: username `administrator`, display name `Администратор`,
+группа `platform-admins`; email выводится из `cluster.base_domain`. Пароль
+задаётся как `PLATFORM_ADMIN_PASSWORD` в игнорируемом root `.env` и при seed
+записывается в OpenBao. После seed источником истины является OpenBao;
+изменение `.env` не перезаписывает существующий path.
 
 ## 1. Authentik
 
