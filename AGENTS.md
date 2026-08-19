@@ -24,6 +24,8 @@ The project is currently split into the following layers:
   in-cluster platform bootstrap
 - `argocd/`: a separate runtime/GitOps scaffold that is not connected to a
   Terraform entrypoint
+- `homelabctl/`: a standalone Python project for repository-local automation,
+  invoked by the root Taskfile
 
 Do not move runtime resources back into `cluster/` or `infrastructure/`.
 Application workloads and app-level GitOps bootstrap resources live outside

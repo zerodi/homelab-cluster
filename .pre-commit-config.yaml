@@ -13,14 +13,14 @@ repos:
         entry: task check:cluster-isolation
         language: system
         pass_filenames: false
-        files: ^(cluster/|.*tfvars\.example$|scripts/check-cluster-isolation\.py$|tasks/(cluster|checks|infrastructure)\.yml$|\.pre-commit-config\.yaml$)
+        files: ^(cluster/|.*tfvars\.example$|homelabctl/|tasks/(cluster|checks|infrastructure)\.yml$|\.pre-commit-config\.yaml$)
 
       - id: infrastructure-isolation
         name: task check:infrastructure-isolation
         entry: task check:infrastructure-isolation
         language: system
         pass_filenames: false
-        files: ^(infrastructure/|scripts/check-infrastructure-isolation\.py$|tasks/(checks|infrastructure)\.yml$|\.pre-commit-config\.yaml$)
+        files: ^(infrastructure/|homelabctl/|tasks/(checks|infrastructure)\.yml$|\.pre-commit-config\.yaml$)
 
       - id: versions
         name: task check:versions
@@ -29,7 +29,7 @@ repos:
         pass_filenames: false
         files: >-
           (?x)^(versions\.yaml|(cluster|infrastructure|argocd)/|\.github/workflows/ci\.yaml|
-          scripts/check-(chart|release)-versions\.py|tasks/checks\.yml|Taskfile\.yml|
+          homelabctl/|tasks/checks\.yml|Taskfile\.yml|
           \.pre-commit-config\.yaml)
 
       - id: environment-contract
@@ -37,21 +37,21 @@ repos:
         entry: task check:env-contract
         language: system
         pass_filenames: false
-        files: ^(envs/|argocd/|scripts/(render-environment-contract\.sh|validate-env-contract\.py)|tasks/checks\.yml|Taskfile\.yml|\.pre-commit-config\.yaml)
+        files: ^(envs/|argocd/|homelabctl/|tasks/checks\.yml|Taskfile\.yml|\.pre-commit-config\.yaml)
 
       - id: runtime-secret-contract
         name: task check:runtime-secret-contract
         entry: task check:runtime-secret-contract
         language: system
         pass_filenames: false
-        files: ^(argocd/platform/|scripts/.*runtime.*|tasks/(checks|ops)\.yml|Taskfile\.yml|\.pre-commit-config\.yaml)
+        files: ^(argocd/platform/|homelabctl/|tasks/(checks|ops)\.yml|Taskfile\.yml|\.pre-commit-config\.yaml)
 
       - id: documentation
         name: task check:documentation
         entry: task check:documentation
         language: system
         pass_filenames: false
-        files: ^(README\.md|AGENTS\.md|docs/|argocd/README\.md|scripts/check-documentation\.py|tasks/checks\.yml|\.pre-commit-config\.yaml)
+        files: ^(README\.md|AGENTS\.md|docs/|argocd/README\.md|homelabctl/|tasks/checks\.yml|\.pre-commit-config\.yaml)
 
       - id: tofu-fmt-check
         name: task check:tofu-fmt
@@ -77,11 +77,12 @@ repos:
         language: system
         pass_filenames: false
 
-      - id: shellcheck
-        name: task check:shellcheck
-        entry: task check:shellcheck
+      - id: homelabctl-python
+        name: task check:python
+        entry: task check:python
         language: system
         pass_filenames: false
+        files: ^(homelabctl/|tasks/checks\.yml|\.pre-commit-config\.yaml$)
 
       - id: kustomize-build-bootstrap
         name: task check:kustomize-bootstrap

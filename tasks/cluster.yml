@@ -22,7 +22,7 @@ tasks:
       - apply
     cmds:
       - tofu -chdir=cluster apply -var-file=../terraform.tfvars
-      - bash ./scripts/reconcile-cilium-lb-pool.sh
+      - uv run --project homelabctl --locked homelabctl cluster reconcile-lb-pool
 
   destroy:
     desc: Destroy the cluster entrypoint without refresh

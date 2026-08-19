@@ -4,37 +4,37 @@ tasks:
   versions:
     desc: Verify all release pins and generated mirrors against versions.yaml
     cmds:
-      - ./scripts/check-release-versions.py
-      - ./scripts/check-chart-versions.py
-      - ./scripts/check-image-versions.py
+      - uv run --project homelabctl --locked homelabctl check release-versions
+      - uv run --project homelabctl --locked homelabctl check chart-versions
+      - uv run --project homelabctl --locked homelabctl check image-versions
 
   versions-sync:
     desc: Synchronize generated release-version mirrors from versions.yaml
     cmds:
-      - ./scripts/check-release-versions.py --write
-      - ./scripts/check-chart-versions.py --write
-      - ./scripts/check-image-versions.py --write
+      - uv run --project homelabctl --locked homelabctl check release-versions --write
+      - uv run --project homelabctl --locked homelabctl check chart-versions --write
+      - uv run --project homelabctl --locked homelabctl check image-versions --write
       - task check:versions
 
   cluster-isolation:
     desc: Verify that cluster does not own platform or runtime resources
     cmds:
-      - python3 ./scripts/check-cluster-isolation.py
+      - uv run --project homelabctl --locked homelabctl check cluster-isolation
 
   tfvars-example:
     desc: Verify terraform.tfvars.example documents every OpenTofu input
     cmds:
-      - ./scripts/check-tfvars-example.py
+      - uv run --project homelabctl --locked homelabctl check tfvars-example
 
   infrastructure-isolation:
     desc: Verify infrastructure ownership and its required cluster state contract
     cmds:
-      - python3 ./scripts/check-infrastructure-isolation.py
+      - uv run --project homelabctl --locked homelabctl check infrastructure-isolation
 
   platform-layout:
     desc: Verify the Argo CD platform orchestration and payload boundary
     cmds:
-      - python3 ./scripts/check-platform-layout.py
+      - uv run --project homelabctl --locked homelabctl check platform-layout
 
   chart-versions:
     desc: Backward-compatible alias for the unified version check
@@ -49,23 +49,23 @@ tasks:
   documentation:
     desc: Verify documentation layout and local Markdown links
     cmds:
-      - ./scripts/check-documentation.py
+      - uv run --project homelabctl --locked homelabctl check documentation
 
   env-contract:
     desc: Validate that the effective environment contract stays in sync with argocd/ consumers
     cmds:
-      - ./scripts/validate-env-contract.py --mode scaffold
+      - uv run --project homelabctl --locked homelabctl env validate --mode scaffold
 
   env-contract-sync:
     desc: Synchronize argocd/ consumers from the effective environment contract
     cmds:
-      - ./scripts/validate-env-contract.py --mode scaffold --write
-      - ./scripts/validate-env-contract.py --mode scaffold
+      - uv run --project homelabctl --locked homelabctl env validate --mode scaffold --write
+      - uv run --project homelabctl --locked homelabctl env validate --mode scaffold
 
   runtime-secret-contract:
     desc: Verify OpenBao seed paths and keys against ExternalSecret manifests
     cmds:
-      - ./scripts/openbao-runtime-preflight.py --contract-only
+      - uv run --project homelabctl --locked homelabctl check runtime-secrets --contract-only
 
   tofu-fmt:
     desc: Run tofu fmt -check recursively
@@ -86,17 +86,19 @@ tasks:
   yamllint:
     desc: Run yamllint across the repository
     cmds:
-      - yamllint .
-
-  shellcheck:
-    desc: Run shellcheck for repository helper scripts
-    cmds:
-      - shellcheck -x scripts/*.sh scripts/lib/*.sh
+      - uv run --project homelabctl --locked homelabctl check yaml .
 
   operator-helpers:
     desc: Run side-effect-free parser tests for operator helpers
     cmds:
-      - ./scripts/forgejo-woodpecker-oauth.py --self-test
+      - uv run --project homelabctl --locked homelabctl check operator-helpers
+
+  python:
+    desc: Run homelabctl unit tests, formatting check, and lint
+    cmds:
+      - uv run --project homelabctl --locked pytest -q
+      - uv run --project homelabctl --locked ruff format --check homelabctl/src homelabctl/tests
+      - uv run --project homelabctl --locked ruff check homelabctl/src homelabctl/tests
 
   kustomize-bootstrap:
     desc: Build argocd/bootstrap with kustomize or kubectl fallback
@@ -133,7 +135,7 @@ tasks:
       - task check:tofu-validate-cluster
       - task check:tofu-validate-infrastructure
       - task check:yamllint
-      - task check:shellcheck
       - task check:operator-helpers
+      - task check:python
       - task check:kustomize-bootstrap
       - task check:kustomize-platform

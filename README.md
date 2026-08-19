@@ -10,9 +10,15 @@
 - `infrastructure/` доводит кластер до готовых platform operators, OpenBao,
   storage и Argo CD.
 - `argocd/` содержит отдельный runtime/GitOps слой приложений.
+- `homelabctl/` содержит самостоятельный Python-проект repository-local CLI,
+  который обслуживает корневые Task-команды.
 
 Корень репозитория связывает entrypoint через Taskfile и общие environment и
 version contracts, но сам не является OpenTofu entrypoint.
+
+Taskfile является публичным интерфейсом автоматизации. Его задачи выполняются
+единым repository-local Python application `homelabctl`; устройство приложения
+описано в [отдельном документе](docs/homelabctl.md).
 
 ## Greenfield quick start
 

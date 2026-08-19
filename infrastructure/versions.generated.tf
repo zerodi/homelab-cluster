@@ -1,4 +1,4 @@
-# Generated from ../versions.yaml by scripts/check-release-versions.py.
+# Generated from ../versions.yaml by `task sync-versions` (homelabctl).
 # Do not edit directly; run `task sync-versions`.
 
 terraform {

@@ -5,17 +5,17 @@ dotenv:
 
 vars:
   ENVIRONMENT_CONTRACT_PATH:
-    sh: ./scripts/task-vars.sh environment-contract
+    sh: uv run --project homelabctl --locked homelabctl internal task-var environment-contract
   KUBECONFIG_PATH:
-    sh: ./scripts/task-vars.sh kubeconfig
+    sh: uv run --project homelabctl --locked homelabctl internal task-var kubeconfig
   TALOSCONFIG_PATH:
-    sh: ./scripts/task-vars.sh talosconfig
+    sh: uv run --project homelabctl --locked homelabctl internal task-var talosconfig
   CONTROLPLANE_IPS:
-    sh: ./scripts/task-vars.sh cluster-output controlplane_ips_csv
+    sh: uv run --project homelabctl --locked homelabctl internal task-var cluster-output controlplane_ips_csv
   WORKER_IPS:
-    sh: ./scripts/task-vars.sh cluster-output worker_ips_csv
+    sh: uv run --project homelabctl --locked homelabctl internal task-var cluster-output worker_ips_csv
   PRIMARY_CONTROLPLANE_IP:
-    sh: ./scripts/task-vars.sh cluster-output controlplane_ips_csv | cut -d, -f1
+    sh: uv run --project homelabctl --locked homelabctl internal task-var cluster-output controlplane_ips_csv | cut -d, -f1
 
 includes:
   cluster:
@@ -71,7 +71,7 @@ tasks:
   render-env-contract:
     desc: Merge homelab.yaml with the tracked environment override
     cmds:
-      - ./scripts/render-environment-contract.sh
+      - uv run --project homelabctl --locked homelabctl env render
 
   sync-env-contract:
     desc: Synchronize tracked Argo CD consumers from the effective environment contract

@@ -65,7 +65,7 @@ tasks:
       - |
         GARAGE_NAMESPACE="{{.GARAGE_NAMESPACE}}" \
         GARAGE_POD="{{.GARAGE_POD}}" \
-        ./scripts/garage-velero-helper.sh --kubeconfig "{{.KUBECONFIG_PATH}}" status
+        uv run --project homelabctl --locked homelabctl ops garage --kubeconfig "{{.KUBECONFIG_PATH}}" status
 
   garage-node-id:
     desc: Detect the current Garage node id from garage status
@@ -75,7 +75,7 @@ tasks:
         GARAGE_NAMESPACE="{{.GARAGE_NAMESPACE}}" \
         GARAGE_POD="{{.GARAGE_POD}}" \
         GARAGE_NODE_ID="{{.GARAGE_NODE_ID}}" \
-        ./scripts/garage-velero-helper.sh --kubeconfig "{{.KUBECONFIG_PATH}}" detect-node-id
+        uv run --project homelabctl --locked homelabctl ops garage --kubeconfig "{{.KUBECONFIG_PATH}}" detect-node-id
 
   garage-velero-bootstrap:
     desc: Print Garage bootstrap commands for the Velero bucket and key
@@ -89,7 +89,7 @@ tasks:
         GARAGE_BUCKET="{{.GARAGE_BUCKET}}" \
         GARAGE_KEY_NAME="{{.GARAGE_KEY_NAME}}" \
         GARAGE_NODE_ID="{{.GARAGE_NODE_ID}}" \
-        ./scripts/garage-velero-helper.sh --kubeconfig "{{.KUBECONFIG_PATH}}" print-bootstrap
+        uv run --project homelabctl --locked homelabctl ops garage --kubeconfig "{{.KUBECONFIG_PATH}}" print-bootstrap
 
   hosts-entries:
     desc: Print all actual LoadBalancer IP/domain pairs for the client hosts file
@@ -97,7 +97,7 @@ tasks:
     cmds:
       - test -n "{{.KUBECONFIG_PATH}}"
       - >-
-        ./scripts/hosts-entries.sh
+        uv run --project homelabctl --locked homelabctl ops hosts
         --kubeconfig "{{.KUBECONFIG_PATH}}"
         --contract "{{.ENVIRONMENT_CONTRACT_PATH}}"
 
@@ -109,7 +109,7 @@ tasks:
   generate-runtime-secret-puts:
     desc: Print complete bao kv put commands for runtime secrets
     cmds:
-      - bash ./scripts/generate-runtime-secret-puts.sh
+      - uv run --project homelabctl --locked homelabctl secrets print
 
   authentik-admin-password:
     desc: Print the Authentik akadmin bootstrap password from OpenBao
@@ -132,14 +132,14 @@ tasks:
       - test -n "{{.KUBECONFIG_PATH}}"
       - test -n "{{.ENVIRONMENT_CONTRACT_PATH}}"
       - >-
-        ./scripts/initial-app-credentials.sh
+        uv run --project homelabctl --locked homelabctl ops credentials
         --kubeconfig "{{.KUBECONFIG_PATH}}"
         --contract "{{.ENVIRONMENT_CONTRACT_PATH}}"
 
   seed-runtime-secrets:
     desc: Create missing OpenBao runtime secret paths without overwriting existing paths
     cmds:
-      - bash ./scripts/generate-runtime-secret-puts.sh --apply-missing
+      - uv run --project homelabctl --locked homelabctl secrets seed
 
   forgejo-woodpecker-oauth:
     desc: Create or rotate the system-wide Forgejo OAuth2 application for Woodpecker
@@ -148,7 +148,7 @@ tasks:
       - test -n "{{.ENVIRONMENT_CONTRACT_PATH}}"
       - test -n "${BAO_TOKEN:-}"
       - >-
-        ./scripts/forgejo-woodpecker-oauth.py
+        uv run --project homelabctl --locked homelabctl forgejo woodpecker-oauth
         --kubeconfig "{{.KUBECONFIG_PATH}}"
         --contract "{{.ENVIRONMENT_CONTRACT_PATH}}"
         {{.CLI_ARGS}}
@@ -157,38 +157,38 @@ tasks:
     desc: Run the OpenBao post-init day-0 helper for External Secrets
     cmds:
       - test -n "{{.KUBECONFIG_PATH}}"
-      - ./scripts/openbao-day0.sh --kubeconfig "{{.KUBECONFIG_PATH}}"
+      - uv run --project homelabctl --locked homelabctl bao configure-day0 --kubeconfig "{{.KUBECONFIG_PATH}}"
 
   openbao-port-forward-start:
     desc: Start a managed local OpenBao port-forward on 127.0.0.1:8200
     cmds:
       - test -n "{{.KUBECONFIG_PATH}}"
-      - ./scripts/openbao-port-forward.sh start --kubeconfig "{{.KUBECONFIG_PATH}}"
+      - uv run --project homelabctl --locked homelabctl bao port-forward start --kubeconfig "{{.KUBECONFIG_PATH}}"
 
   openbao-port-forward-stop:
     desc: Stop the managed local OpenBao port-forward
     cmds:
-      - ./scripts/openbao-port-forward.sh stop
+      - uv run --project homelabctl --locked homelabctl bao port-forward stop
 
   openbao-port-forward-status:
     desc: Show managed local OpenBao port-forward status
     cmds:
-      - ./scripts/openbao-port-forward.sh status
+      - uv run --project homelabctl --locked homelabctl bao port-forward status
 
   openbao-runtime-preflight:
     desc: Validate required OpenBao runtime secret paths and keys without printing secret values
     cmds:
-      - ./scripts/openbao-runtime-preflight.py
+      - uv run --project homelabctl --locked homelabctl check runtime-secrets
 
   openbao-runtime-preflight-final:
     desc: Require all OpenBao runtime secrets to contain final integration credentials
     cmds:
-      - ./scripts/openbao-runtime-preflight.py --require-final
+      - uv run --project homelabctl --locked homelabctl check runtime-secrets --require-final
 
   post-argocd-check:
     desc: Run post-bootstrap Argo CD and runtime smoke checks
     cmds:
-      - ./scripts/post-argocd-check.sh
+      - uv run --project homelabctl --locked homelabctl ops post-check --kubeconfig "{{.KUBECONFIG_PATH}}"
 
   export-root-ca:
     desc: Export the homelab root CA certificate from cert-manager to a local file

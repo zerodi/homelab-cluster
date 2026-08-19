@@ -36,13 +36,13 @@ tasks:
     desc: Create LINSTOR device pools outside the Terraform graph
     vars:
       PIRAEUS_NAMESPACE:
-        sh: ./scripts/task-vars.sh contract-value .storage.piraeus.namespace TF_VAR_piraeus_namespace
+        sh: uv run --project homelabctl --locked homelabctl internal task-var contract-value .storage.piraeus.namespace TF_VAR_piraeus_namespace
       PIRAEUS_POOL_NAME:
-        sh: ./scripts/task-vars.sh contract-value .storage.piraeus.pool_name TF_VAR_piraeus_storage_pool_name
+        sh: uv run --project homelabctl --locked homelabctl internal task-var contract-value .storage.piraeus.pool_name TF_VAR_piraeus_storage_pool_name
       PIRAEUS_DEVICE:
-        sh: ./scripts/task-vars.sh contract-value .storage.piraeus.device TF_VAR_piraeus_storage_device
+        sh: uv run --project homelabctl --locked homelabctl internal task-var contract-value .storage.piraeus.device TF_VAR_piraeus_storage_device
       PIRAEUS_NODES:
-        sh: ./scripts/task-vars.sh piraeus-nodes
+        sh: uv run --project homelabctl --locked homelabctl internal task-var piraeus-nodes
     cmds:
       - |
         test -n "{{.KUBECONFIG_PATH}}" || {
@@ -70,7 +70,7 @@ tasks:
           exit 1
         }
       - |
-        ./scripts/bootstrap-linstor-storage.sh \
+        uv run --project homelabctl --locked homelabctl infrastructure bootstrap-linstor \
           --kubeconfig "{{.KUBECONFIG_PATH}}" \
           --namespace "{{.PIRAEUS_NAMESPACE}}" \
           --pool-name "{{.PIRAEUS_POOL_NAME}}" \
@@ -109,13 +109,13 @@ tasks:
   destroy:
     desc: Run staged infrastructure destroy with CRD-backed cleanup
     cmds:
-      - ./scripts/destroy-platform-bootstrap.sh
+      - uv run --project homelabctl --locked homelabctl infrastructure destroy {{.CLI_ARGS}}
 
   health:
     desc: Run local platform bootstrap checks after infrastructure apply
     vars:
       PIRAEUS_NAMESPACE:
-        sh: ./scripts/task-vars.sh contract-value .storage.piraeus.namespace TF_VAR_piraeus_namespace
+        sh: uv run --project homelabctl --locked homelabctl internal task-var contract-value .storage.piraeus.namespace TF_VAR_piraeus_namespace
     cmds:
       - test -n "{{.KUBECONFIG_PATH}}"
       - test -n "{{.PIRAEUS_NAMESPACE}}"

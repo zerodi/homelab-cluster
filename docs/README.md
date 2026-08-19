@@ -33,6 +33,7 @@ cluster/ -> infrastructure/ -> OpenBao init/unseal -> GitOps bootstrap
 
 - [Day-1 operations](day1-operations.md)
 - [Environment contract](environment-contract.md)
+- [Homelab automation application](homelabctl.md)
 - [Единая авторизация приложений платформы](platform-authentication.md)
 - [Cutover Argo CD с test-ssh-git на Forgejo](forgejo-argocd-cutover.md)
 - [Версии компонентов](chart-versions.md)

@@ -4,26 +4,26 @@ tasks:
   preflight:
     desc: Validate env contract and OpenBao runtime secrets before GitOps bootstrap
     cmds:
-      - ./scripts/validate-env-contract.py --mode strict
-      - ./scripts/openbao-runtime-preflight.py
+      - uv run --project homelabctl --locked homelabctl env validate --mode strict
+      - uv run --project homelabctl --locked homelabctl check runtime-secrets
 
   apply-bootstrap:
     desc: Apply the Argo CD root Application after bootstrap preflight checks
     cmds:
       - test -n "{{.KUBECONFIG_PATH}}"
       - task gitops:preflight
-      - ./scripts/argocd-apply-bootstrap.sh --kubeconfig "{{.KUBECONFIG_PATH}}"
+      - uv run --project homelabctl --locked homelabctl gitops apply --kubeconfig "{{.KUBECONFIG_PATH}}"
 
   push:
     desc: Push the committed argocd subtree to the configured Forgejo GitOps repository
     cmds:
       - test -n "{{.KUBECONFIG_PATH}}"
       - test -n "{{.ENVIRONMENT_CONTRACT_PATH}}"
-      - ./scripts/validate-env-contract.py --mode strict
+      - uv run --project homelabctl --locked homelabctl env validate --mode strict
       - task check:kustomize-bootstrap
       - task check:kustomize-platform
       - >-
-        ./scripts/argocd-push.sh
+        uv run --project homelabctl --locked homelabctl gitops push
         --kubeconfig "{{.KUBECONFIG_PATH}}"
         --contract "{{.ENVIRONMENT_CONTRACT_PATH}}"
 
@@ -36,14 +36,14 @@ tasks:
           echo "Set TEST_SSH_GIT_HOSTNAME to an address reachable from Argo CD pods." >&2
           exit 1
         }
-      - ./scripts/validate-env-contract.py --mode scaffold
-      - ./scripts/openbao-runtime-preflight.py
+      - uv run --project homelabctl --locked homelabctl env validate --mode scaffold
+      - uv run --project homelabctl --locked homelabctl check runtime-secrets
       - |
-        ./scripts/test-ssh-git-bootstrap.sh \
+        uv run --project homelabctl --locked homelabctl gitops test-ssh-bootstrap \
           --kubeconfig "{{.KUBECONFIG_PATH}}" \
           --hostname "${TEST_SSH_GIT_HOSTNAME}" \
           --port "${TEST_SSH_GIT_PORT:-2222}"
-      - ./scripts/openbao-runtime-preflight.py
+      - uv run --project homelabctl --locked homelabctl check runtime-secrets
 
   test-ssh-stop:
     desc: Stop the local test SSH Git server
@@ -66,6 +66,6 @@ tasks:
           exit 1
         }
       - >-
-        ./scripts/forgejo-argocd-cutover.sh
+        uv run --project homelabctl --locked homelabctl gitops forgejo-cutover
         --kubeconfig "{{.KUBECONFIG_PATH}}"
         --contract "{{.ENVIRONMENT_CONTRACT_PATH}}"

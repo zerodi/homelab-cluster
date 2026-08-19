@@ -20,9 +20,12 @@ jobs:
           tofu_version: 1.10.6
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
 
       - name: Setup Task
         uses: arduino/setup-task@v2
@@ -32,12 +35,8 @@ jobs:
         with:
           kustomize-version: 5.4.3
 
-      - name: Install yamllint and shellcheck
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install yamllint
-          sudo apt-get update
-          sudo apt-get install --yes shellcheck
+      - name: Install homelabctl
+        run: uv sync --project homelabctl --locked
 
       - name: Task init cluster
         run: task cluster:init -- -backend=false

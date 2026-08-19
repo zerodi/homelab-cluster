@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "homelabctl"
+version = "0.1.0"
+description = "Repository-local automation for the Talos Proxmox homelab"
+requires-python = ">=3.13"
+dependencies = [
+  "bcrypt>=4.3,<6",
+  "ruamel-yaml>=0.18,<0.19",
+  "yamllint>=1.37,<2",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.4,<10",
+  "ruff>=0.12,<1",
+]
+
+[project.scripts]
+homelabctl = "homelabctl.cli:main"
+homelabctl-forgejo-askpass = "homelabctl.askpass:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/homelabctl"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"

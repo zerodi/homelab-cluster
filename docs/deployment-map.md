@@ -20,7 +20,7 @@ repository inputs
 | Подготовка inputs | repository root | `task init`, environment/version contracts | Proxmox API token, SSH и проверка storage device |
 | Kubernetes bootstrap | `cluster/` | `task cluster:apply` | Нет после подготовки inputs |
 | Platform bootstrap | `infrastructure/` | `task infra:apply` | Не инициализирует OpenBao |
-| OpenBao post-init | operator + `scripts/` | `task ops:openbao-day0` | Init, unseal и хранение recovery material |
+| OpenBao post-init | operator + `homelabctl` | `task ops:openbao-day0` | Init, unseal и хранение recovery material |
 | Runtime secrets | OpenBao + ESO | Seed, contract checks и Forgejo/Woodpecker OAuth helper автоматизированы | S3 credentials и явная recovery-ротация OAuth |
 | GitOps bootstrap | `argocd/` + temporary/persistent Git | Test SSH и постоянный Git поддерживаются Task-командами | Доступный Git endpoint и Forgejo cutover |
 | Финальная готовность | все слои | Health, preflight и smoke checks | Исправление внешних DNS/OAuth/storage зависимостей |
