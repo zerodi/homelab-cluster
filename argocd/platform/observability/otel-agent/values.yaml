@@ -9,12 +9,12 @@ command:
 
 presets:
   logsCollection:
-    enabled: true
+    enabled: false
     includeCollectorLogs: false
     storeCheckpoints: true
     maxRecombineLogSize: 102400
   hostMetrics:
-    enabled: true
+    enabled: false
   kubernetesAttributes:
     enabled: true
     extractAllPodLabels: false
@@ -22,7 +22,7 @@ presets:
   kubeletMetrics:
     enabled: true
   resourceDetection:
-    enabled: true
+    enabled: false
 
 ports:
   otlp:
@@ -62,7 +62,6 @@ alternateConfig:
         insecure: true
       sending_queue:
         enabled: true
-        storage: file_storage
         queue_size: 2000
       retry_on_failure:
         enabled: true
@@ -81,26 +80,13 @@ alternateConfig:
   service:
     extensions:
       - health_check
-      - file_storage
     pipelines:
-      logs:
-        receivers:
-          - filelog
-        processors:
-          - memory_limiter
-          - k8sattributes
-          - resourcedetection/env
-          - batch
-        exporters:
-          - otlp
       metrics:
         receivers:
-          - hostmetrics
           - kubeletstats
         processors:
           - memory_limiter
           - k8sattributes
-          - resourcedetection/env
           - batch
         exporters:
           - otlp

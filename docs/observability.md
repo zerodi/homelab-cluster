@@ -43,7 +43,7 @@ Loki, Tempo и Collector доступны через ClusterIP только вн
 Перед эксплуатацией учитывайте следующие свойства:
 
 - Collector gateway работает как singleton `Deployment`, а node agents — как
-  `DaemonSet` с checkpoint и persistent sending queue на каждом узле;
+  непривилегированный `DaemonSet` с kubelet telemetry на каждом узле;
 - VictoriaMetrics и Loki работают в single-node режиме;
 - Tempo работает в monolithic режиме с LINSTOR PVC и retention `168h`;
 - container logs собираются node-local `filelog` receiver, а OTLP logs могут
