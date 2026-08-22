@@ -9,3 +9,4 @@ resources:
   - redirect-httproute.yaml
   - httproute.yaml
   - networkpolicy.yaml
+  - kube-apiserver-egress-policy.yaml

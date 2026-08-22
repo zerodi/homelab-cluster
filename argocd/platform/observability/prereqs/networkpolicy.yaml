@@ -79,19 +79,3 @@ spec:
           port: 443
         - protocol: TCP
           port: 10250
-    - to:
-        - ipBlock:
-            cidr: 10.96.0.1/32
-      ports:
-        - protocol: TCP
-          port: 443
-    - to:
-        - ipBlock:
-            cidr: 192.168.110.11/32
-        - ipBlock:
-            cidr: 192.168.110.12/32
-        - ipBlock:
-            cidr: 192.168.110.13/32
-      ports:
-        - protocol: TCP
-          port: 6443
