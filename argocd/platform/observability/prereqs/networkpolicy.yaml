@@ -85,3 +85,13 @@ spec:
       ports:
         - protocol: TCP
           port: 443
+    - to:
+        - ipBlock:
+            cidr: 192.168.110.11/32
+        - ipBlock:
+            cidr: 192.168.110.12/32
+        - ipBlock:
+            cidr: 192.168.110.13/32
+      ports:
+        - protocol: TCP
+          port: 6443
