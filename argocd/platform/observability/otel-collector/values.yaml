@@ -224,9 +224,6 @@ config:
   exporters:
     prometheusremotewrite:
       endpoint: http://victoria-metrics.observability.svc.cluster.local:8428/api/v1/write
-      sending_queue:
-        enabled: true
-        queue_size: 2000
       retry_on_failure:
         enabled: true
         initial_interval: 5s
