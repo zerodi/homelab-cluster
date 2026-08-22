@@ -41,7 +41,7 @@ primary:
       type: RuntimeDefault
 
 metrics:
-  enabled: true
+  enabled: false
   image:
     digest: sha256:b672b54e6dbb277d098182cf9708aaaea3b7f2bc2d4f1917c5fb34ffcaa19e05
   service:
