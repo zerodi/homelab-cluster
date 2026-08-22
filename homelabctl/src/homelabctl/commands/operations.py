@@ -9,6 +9,7 @@ import shlex
 import signal
 import subprocess
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -905,6 +906,84 @@ def initial_credentials(kubeconfig: Path, contract_path: Path) -> int:
     return 0
 
 
+def application_operation_issues(payload: dict[str, Any], expected: set[str]) -> list[str]:
+    issues: list[str] = []
+    for item in payload.get("items", []):
+        name = item.get("metadata", {}).get("name", "unknown")
+        if name not in expected:
+            continue
+        state = item.get("status", {}).get("operationState") or {}
+        phase = state.get("phase", "")
+        if phase and phase != "Succeeded":
+            message = state.get("message", "operation has not completed")
+            issues.append(f"{name}: {phase}: {message}")
+    return issues
+
+
+def pod_readiness_issues(payload: dict[str, Any], namespaces: set[str]) -> list[str]:
+    issues: list[str] = []
+    terminal_waiting_reasons = {
+        "CrashLoopBackOff",
+        "CreateContainerConfigError",
+        "ErrImagePull",
+        "ImagePullBackOff",
+        "InvalidImageName",
+        "RunContainerError",
+    }
+    for item in payload.get("items", []):
+        metadata = item.get("metadata", {})
+        namespace = metadata.get("namespace", "")
+        if namespace not in namespaces:
+            continue
+        name = metadata.get("name", "unknown")
+        phase = item.get("status", {}).get("phase", "Unknown")
+        if phase == "Succeeded":
+            continue
+        if phase != "Running":
+            issues.append(f"{namespace}/{name}: phase={phase}")
+            continue
+        statuses = item.get("status", {}).get("containerStatuses", [])
+        for status in statuses:
+            container = status.get("name", "unknown")
+            waiting = status.get("state", {}).get("waiting", {}).get("reason", "")
+            if waiting in terminal_waiting_reasons:
+                issues.append(f"{namespace}/{name}/{container}: {waiting}")
+            elif not status.get("ready", False):
+                issues.append(f"{namespace}/{name}/{container}: not ready")
+    return issues
+
+
+def latest_completed_backup_age_hours(
+    payload: dict[str, Any],
+    *,
+    now: datetime | None = None,
+) -> tuple[str, float] | None:
+    completed: list[tuple[str, datetime]] = []
+    for item in payload.get("items", []):
+        status = item.get("status", {})
+        if status.get("phase") != "Completed" or not status.get("completionTimestamp"):
+            continue
+        timestamp = datetime.fromisoformat(status["completionTimestamp"])
+        completed.append((item.get("metadata", {}).get("name", "unknown"), timestamp))
+    if not completed:
+        return None
+    name, timestamp = max(completed, key=lambda entry: entry[1])
+    current = now or datetime.now(UTC)
+    return name, max(0.0, (current - timestamp).total_seconds() / 3600)
+
+
+def telemetry_log_error_count(text: str) -> int:
+    signatures = (
+        "Failed to scrape Prometheus endpoint",
+        "call to /stats/summary endpoint failed",
+        "Dropping data",
+        "sending queue is full",
+        "no more retries left",
+        "Exporting failed",
+    )
+    return sum(text.count(signature) for signature in signatures)
+
+
 def post_argocd_check(kubeconfig: Path) -> int:
     apps = (
         "platform",
@@ -996,6 +1075,45 @@ def post_argocd_check(kubeconfig: Path) -> int:
             failures.append(f"{app} Synced")
         if argocd_status(kubeconfig, app, "health") != "Healthy":
             failures.append(f"{app} Healthy")
+
+    applications_result = kubectl(
+        kubeconfig,
+        "-n",
+        "argocd",
+        "get",
+        "application",
+        "-o",
+        "json",
+        check=False,
+    )
+    operation_issues: list[str] = []
+    if applications_result.returncode == 0:
+        operation_issues = application_operation_issues(
+            json.loads(applications_result.stdout),
+            {root, *apps},
+        )
+    else:
+        operation_issues.append("unable to list Argo CD Applications")
+    if operation_issues:
+        for issue in operation_issues:
+            print(f"FAIL Argo CD operation {issue}")
+        failures.append("Argo CD operations completed")
+    else:
+        print("PASS Argo CD operations completed")
+
+    pods_result = kubectl(kubeconfig, "get", "pod", "-A", "-o", "json", check=False)
+    pod_issues: list[str] = []
+    if pods_result.returncode == 0:
+        pod_issues = pod_readiness_issues(json.loads(pods_result.stdout), set(namespaces))
+    else:
+        pod_issues.append("unable to list Pods")
+    if pod_issues:
+        for issue in pod_issues:
+            print(f"FAIL Pod readiness {issue}")
+        failures.append("runtime Pods ready")
+    else:
+        print("PASS runtime Pods ready")
+
     for namespace, kind, name in resources:
         check(f"{namespace}/{kind}/{name}", "-n", namespace, "get", kind, name)
     check("ClusterSecretStore/openbao", "get", "clustersecretstore", "openbao")
@@ -1037,17 +1155,15 @@ def post_argocd_check(kubeconfig: Path) -> int:
         failures.append("velero BSL Available")
 
     backups_result = kubectl(kubeconfig, "-n", "velero", "get", "backup", "-o", "json", check=False)
-    completed_backup = False
+    latest_backup: tuple[str, float] | None = None
     if backups_result.returncode == 0:
-        completed_backup = any(
-            item.get("status", {}).get("phase") == "Completed"
-            for item in json.loads(backups_result.stdout).get("items", [])
-        )
-    if completed_backup:
-        print("PASS velero has a completed Backup")
+        latest_backup = latest_completed_backup_age_hours(json.loads(backups_result.stdout))
+    max_backup_age_hours = float(os.environ.get("POST_CHECK_MAX_BACKUP_AGE_HOURS", "3"))
+    if latest_backup and latest_backup[1] <= max_backup_age_hours:
+        print(f"PASS velero latest completed Backup {latest_backup[0]} age={latest_backup[1]:.2f}h")
     else:
-        print("FAIL velero has a completed Backup")
-        failures.append("velero completed Backup")
+        print(f"FAIL velero has no completed Backup newer than {max_backup_age_hours:g}h")
+        failures.append("velero fresh completed Backup")
 
     garage_status = kubectl(
         kubeconfig, "-n", "garage", "exec", "garage-0", "--", "/garage", "status", check=False
@@ -1104,6 +1220,45 @@ def post_argocd_check(kubeconfig: Path) -> int:
     else:
         print(f"FAIL Kyverno PolicyReports have {policy_failures} failures")
         failures.append("Kyverno PolicyReports")
+
+    collector_logs = kubectl(
+        kubeconfig,
+        "-n",
+        "observability",
+        "logs",
+        "deployment/otel-collector",
+        "--since=2m",
+        "--tail=5000",
+        check=False,
+    )
+    agent_logs = kubectl(
+        kubeconfig,
+        "-n",
+        "observability",
+        "logs",
+        "-l",
+        "app.kubernetes.io/instance=otel-agent",
+        "--all-containers=true",
+        "--prefix=true",
+        "--max-log-requests=20",
+        "--since=2m",
+        "--tail=5000",
+        check=False,
+    )
+    telemetry_errors = 0
+    if collector_logs.returncode == 0 and agent_logs.returncode == 0:
+        telemetry_errors = telemetry_log_error_count(collector_logs.stdout)
+        telemetry_errors += telemetry_log_error_count(agent_logs.stdout)
+    else:
+        telemetry_errors = -1
+    if telemetry_errors == 0:
+        print("PASS OpenTelemetry has no recent scrape/export errors")
+    elif telemetry_errors < 0:
+        print("FAIL unable to inspect recent OpenTelemetry logs")
+        failures.append("OpenTelemetry logs available")
+    else:
+        print(f"FAIL OpenTelemetry has {telemetry_errors} recent scrape/export errors")
+        failures.append("OpenTelemetry recent errors")
 
     expected_revision = os.environ.get("EXPECTED_GITOPS_REVISION", "").strip()
     if expected_revision:

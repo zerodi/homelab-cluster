@@ -80,7 +80,12 @@ spec:
               kubectl -n forgejo get secret forgejo-oidc >/dev/null
 
               kubectl -n forgejo wait --for=condition=Ready pod -l app.kubernetes.io/instance=forgejo --timeout=10m
-              POD_NAME="$(kubectl -n forgejo get pods -l app.kubernetes.io/instance=forgejo --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')"
+              POD_NAME="$(
+                kubectl -n forgejo get pods \
+                  -l app.kubernetes.io/instance=forgejo \
+                  --field-selector=status.phase=Running \
+                  -o jsonpath='{.items[0].metadata.name}'
+              )"
               if [ -z "$POD_NAME" ]; then
                 echo 'forgejo running pod not found'
                 exit 1
@@ -124,16 +129,50 @@ spec:
                 )"
 
                 if [ -n "$AUTH_ID" ]; then
-                  if kubectl -n forgejo exec "$POD_NAME" -- env FORGEJO_SSO_NAME="$FORGEJO_SSO_NAME" OIDC_CLIENT_ID="$OIDC_CLIENT_ID" OIDC_CLIENT_SECRET="$OIDC_CLIENT_SECRET" OIDC_DISCOVERY_URL="$OIDC_DISCOVERY_URL" AUTH_ID="$AUTH_ID" sh -ceu '
+                  if kubectl -n forgejo exec "$POD_NAME" -- \
+                    env \
+                    FORGEJO_SSO_NAME="$FORGEJO_SSO_NAME" \
+                    OIDC_CLIENT_ID="$OIDC_CLIENT_ID" \
+                    OIDC_CLIENT_SECRET="$OIDC_CLIENT_SECRET" \
+                    OIDC_DISCOVERY_URL="$OIDC_DISCOVERY_URL" \
+                    AUTH_ID="$AUTH_ID" \
+                    sh -ceu '
                       export SSL_CERT_FILE=/tmp/homelab-root-ca.crt
-                      forgejo admin auth update-oauth --id "$AUTH_ID" --name "$FORGEJO_SSO_NAME" --provider openidConnect --key "$OIDC_CLIENT_ID" --secret "$OIDC_CLIENT_SECRET" --auto-discover-url "$OIDC_DISCOVERY_URL" --scopes openid --scopes email --scopes profile --group-claim-name groups --admin-group platform-admins
+                      forgejo admin auth update-oauth \
+                        --id "$AUTH_ID" \
+                        --name "$FORGEJO_SSO_NAME" \
+                        --provider openidConnect \
+                        --key "$OIDC_CLIENT_ID" \
+                        --secret "$OIDC_CLIENT_SECRET" \
+                        --auto-discover-url "$OIDC_DISCOVERY_URL" \
+                        --scopes openid \
+                        --scopes email \
+                        --scopes profile \
+                        --group-claim-name groups \
+                        --admin-group platform-admins
                     '; then
                     exit 0
                   fi
                 else
-                  if kubectl -n forgejo exec "$POD_NAME" -- env FORGEJO_SSO_NAME="$FORGEJO_SSO_NAME" OIDC_CLIENT_ID="$OIDC_CLIENT_ID" OIDC_CLIENT_SECRET="$OIDC_CLIENT_SECRET" OIDC_DISCOVERY_URL="$OIDC_DISCOVERY_URL" sh -ceu '
+                  if kubectl -n forgejo exec "$POD_NAME" -- \
+                    env \
+                    FORGEJO_SSO_NAME="$FORGEJO_SSO_NAME" \
+                    OIDC_CLIENT_ID="$OIDC_CLIENT_ID" \
+                    OIDC_CLIENT_SECRET="$OIDC_CLIENT_SECRET" \
+                    OIDC_DISCOVERY_URL="$OIDC_DISCOVERY_URL" \
+                    sh -ceu '
                       export SSL_CERT_FILE=/tmp/homelab-root-ca.crt
-                      forgejo admin auth add-oauth --name "$FORGEJO_SSO_NAME" --provider openidConnect --key "$OIDC_CLIENT_ID" --secret "$OIDC_CLIENT_SECRET" --auto-discover-url "$OIDC_DISCOVERY_URL" --scopes openid --scopes email --scopes profile --group-claim-name groups --admin-group platform-admins
+                      forgejo admin auth add-oauth \
+                        --name "$FORGEJO_SSO_NAME" \
+                        --provider openidConnect \
+                        --key "$OIDC_CLIENT_ID" \
+                        --secret "$OIDC_CLIENT_SECRET" \
+                        --auto-discover-url "$OIDC_DISCOVERY_URL" \
+                        --scopes openid \
+                        --scopes email \
+                        --scopes profile \
+                        --group-claim-name groups \
+                        --admin-group platform-admins
                     '; then
                     exit 0
                   fi

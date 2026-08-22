@@ -104,7 +104,9 @@ kubectl -n argocd get applications
 ```
 
 Проверка должна подтверждать `Synced` и `Healthy` для root и дочерних
-Applications, готовность ClusterSecretStore/ExternalSecrets и runtime
+Applications, успешное завершение Argo CD operations/hooks, readiness runtime
+Pods, свежий Velero Backup и отсутствие недавних OpenTelemetry scrape/export
+ошибок. Она также проверяет ClusterSecretStore/ExternalSecrets и основные
 workloads. Day-1 команды собраны в
 [operations runbook](../docs/day1-operations.md).
 

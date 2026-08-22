@@ -11,6 +11,11 @@ task ops:post-argocd-check
 kubectl -n argocd get applications
 ```
 
+`ops:post-argocd-check` также отклоняет незавершённые/ошибочные Argo CD hooks,
+неготовые runtime Pods, ошибки OpenTelemetry scrape/export за последние две
+минуты и устаревший Velero Backup. Допустимый возраст Backup по умолчанию —
+три часа; для другого расписания задайте `POST_CHECK_MAX_BACKUP_AGE_HOURS`.
+
 ## OpenBao и External Secrets
 
 OpenBao остаётся source of truth для runtime secrets, ESO — каналом доставки.

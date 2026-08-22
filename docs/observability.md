@@ -15,7 +15,7 @@ greenfield-развёртывания остаётся в [day-0 runbook](day0-b
 | Компонент | Назначение | Вход | Хранилище или выход |
 | --- | --- | --- | --- |
 | OpenTelemetry Collector gateway | приём и маршрутизация телеметрии, cluster metrics/events, Prometheus scraping и synthetic checks | OTLP gRPC/HTTP, Kubernetes API и `/metrics` targets | VictoriaMetrics, Loki, Tempo |
-| OpenTelemetry Agent | node-local сбор container logs, host и kubelet metrics, Kubernetes metadata | файлы CRI/containerd и kubelet | Collector gateway |
+| OpenTelemetry Agent | node-local сбор kubelet metrics и добавление Kubernetes metadata | kubelet API | Collector gateway |
 | VictoriaMetrics Single | метрики и PromQL/MetricsQL запросы | Prometheus remote write | LINSTOR PVC, retention `30d` |
 | Loki SingleBinary | логи и LogQL запросы | OTLP/HTTP | LINSTOR PVC |
 | Tempo monolithic | трейсы, TraceQL, service graphs и span metrics | OTLP/gRPC от Collector | локальный backend на LINSTOR PVC |
@@ -24,7 +24,7 @@ greenfield-развёртывания остаётся в [day-0 runbook](day0-b
 Поток телеметрии выглядит так:
 
 ```text
-nodes -- logs/host/kubelet metrics --> OTel Agent --> OTel Collector gateway
+nodes -- kubelet metrics -----------> OTel Agent --> OTel Collector gateway
 applications -- OTLP signals ----------------------> OTel Collector gateway
 platform /metrics targets -------------------------> Prometheus receiver
 
@@ -46,17 +46,19 @@ Loki, Tempo и Collector доступны через ClusterIP только вн
   непривилегированный `DaemonSet` с kubelet telemetry на каждом узле;
 - VictoriaMetrics и Loki работают в single-node режиме;
 - Tempo работает в monolithic режиме с LINSTOR PVC и retention `168h`;
-- container logs собираются node-local `filelog` receiver, а OTLP logs могут
-  отправляться приложениями напрямую в gateway;
+- host metrics и container logs не собираются: требующие hostPath presets
+  отключены для совместимости с baseline Pod Security; OTLP logs приложения
+  могут отправлять напрямую в gateway;
 - трейсы также появляются только от приложений с OTLP instrumentation;
 - Prometheus Operator и `ServiceMonitor` не используются; targets перечислены
   непосредственно и через opt-in service annotations;
-- Grafana alert rules, webhook contact point и routing policy создаются
-  декларативно; webhook URL поступает из OpenBao через ESO;
+- Grafana alert rules создаются декларативно; contact point и notification
+  policy настраиваются отдельно после выбора получателя;
 - Loki и Tempo не используют multitenancy/auth внутри cluster network;
 - namespace защищён baseline NetworkPolicy: OTLP и Grafana доступны другим
   namespaces, backends остаются namespace-local, egress разрешает Kubernetes
-  API, kubelet, internal services, DNS и HTTPS webhook;
+  API, kubelet, node-local Cilium/Hubble endpoints, internal services, DNS и
+  HTTPS;
 - текущая конфигурация оптимизирована для homelab, а не для HA или
   multi-cluster telemetry.
 
@@ -68,7 +70,7 @@ Loki, Tempo и Collector доступны через ClusterIP только вн
 | Namespace, ESO, TLS и Gateway API | [`platform/observability/prereqs`](../argocd/platform/observability/prereqs) |
 | Grafana, datasources, dashboards, alerts | [`grafana/values.yaml`](../argocd/platform/observability/grafana/values.yaml) |
 | Prometheus scraping, cluster telemetry и OTLP pipelines | [`otel-collector/values.yaml`](../argocd/platform/observability/otel-collector/values.yaml) |
-| Container logs, host и kubelet metrics | [`otel-agent/values.yaml`](../argocd/platform/observability/otel-agent/values.yaml) |
+| Kubelet metrics и Kubernetes metadata | [`otel-agent/values.yaml`](../argocd/platform/observability/otel-agent/values.yaml) |
 | Метрики: retention, PVC, resources | [`victoria-metrics/values.yaml`](../argocd/platform/observability/victoria-metrics/values.yaml) |
 | Логи: schema, PVC, resources | [`loki/values.yaml`](../argocd/platform/observability/loki/values.yaml) |
 | Трейсы: topology, PVC, resources | [`tempo/values.yaml`](../argocd/platform/observability/tempo/values.yaml) |
@@ -101,7 +103,7 @@ Applications синхронизируются в следующем порядк
 | `10` | `loki` | logs backend |
 | `10` | `tempo` | traces backend |
 | `20` | `otel-collector` | telemetry receiver, scraper и exporters |
-| `20` | `otel-agent` | node logs, host и kubelet telemetry |
+| `20` | `otel-agent` | node-local kubelet telemetry |
 | `25` | `grafana` | UI, datasources, dashboards и alerts |
 
 Sync waves задают порядок отправки Applications родительским приложением. Они
@@ -165,9 +167,9 @@ task ops:seed-runtime-secrets
 task ops:openbao-runtime-preflight
 ```
 
-Helper генерирует локально управляемые credentials, записывает переданный
-webhook URL и не перезаписывает существующие paths. Не копируйте значения в
-Git, Helm values, tfvars или Terraform state.
+Helper генерирует локально управляемые credentials и не перезаписывает
+существующие paths. Не копируйте значения в Git, Helm values, tfvars или
+Terraform state.
 
 Одна и та же OIDC-пара используется двумя декларативными consumers:
 
@@ -227,6 +229,12 @@ kubectl -n observability get events --sort-by=.lastTimestamp
 ```bash
 task ops:post-argocd-check
 ```
+
+Она проверяет не только `Synced/Healthy`, но и незавершённые/ошибочные Argo CD
+operations и hooks, readiness всех runtime Pods, свежесть последнего успешного
+Velero Backup и ошибки scrape/export в логах OpenTelemetry за последние две
+минуты. По умолчанию Backup должен быть не старше трёх часов; порог можно
+явно изменить через `POST_CHECK_MAX_BACKUP_AGE_HOURS`.
 
 ## Доступ к Grafana
 
@@ -335,7 +343,8 @@ Collector сейчас собирает:
 - четыре metrics service Kyverno;
 - opt-in services с `prometheus.io/scrape: "true"`;
 - cluster metrics, Kubernetes events и internal HTTP health checks;
-- host/kubelet metrics и container logs через OTel Agent DaemonSet.
+- kubelet metrics через OTel Agent DaemonSet; host metrics и container logs в
+  текущем baseline-профиле отключены.
 
 Чтобы добавить новый статический target, измените `scrape_configs` в
 [`otel-collector/values.yaml`](../argocd/platform/observability/otel-collector/values.yaml):
@@ -614,11 +623,12 @@ kubectl linstor storage-pool list
 
 ### Сбор Kubernetes stdout/stderr
 
-OTel Agent работает node-local и монтирует только необходимые host paths для
-container logs, host metrics и checkpoint. `includeCollectorLogs: false`
-предотвращает рекурсивный сбор собственных логов агента. При добавлении
-исключений, multiline parsing или redaction меняйте только agent values; не
-добавляйте host mounts к central gateway.
+В текущем baseline-профиле `logsCollection` и `hostMetrics` отключены: OTel
+Agent не получает hostPath mounts и не собирает Kubernetes stdout/stderr.
+Включение filelog/host metrics требует отдельного security review и явной
+политики для privileged/hostPath-доступа. При таком изменении меняйте только
+agent values, сохраняйте `includeCollectorLogs: false` для защиты от
+рекурсивного сбора и не добавляйте host mounts к central gateway.
 
 ### Переход к HA или object storage
 

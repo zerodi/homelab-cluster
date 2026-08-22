@@ -1,7 +1,15 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from homelabctl.cli import duration, parser
-from homelabctl.commands.operations import SECRET_CONTRACT
+from homelabctl.commands.operations import (
+    SECRET_CONTRACT,
+    application_operation_issues,
+    latest_completed_backup_age_hours,
+    pod_readiness_issues,
+    telemetry_log_error_count,
+)
 from homelabctl.environment import materialize_contract
 from homelabctl.project import ROOT
 from homelabctl.yamlutil import deep_merge
@@ -50,3 +58,64 @@ def test_materialized_contract_has_derived_hosts() -> None:
     assert result["platform"]["velero"]["s3_url"] == (
         "http://" + result["platform"]["garage"]["s3_service"]
     )
+
+
+def test_post_check_detects_incomplete_operation_and_crashloop() -> None:
+    applications = {
+        "items": [
+            {
+                "metadata": {"name": "stalwart"},
+                "status": {
+                    "operationState": {
+                        "phase": "Running",
+                        "message": "waiting for completion of hook",
+                    }
+                },
+            }
+        ]
+    }
+    pods = {
+        "items": [
+            {
+                "metadata": {"namespace": "stalwart", "name": "oidc-hook"},
+                "status": {
+                    "phase": "Running",
+                    "containerStatuses": [
+                        {
+                            "name": "configure",
+                            "ready": False,
+                            "state": {"waiting": {"reason": "CrashLoopBackOff"}},
+                        }
+                    ],
+                },
+            }
+        ]
+    }
+
+    assert application_operation_issues(applications, {"stalwart"}) == [
+        "stalwart: Running: waiting for completion of hook"
+    ]
+    assert pod_readiness_issues(pods, {"stalwart"}) == [
+        "stalwart/oidc-hook/configure: CrashLoopBackOff"
+    ]
+
+
+def test_post_check_requires_fresh_backup_and_clean_telemetry() -> None:
+    backups = {
+        "items": [
+            {
+                "metadata": {"name": "hourly"},
+                "status": {
+                    "phase": "Completed",
+                    "completionTimestamp": "2026-08-22T16:15:00Z",
+                },
+            }
+        ]
+    }
+    latest = latest_completed_backup_age_hours(
+        backups,
+        now=datetime(2026, 8, 22, 17, 15, tzinfo=UTC),
+    )
+
+    assert latest == ("hourly", 1.0)
+    assert telemetry_log_error_count("Failed to scrape Prometheus endpoint\nDropping data") == 2
