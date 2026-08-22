@@ -48,7 +48,7 @@ cp .env.example .env
 # заполните terraform.tfvars только несекретными значениями
 # версии OpenTofu, providers, Talos Linux, Kubernetes, charts и images меняйте в versions.yaml
 # заполните .env локальными credentials; Taskfile загружает его автоматически
-# обязательно задайте PLATFORM_ADMIN_PASSWORD для постоянного администратора
+# при необходимости задайте PLATFORM_ADMIN_PASSWORD; иначе helper сгенерирует его
 # оставьте в tracked homelab.override.yaml только environment-specific
 # non-secret отличия
 ```
@@ -455,14 +455,14 @@ task ops:seed-runtime-secrets
 - не перезаписывает существующие OpenBao paths
 - записывает предоставленный Cloudflare API token для DNS-01
 - записывает `PLATFORM_ADMIN_PASSWORD` из локального `.env` в
-  `platform/authentik/platform-admin`
+  `platform/authentik/platform-admin` или безопасно генерирует его при отсутствии
 - генерирует все локально управляемые credentials
 - создаёт согласованные `registry_password` и bcrypt `registry_htpasswd`
 - добавляет обязательный `platform/garage/runtime`
 - создаёт временные Woodpecker OAuth и Velero S3 credentials для завершения
   greenfield bootstrap
 
-`PLATFORM_ADMIN_PASSWORD` обязателен. Helper создаёт path только при его
+`CLOUDFLARE_API_TOKEN` обязателен. Helper создаёт каждый path только при его
 отсутствии и никогда не перезаписывает существующее значение. Для плановой
 ротации обновите OpenBao отдельной явной командой; простое изменение `.env` не
 ротирует уже созданный пароль.

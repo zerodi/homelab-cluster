@@ -8,3 +8,4 @@ resources:
   - gateway.yaml
   - redirect-httproute.yaml
   - httproute.yaml
+  - networkpolicy.yaml

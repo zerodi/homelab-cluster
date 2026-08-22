@@ -102,7 +102,7 @@ platform:
     credentials_secret_name: velero-credentials
     bucket: homelab-velero
     prefix: clusters/homelab-talos
-    region: us-east-1
+    region: garage
   garage:
     namespace: garage
     runtime_secret_name: garage-config
@@ -119,6 +119,10 @@ platform:
       admin_secret_name: grafana-admin-secret
     victoriametrics:
       retention: 30d
+    loki:
+      retention: 336h
+    tempo:
+      retention: 168h
 
 apps:
   echo:

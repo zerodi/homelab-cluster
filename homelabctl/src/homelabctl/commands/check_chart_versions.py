@@ -137,13 +137,18 @@ ARGO_CONSUMERS = (
         "loki",
     ),
     ArgoConsumer(
-        "tempo_distributed",
+        "tempo",
         "argocd/platform/observability/applications/tempo.yaml",
-        "tempo-distributed",
+        "tempo",
     ),
     ArgoConsumer(
         "opentelemetry_collector",
         "argocd/platform/observability/applications/otel-collector.yaml",
+        "opentelemetry-collector",
+    ),
+    ArgoConsumer(
+        "opentelemetry_collector",
+        "argocd/platform/observability/applications/otel-agent.yaml",
         "opentelemetry-collector",
     ),
     ArgoConsumer(

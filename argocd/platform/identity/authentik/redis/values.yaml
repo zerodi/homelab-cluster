@@ -1,4 +1,6 @@
 fullnameOverride: authentik-redis
+image:
+  digest: sha256:d8d9e0fa105b58f9504e26a8a4d6000ddcd45b1b909352c2734977cfa45aaeec
 architecture: standalone
 auth:
   enabled: true
@@ -26,3 +28,19 @@ master:
       drop:
         - ALL
     readOnlyRootFilesystem: false
+
+metrics:
+  enabled: true
+  image:
+    digest: sha256:c64b16ddf1d9ab4824a6e212c2292edabbaf79fd57c3820186ab6bcec460afa6
+  service:
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9121"
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 96Mi

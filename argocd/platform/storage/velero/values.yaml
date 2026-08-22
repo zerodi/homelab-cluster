@@ -43,9 +43,9 @@ configuration:
         name: velero-credentials
         key: cloud
       config:
-        region: us-east-1
+        region: garage
         s3ForcePathStyle: "true"
-        s3Url: "https://minio.lab.zerodi.ru"
+        s3Url: "http://garage-s3.garage.svc.cluster.local:3900"
   volumeSnapshotLocation: []
   uploaderType: kopia
   backupSyncPeriod: 1m

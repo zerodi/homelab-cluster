@@ -1,5 +1,8 @@
 fullnameOverride: grafana
 
+annotations:
+  secret.reloader.stakater.com/reload: grafana-admin-secret,grafana-oidc
+
 testFramework:
   enabled: false
 
@@ -35,6 +38,32 @@ resources:
   limits:
     cpu: "1"
     memory: 512Mi
+
+serviceAccount:
+  create: true
+  automountServiceAccountToken: false
+
+automountServiceAccountToken: false
+
+securityContext:
+  fsGroup: 472
+  runAsNonRoot: true
+  runAsUser: 472
+  runAsGroup: 472
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  privileged: false
+  capabilities:
+    drop:
+      - ALL
+  runAsNonRoot: true
+  runAsUser: 472
+  runAsGroup: 472
+  seccompProfile:
+    type: RuntimeDefault
 
 grafana.ini:
   server:
@@ -81,7 +110,7 @@ datasources:
         uid: tempo
         type: tempo
         access: proxy
-        url: http://tempo-gateway.observability.svc.cluster.local
+        url: http://tempo.observability.svc.cluster.local:3200
         jsonData:
           serviceMap:
             datasourceUid: victoriametrics
@@ -144,7 +173,7 @@ dashboards:
               "targets": [
                 {
                   "editorMode": "code",
-                  "expr": "max by (job) (up{job=~\"otel-collector-self|victoria-metrics|loki|tempo-distributor|tempo-query-frontend|velero|kyverno-admission-controller|kyverno-background-controller|kyverno-cleanup-controller|kyverno-reports-controller\"})",
+                  "expr": "max by (job) (up{job=~\"otel-collector-self|victoria-metrics|loki|tempo|grafana|velero|kyverno-admission-controller|kyverno-background-controller|kyverno-cleanup-controller|kyverno-reports-controller\"})",
                   "range": true,
                   "refId": "A"
                 }
@@ -859,7 +888,7 @@ alerting:
                     type: prometheus
                     uid: victoriametrics
                   editorMode: code
-                  expr: min by (job) (max_over_time(up{job=~"otel-collector-self|victoria-metrics|loki|tempo-distributor|tempo-query-frontend|hubble-metrics|velero|kyverno-admission-controller|kyverno-background-controller|kyverno-cleanup-controller|kyverno-reports-controller"}[5m]))
+                  expr: min by (job) (max_over_time(up{job=~"otel-collector-self|victoria-metrics|loki|tempo|grafana|hubble-metrics|velero|kyverno-admission-controller|kyverno-background-controller|kyverno-cleanup-controller|kyverno-reports-controller"}[5m]))
                   instant: true
                   intervalMs: 1000
                   maxDataPoints: 43200
@@ -1175,3 +1204,113 @@ alerting:
               summary: Kyverno observed new policy violations in the last 15 minutes.
             labels:
               severity: info
+          - uid: synthetic-endpoint-down
+            title: Synthetic Endpoint Down
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: victoriametrics
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: victoriametrics
+                  editorMode: code
+                  expr: min by (http_url) (max_over_time(httpcheck_status[5m]))
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  range: false
+                  refId: A
+              - refId: C
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 1
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: C
+                  type: classic_conditions
+            noDataState: Alerting
+            execErrState: Alerting
+            for: 5m
+            annotations:
+              summary: An internal platform health endpoint is unavailable.
+            labels:
+              severity: critical
+          - uid: otel-exporter-queue-saturation
+            title: OTel Exporter Queue Saturation
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: victoriametrics
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: victoriametrics
+                  editorMode: code
+                  expr: max by (exporter) (otelcol_exporter_queue_size / clamp_min(otelcol_exporter_queue_capacity, 1))
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  range: false
+                  refId: A
+              - refId: C
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 0.8
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: C
+                  type: classic_conditions
+            noDataState: NoData
+            execErrState: Alerting
+            for: 10m
+            annotations:
+              summary: An OpenTelemetry exporter queue is above 80 percent capacity.
+            labels:
+              severity: warning

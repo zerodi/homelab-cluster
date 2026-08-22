@@ -47,3 +47,6 @@ def test_materialized_contract_has_derived_hosts() -> None:
     assert result["platform"]["forgejo"]["sso"]["discovery_url"].endswith(
         "/.well-known/openid-configuration"
     )
+    assert result["platform"]["velero"]["s3_url"] == (
+        "http://" + result["platform"]["garage"]["s3_service"]
+    )

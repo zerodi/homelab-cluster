@@ -6,6 +6,7 @@ resources:
   - oidc-config-external-secret.yaml
   - postgresql-auth-external-secret.yaml
   - valkey-auth-external-secret.yaml
+  - trivy-redis-external-secret.yaml
   - certificate.yaml
   - gateway.yaml
   - redirect-httproute.yaml

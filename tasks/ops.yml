@@ -91,6 +91,18 @@ tasks:
         GARAGE_NODE_ID="{{.GARAGE_NODE_ID}}" \
         uv run --project homelabctl --locked homelabctl ops garage --kubeconfig "{{.KUBECONFIG_PATH}}" print-bootstrap
 
+  garage-velero-apply:
+    desc: Idempotently create the Garage bucket/key and store credentials in OpenBao
+    cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - test -n "${BAO_TOKEN:-}"
+      - |
+        GARAGE_NAMESPACE="{{.GARAGE_NAMESPACE}}" \
+        GARAGE_POD="{{.GARAGE_POD}}" \
+        GARAGE_BUCKET="{{.GARAGE_BUCKET}}" \
+        GARAGE_KEY_NAME="{{.GARAGE_KEY_NAME}}" \
+        uv run --project homelabctl --locked homelabctl ops garage --kubeconfig "{{.KUBECONFIG_PATH}}" bootstrap-velero
+
   hosts-entries:
     desc: Print all actual LoadBalancer IP/domain pairs for the client hosts file
     silent: true

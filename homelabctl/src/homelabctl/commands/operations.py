@@ -393,8 +393,8 @@ def random_value(
 def generated_secrets() -> dict[str, dict[str, Any]]:
     cloudflare = os.environ.get("CLOUDFLARE_API_TOKEN")
     admin = os.environ.get("PLATFORM_ADMIN_PASSWORD")
-    if not cloudflare or not admin:
-        raise CommandError("CLOUDFLARE_API_TOKEN and PLATFORM_ADMIN_PASSWORD are required")
+    if not cloudflare:
+        raise CommandError("CLOUDFLARE_API_TOKEN is required")
     b64 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._~!@#%^*-+="
     harbor_password = random_value(40)
     htpasswd = (
@@ -407,7 +407,7 @@ def generated_secrets() -> dict[str, dict[str, Any]]:
             "secret_key": random_value(64, b64),
             "bootstrap_password": random_value(40),
         },
-        "platform/authentik/platform-admin": {"password": admin},
+        "platform/authentik/platform-admin": {"password": admin or random_value(40, b64)},
         "platform/authentik/postgresql": {"password": random_value(40, b64)},
         "platform/authentik/redis": {"password": random_value(40, b64)},
         "platform/forgejo/admin": {"username": "forgejo", "password": random_value(40)},
@@ -737,6 +737,91 @@ def garage(kubeconfig: Path, action: str) -> int:
     capacity = os.environ.get("GARAGE_CAPACITY", "20G")
     bucket = os.environ.get("GARAGE_BUCKET", "homelab-velero")
     key = os.environ.get("GARAGE_KEY_NAME", "velero")
+    if action == "bootstrap-velero":
+        require("bao", "kubectl")
+        if not os.environ.get("BAO_TOKEN"):
+            raise CommandError("BAO_TOKEN is required for Garage/Velero bootstrap")
+
+        buckets = kubectl(
+            kubeconfig, "-n", namespace, "exec", pod, "--", "/garage", "bucket", "list"
+        ).stdout
+        if not re.search(rf"(?m)\s{re.escape(bucket)}(?:\s|$)", buckets):
+            kubectl(
+                kubeconfig,
+                "-n",
+                namespace,
+                "exec",
+                pod,
+                "--",
+                "/garage",
+                "bucket",
+                "create",
+                bucket,
+            )
+
+        keys = kubectl(
+            kubeconfig, "-n", namespace, "exec", pod, "--", "/garage", "key", "list"
+        ).stdout
+        if not re.search(rf"(?m)\s{re.escape(key)}(?:\s|$)", keys):
+            kubectl(
+                kubeconfig,
+                "-n",
+                namespace,
+                "exec",
+                pod,
+                "--",
+                "/garage",
+                "key",
+                "create",
+                key,
+            )
+
+        kubectl(
+            kubeconfig,
+            "-n",
+            namespace,
+            "exec",
+            pod,
+            "--",
+            "/garage",
+            "bucket",
+            "allow",
+            "--read",
+            "--write",
+            "--owner",
+            bucket,
+            "--key",
+            key,
+        )
+        key_info = kubectl(
+            kubeconfig,
+            "-n",
+            namespace,
+            "exec",
+            pod,
+            "--",
+            "/garage",
+            "key",
+            "info",
+            key,
+            "--show-secret",
+        ).stdout
+        access_match = re.search(r"(?mi)^(?:Key|Access key) ID:\s*(\S+)\s*$", key_info)
+        secret_match = re.search(r"(?mi)^Secret key:\s*(\S+)\s*$", key_info)
+        if not access_match or not secret_match:
+            raise CommandError("failed to parse Garage key credentials")
+        run(
+            [
+                "bao",
+                "kv",
+                "put",
+                "secret/platform/velero/s3",
+                f"access_key_id={access_match.group(1)}",
+                f"secret_access_key={secret_match.group(1)}",
+            ]
+        )
+        print(f"Garage bucket {bucket} and key {key} are ready; credentials stored in OpenBao.")
+        return 0
     for line in (
         f"kubectl -n {namespace} exec {pod} -- /garage layout assign -z {zone} -c {capacity} {node}",
         f"kubectl -n {namespace} exec {pod} -- /garage layout apply --version 1",
@@ -849,6 +934,7 @@ def post_argocd_check(kubeconfig: Path) -> int:
         "loki",
         "tempo",
         "otel-collector",
+        "otel-agent",
         "grafana",
         "velero-prereqs",
         "velero",
@@ -918,8 +1004,9 @@ def post_argocd_check(kubeconfig: Path) -> int:
         ("forgejo", "deployment", "forgejo"),
         ("harbor", "deployment", "harbor-core"),
         ("stalwart", "statefulset", "stalwart"),
-        ("woodpecker", "deployment", "woodpecker-server"),
+        ("woodpecker", "statefulset", "woodpecker-server"),
         ("garage", "statefulset", "garage"),
+        ("observability", "statefulset", "tempo"),
         ("velero", "deployment", "velero"),
     ):
         check(
@@ -931,6 +1018,111 @@ def post_argocd_check(kubeconfig: Path) -> int:
             f"{workload}/{name}",
             "--timeout=240s",
         )
+
+    bsl_phase = kubectl(
+        kubeconfig,
+        "-n",
+        "velero",
+        "get",
+        "backupstoragelocation",
+        "default",
+        "-o",
+        "jsonpath={.status.phase}",
+        check=False,
+    ).stdout.strip()
+    if bsl_phase == "Available":
+        print("PASS velero BackupStorageLocation/default Available")
+    else:
+        print("FAIL velero BackupStorageLocation/default Available")
+        failures.append("velero BSL Available")
+
+    backups_result = kubectl(kubeconfig, "-n", "velero", "get", "backup", "-o", "json", check=False)
+    completed_backup = False
+    if backups_result.returncode == 0:
+        completed_backup = any(
+            item.get("status", {}).get("phase") == "Completed"
+            for item in json.loads(backups_result.stdout).get("items", [])
+        )
+    if completed_backup:
+        print("PASS velero has a completed Backup")
+    else:
+        print("FAIL velero has a completed Backup")
+        failures.append("velero completed Backup")
+
+    garage_status = kubectl(
+        kubeconfig, "-n", "garage", "exec", "garage-0", "--", "/garage", "status", check=False
+    )
+    if garage_status.returncode == 0 and "NO ROLE ASSIGNED" not in garage_status.stdout:
+        print("PASS Garage layout assigned")
+    else:
+        print("FAIL Garage layout assigned")
+        failures.append("Garage layout")
+
+    oidc_config = kubectl(
+        kubeconfig,
+        "-n",
+        "argocd",
+        "get",
+        "configmap",
+        "argocd-cm",
+        "-o",
+        "jsonpath={.data.oidc\\.config}",
+        check=False,
+    ).stdout.strip()
+    if oidc_config:
+        print("PASS Argo CD OIDC configured")
+    else:
+        print("FAIL Argo CD OIDC configured")
+        failures.append("Argo CD OIDC")
+
+    rbac_policy = kubectl(
+        kubeconfig,
+        "-n",
+        "argocd",
+        "get",
+        "configmap",
+        "argocd-rbac-cm",
+        "-o",
+        "jsonpath={.data.policy\\.csv}",
+        check=False,
+    ).stdout.strip()
+    if rbac_policy:
+        print("PASS Argo CD RBAC policy configured")
+    else:
+        print("FAIL Argo CD RBAC policy configured")
+        failures.append("Argo CD RBAC")
+
+    policy_reports = kubectl(kubeconfig, "get", "policyreport", "-A", "-o", "json", check=False)
+    policy_failures = 0
+    if policy_reports.returncode == 0:
+        policy_failures = sum(
+            int(item.get("summary", {}).get("fail", 0))
+            for item in json.loads(policy_reports.stdout).get("items", [])
+        )
+    if policy_failures == 0:
+        print("PASS Kyverno PolicyReports have no failures")
+    else:
+        print(f"FAIL Kyverno PolicyReports have {policy_failures} failures")
+        failures.append("Kyverno PolicyReports")
+
+    expected_revision = os.environ.get("EXPECTED_GITOPS_REVISION", "").strip()
+    if expected_revision:
+        live_revision = kubectl(
+            kubeconfig,
+            "-n",
+            "argocd",
+            "get",
+            "application",
+            root,
+            "-o",
+            "jsonpath={.status.sync.revision}",
+            check=False,
+        ).stdout.strip()
+        if live_revision == expected_revision:
+            print(f"PASS GitOps revision {expected_revision}")
+        else:
+            print("FAIL GitOps revision does not match EXPECTED_GITOPS_REVISION")
+            failures.append("GitOps revision")
     if failures:
         raise CommandError("post-Argo CD checks failed: " + ", ".join(failures))
     print("PASS post-deploy checks completed")

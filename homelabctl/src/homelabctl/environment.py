@@ -165,7 +165,8 @@ def materialize_contract(raw_contract: dict[str, Any]) -> dict[str, Any]:
     woodpecker["host"] = hosts["woodpecker"]
     woodpecker["forgejo_url"] = forgejo_url
 
-    contract["platform"]["velero"]["s3_url"] = f"https://{hosts['minio']}"
+    garage_s3_service = contract["platform"]["garage"]["s3_service"]
+    contract["platform"]["velero"]["s3_url"] = f"http://{garage_s3_service}"
     contract["platform"]["observability"]["grafana"]["root_url"] = f"https://{hosts['grafana']}/"
     contract["apps"]["echo"]["host"] = hosts["echo"]
 

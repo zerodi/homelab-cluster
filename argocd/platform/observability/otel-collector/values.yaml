@@ -2,6 +2,18 @@ fullnameOverride: otel-collector
 mode: deployment
 replicaCount: 1
 
+presets:
+  kubernetesAttributes:
+    enabled: true
+    extractAllPodLabels: false
+    extractAllPodAnnotations: false
+  clusterMetrics:
+    enabled: true
+  kubernetesEvents:
+    enabled: true
+  resourceDetection:
+    enabled: true
+
 image:
   repository: otel/opentelemetry-collector-contrib
 
@@ -17,6 +29,15 @@ clusterRole:
         - pods
         - services
         - endpoints
+        - namespaces
+      verbs:
+        - get
+        - list
+        - watch
+    - apiGroups:
+        - discovery.k8s.io
+      resources:
+        - endpointslices
       verbs:
         - get
         - list
@@ -84,18 +105,18 @@ config:
             static_configs:
               - targets:
                   - loki.observability.svc.cluster.local:3100
-          - job_name: tempo-distributor
+          - job_name: tempo
             scrape_interval: 30s
             metrics_path: /metrics
             static_configs:
               - targets:
-                  - tempo-distributor.observability.svc.cluster.local:3200
-          - job_name: tempo-query-frontend
+                  - tempo.observability.svc.cluster.local:3200
+          - job_name: grafana
             scrape_interval: 30s
             metrics_path: /metrics
             static_configs:
               - targets:
-                  - tempo-query-frontend.observability.svc.cluster.local:3200
+                  - grafana.observability.svc.cluster.local:3000
           - job_name: hubble-metrics
             scrape_interval: 30s
             metrics_path: /metrics
@@ -154,6 +175,46 @@ config:
             static_configs:
               - targets:
                   - kyverno-reports-controller-metrics.kyverno.svc.cluster.local:8000
+          - job_name: kubernetes-annotated-services
+            scrape_interval: 30s
+            kubernetes_sd_configs:
+              - role: endpointslice
+            relabel_configs:
+              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+                action: keep
+                regex: "true"
+              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+                action: replace
+                target_label: __scheme__
+                regex: (https?)
+              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+                action: replace
+                target_label: __metrics_path__
+                regex: (.+)
+              - source_labels:
+                  - __address__
+                  - __meta_kubernetes_service_annotation_prometheus_io_port
+                action: replace
+                target_label: __address__
+                regex: (.+?)(?::\d+)?;(\d+)
+                replacement: $1:$2
+              - source_labels: [__meta_kubernetes_namespace]
+                target_label: namespace
+              - source_labels: [__meta_kubernetes_service_name]
+                target_label: service
+              - source_labels: [__meta_kubernetes_service_name]
+                target_label: job
+    httpcheck/platform:
+      collection_interval: 30s
+      targets:
+        - endpoint: http://grafana.observability.svc.cluster.local:3000/api/health
+          method: GET
+        - endpoint: http://victoria-metrics.observability.svc.cluster.local:8428/health
+          method: GET
+        - endpoint: http://loki.observability.svc.cluster.local:3100/ready
+          method: GET
+        - endpoint: http://tempo.observability.svc.cluster.local:3200/ready
+          method: GET
   processors:
     memory_limiter:
       check_interval: 5s
@@ -163,12 +224,36 @@ config:
   exporters:
     prometheusremotewrite:
       endpoint: http://victoria-metrics.observability.svc.cluster.local:8428/api/v1/write
+      sending_queue:
+        enabled: true
+        queue_size: 2000
+      retry_on_failure:
+        enabled: true
+        initial_interval: 5s
+        max_interval: 30s
+        max_elapsed_time: 10m
     otlp/tempo:
-      endpoint: tempo-gateway.observability.svc.cluster.local:4317
+      endpoint: tempo.observability.svc.cluster.local:4317
       tls:
         insecure: true
+      sending_queue:
+        enabled: true
+        queue_size: 2000
+      retry_on_failure:
+        enabled: true
+        initial_interval: 5s
+        max_interval: 30s
+        max_elapsed_time: 10m
     otlphttp/loki:
       endpoint: http://loki.observability.svc.cluster.local:3100/otlp
+      sending_queue:
+        enabled: true
+        queue_size: 2000
+      retry_on_failure:
+        enabled: true
+        initial_interval: 5s
+        max_interval: 30s
+        max_elapsed_time: 10m
   extensions:
     health_check:
       endpoint: ${env:MY_POD_IP}:13133
@@ -180,6 +265,8 @@ config:
         receivers:
           - otlp
           - prometheus
+          - httpcheck/platform
+          - k8s_cluster
         processors:
           - memory_limiter
           - batch
@@ -196,8 +283,28 @@ config:
       logs:
         receivers:
           - otlp
+          - k8sobjects
         processors:
           - memory_limiter
           - batch
         exporters:
           - otlphttp/loki
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+
+networkPolicy:
+  enabled: false

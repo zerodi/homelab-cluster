@@ -48,10 +48,9 @@ identity:
 - day-0 Terraform credentials
 - release/tool/container versions — они находятся в [`versions.yaml`](../versions.yaml)
 
-Пароль `administrator` не является частью environment contract. Он
-задаётся локально в root `.env` как `PLATFORM_ADMIN_PASSWORD`, а helper
-записывает его в OpenBao. `.env` не коммитится и служит только day-0 входом;
-после seed источником истины для runtime-пароля остаётся OpenBao.
+Пароль `administrator` не является частью environment contract. Его можно
+задать локально в root `.env` как `PLATFORM_ADMIN_PASSWORD`; при отсутствии
+helper генерирует пароль. После seed источником истины остаётся OpenBao.
 
 ## Изменение contract
 

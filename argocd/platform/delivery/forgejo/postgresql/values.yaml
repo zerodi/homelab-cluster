@@ -1,4 +1,6 @@
 fullnameOverride: forgejo-postgresql
+image:
+  digest: sha256:03a2fc05c3b71a6fcc2e49c3f55f79767ca3bf32e6aa9b5dddc7901e02ffb923
 
 auth:
   enablePostgresUser: false
@@ -39,4 +41,17 @@ primary:
       type: RuntimeDefault
 
 metrics:
-  enabled: false
+  enabled: true
+  image:
+    digest: sha256:b672b54e6dbb277d098182cf9708aaaea3b7f2bc2d4f1917c5fb34ffcaa19e05
+  service:
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9187"
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

@@ -65,4 +65,5 @@ task infra:init -- -backend=false
 - [Runtime/GitOps слой](argocd/README.md)
 - [Cloudflare DNS-01 и Cilium Gateway](docs/cloudflare-dns01.md)
 - [Единая авторизация приложений платформы](docs/platform-authentication.md)
+- [Observability: архитектура, настройка и эксплуатация](docs/observability.md)
 - [Настройка и эксплуатация](docs/README.md)

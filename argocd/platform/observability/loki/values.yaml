@@ -18,6 +18,17 @@ loki:
   limits_config:
     allow_structured_metadata: true
     volume_enabled: true
+    retention_period: 336h
+    ingestion_rate_mb: 4
+    ingestion_burst_size_mb: 8
+    max_query_lookback: 336h
+  compactor:
+    working_directory: /var/loki/compactor
+    compaction_interval: 10m
+    retention_enabled: true
+    retention_delete_delay: 2h
+    retention_delete_worker_count: 50
+    delete_request_store: filesystem
 
 singleBinary:
   replicas: 1

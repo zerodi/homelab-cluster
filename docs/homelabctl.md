@@ -20,9 +20,12 @@ Flox предоставляет Python, uv и внешние platform CLI. Pytho
 
 ```bash
 flox activate
-uv sync --project homelabctl --locked
 task check:validate
 ```
+
+При первой активации Flox hook автоматически создаёт `homelabctl/.venv` и
+устанавливает зависимости через `uv sync --locked`. Если окружение уже создано,
+повторная активация не запускает синхронизацию.
 
 Прямой вызов `uv run --project homelabctl --locked homelabctl ...` предназначен
 для разработки и диагностики. Операторские runbook должны использовать

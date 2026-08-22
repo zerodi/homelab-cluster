@@ -62,8 +62,8 @@ charts:
   redis: "27.0.18"
   # renovate: datasource=helm depName=reloader registryUrl=https://stakater.github.io/stakater-charts versioning=helm
   reloader: "2.2.14"
-  # renovate: datasource=helm depName=tempo-distributed registryUrl=https://grafana-community.github.io/helm-charts versioning=helm
-  tempo_distributed: "3.0.6"
+  # renovate: datasource=helm depName=tempo registryUrl=https://grafana-community.github.io/helm-charts versioning=helm
+  tempo: "2.2.4"
   # renovate: datasource=docker depName=registry-1.docker.io/bitnamicharts/valkey versioning=semver-coerced
   valkey: "6.2.5"
   # renovate: datasource=helm depName=velero registryUrl=https://vmware-tanzu.github.io/helm-charts versioning=helm
@@ -82,7 +82,7 @@ images:
   # renovate: datasource=docker depName=dxflrs/garage versioning=semver-coerced
   garage: "v2.1.0"
   # renovate: datasource=docker depName=bitnami/kubectl versioning=docker
-  kubectl: "latest"
+  kubectl: "latest@sha256:c12989b8ecaecbd9d9a49828bfdb727ef222a6747a8984701e2a3cdf9c1cb168"
   # renovate: datasource=docker depName=ghcr.io/stalwartlabs/cli versioning=semver-coerced
   stalwart_cli: "1.0.12"
   # renovate: datasource=docker depName=stalwartlabs/stalwart versioning=semver-coerced

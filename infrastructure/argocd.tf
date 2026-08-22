@@ -29,18 +29,19 @@ resource "helm_release" "argocd" {
       }
       rbac = {
         scopes           = "[groups]"
-        "policy.default" = "role:readonly"
-        "policy.csv"     = "g, ${local.effective_platform_admin_group}, role:admin\n"
+        "policy.default" = "role:authenticated"
+        "policy.csv" = join("\n", [
+          "p, role:authenticated, projects, get, platform, allow",
+          "p, role:authenticated, projects, get, apps, allow",
+          "p, role:authenticated, applications, get, platform/*, allow",
+          "p, role:authenticated, applications, get, apps/*, allow",
+          "g, ${local.effective_platform_admin_group}, role:admin",
+          "",
+        ])
       }
       params = {
-        "controller.diff.server.side"                    = "true"
-        "server.insecure"                                = "true"
-        "server.repo.server.plaintext"                   = "true"
-        "server.dex.server.plaintext"                    = "true"
-        "controller.repo.server.plaintext"               = "true"
-        "applicationsetcontroller.repo.server.plaintext" = "true"
-        "reposerver.disable.tls"                         = "true"
-        "dexserver.disable.tls"                          = "true"
+        "controller.diff.server.side" = "true"
+        "server.insecure"             = "true"
       }
     }
     controller = {

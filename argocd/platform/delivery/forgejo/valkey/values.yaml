@@ -1,4 +1,6 @@
 fullnameOverride: forgejo-valkey
+image:
+  digest: sha256:ea5af77c315c6c005d99b60650a0331c5ea61ba4f0418d6cc3bb999d8f09896a
 
 architecture: standalone
 
@@ -36,4 +38,17 @@ primary:
       type: RuntimeDefault
 
 metrics:
-  enabled: false
+  enabled: true
+  image:
+    digest: sha256:c64b16ddf1d9ab4824a6e212c2292edabbaf79fd57c3820186ab6bcec460afa6
+  service:
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9121"
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 96Mi

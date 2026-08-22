@@ -1,37 +1,29 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: harbor
+  name: otel-agent
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "20"
 spec:
   project: platform
   sources:
-    - repoURL: https://helm.goharbor.io
-      chart: harbor
-      targetRevision: "1.19.2"
+    - repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+      chart: opentelemetry-collector
+      targetRevision: "0.166.0"
       helm:
-        releaseName: harbor
+        releaseName: otel-agent
         valueFiles:
-          - $values/platform/delivery/harbor/values.yaml
+          - $values/platform/observability/otel-agent/values.yaml
     - repoURL: https://git.lab.zerodi.ru/platform/gitops.git
       targetRevision: main
       ref: values
   destination:
     server: https://kubernetes.default.svc
-    namespace: harbor
-  ignoreDifferences:
-    - group: ""
-      kind: Secret
-      name: harbor-trivy
-      namespace: harbor
-      jsonPointers:
-        - /data
+    namespace: observability
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - RespectIgnoreDifferences=true

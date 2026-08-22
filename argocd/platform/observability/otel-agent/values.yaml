@@ -1,0 +1,124 @@
+fullnameOverride: otel-agent
+mode: daemonset
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+
+command:
+  name: otelcol-contrib
+
+presets:
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
+    storeCheckpoints: true
+    maxRecombineLogSize: 102400
+  hostMetrics:
+    enabled: true
+  kubernetesAttributes:
+    enabled: true
+    extractAllPodLabels: false
+    extractAllPodAnnotations: false
+  kubeletMetrics:
+    enabled: true
+  resourceDetection:
+    enabled: true
+
+ports:
+  otlp:
+    enabled: false
+  otlp-http:
+    enabled: false
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+  metrics:
+    enabled: true
+    containerPort: 8888
+    servicePort: 8888
+    protocol: TCP
+
+service:
+  enabled: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+alternateConfig:
+  exporters:
+    otlp:
+      endpoint: otel-collector.observability.svc.cluster.local:4317
+      tls:
+        insecure: true
+      sending_queue:
+        enabled: true
+        storage: file_storage
+        queue_size: 2000
+      retry_on_failure:
+        enabled: true
+        initial_interval: 5s
+        max_interval: 30s
+        max_elapsed_time: 10m
+  extensions:
+    health_check:
+      endpoint: ${env:MY_POD_IP}:13133
+  processors:
+    memory_limiter:
+      check_interval: 5s
+      limit_percentage: 80
+      spike_limit_percentage: 25
+    batch: {}
+  service:
+    extensions:
+      - health_check
+      - file_storage
+    pipelines:
+      logs:
+        receivers:
+          - filelog
+        processors:
+          - memory_limiter
+          - k8sattributes
+          - resourcedetection/env
+          - batch
+        exporters:
+          - otlp
+      metrics:
+        receivers:
+          - hostmetrics
+          - kubeletstats
+        processors:
+          - memory_limiter
+          - k8sattributes
+          - resourcedetection/env
+          - batch
+        exporters:
+          - otlp
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+rollout:
+  rollingUpdate:
+    maxUnavailable: 1
+  strategy: RollingUpdate
+
+networkPolicy:
+  enabled: false

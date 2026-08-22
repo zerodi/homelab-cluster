@@ -122,25 +122,13 @@ registry:
 
 trivy:
   enabled: true
-  extraEnvVars:
-    - name: SCANNER_REDIS_URL
-      valueFrom:
-        secretKeyRef:
-          name: harbor-valkey-auth
-          key: REDIS_URL_TRIVY
-    - name: SCANNER_STORE_REDIS_URL
-      valueFrom:
-        secretKeyRef:
-          name: harbor-valkey-auth
-          key: REDIS_URL_TRIVY
-    - name: SCANNER_JOB_QUEUE_REDIS_URL
-      valueFrom:
-        secretKeyRef:
-          name: harbor-valkey-auth
-          key: REDIS_URL_TRIVY
+  podAnnotations:
+    secret.reloader.stakater.com/reload: harbor-trivy
 
 metrics:
-  enabled: false
+  enabled: true
+  serviceMonitor:
+    enabled: false
 
 exporter:
   extraEnvVars:

@@ -413,6 +413,8 @@ class Validator:
         ):
             yaml = YAML()
             yaml.preserve_quotes = True
+            yaml.indent(mapping=2, sequence=4, offset=2)
+            yaml.width = 4096
             document = yaml.load(path)
             for parts, value in updates.items():
                 current = document
@@ -533,6 +535,26 @@ class Validator:
             if self.errors:
                 return self.report_errors()
             self.sync_text_mirrors(env)
+            self.queue_yaml_update(
+                self.root / "argocd/platform/observability/victoria-metrics/values.yaml",
+                ("server", "retentionPeriod"),
+                env["platform"]["observability"]["victoriametrics"]["retention"],
+            )
+            self.queue_yaml_update(
+                self.root / "argocd/platform/observability/loki/values.yaml",
+                ("loki", "limits_config", "retention_period"),
+                env["platform"]["observability"]["loki"]["retention"],
+            )
+            self.queue_yaml_update(
+                self.root / "argocd/platform/observability/tempo/values.yaml",
+                ("tempo", "retention"),
+                env["platform"]["observability"]["tempo"]["retention"],
+            )
+            self.queue_yaml_update(
+                self.root / "argocd/platform/observability/tempo/values.yaml",
+                ("tempo", "metricsGenerator", "registry", "external_labels", "cluster"),
+                env["cluster"]["name"],
+            )
 
         for path in sorted(self.root.glob("argocd/**/*.[Yy][Aa][Mm][Ll]")):
             relpath = path.relative_to(self.root)
@@ -732,6 +754,18 @@ class Validator:
             ("argocd/platform/delivery/forgejo/values.yaml", ("persistence", "storageClass")),
             (
                 "argocd/platform/observability/grafana/values.yaml",
+                ("persistence", "storageClassName"),
+            ),
+            (
+                "argocd/platform/observability/victoria-metrics/values.yaml",
+                ("server", "persistentVolume", "storageClassName"),
+            ),
+            (
+                "argocd/platform/observability/loki/values.yaml",
+                ("singleBinary", "persistence", "storageClass"),
+            ),
+            (
+                "argocd/platform/observability/tempo/values.yaml",
                 ("persistence", "storageClassName"),
             ),
         ]:
@@ -1189,6 +1223,38 @@ class Validator:
             "argocd/platform/observability/grafana/values.yaml",
             "admin",
             "existingSecret",
+        )
+        self.expect_equal(
+            "VictoriaMetrics retention",
+            env["platform"]["observability"]["victoriametrics"]["retention"],
+            "argocd/platform/observability/victoria-metrics/values.yaml",
+            "server",
+            "retentionPeriod",
+        )
+        self.expect_equal(
+            "Loki retention",
+            env["platform"]["observability"]["loki"]["retention"],
+            "argocd/platform/observability/loki/values.yaml",
+            "loki",
+            "limits_config",
+            "retention_period",
+        )
+        self.expect_equal(
+            "Tempo retention",
+            env["platform"]["observability"]["tempo"]["retention"],
+            "argocd/platform/observability/tempo/values.yaml",
+            "tempo",
+            "retention",
+        )
+        self.expect_equal(
+            "Tempo metrics cluster label",
+            env["cluster"]["name"],
+            "argocd/platform/observability/tempo/values.yaml",
+            "tempo",
+            "metricsGenerator",
+            "registry",
+            "external_labels",
+            "cluster",
         )
         self.expect_equal(
             "grafana root url",

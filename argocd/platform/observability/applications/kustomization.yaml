@@ -7,4 +7,5 @@ resources:
   - loki.yaml
   - tempo.yaml
   - otel-collector.yaml
+  - otel-agent.yaml
   - grafana.yaml

@@ -1,111 +1,79 @@
 fullnameOverride: tempo
-
-reportingEnabled: false
-multitenancyEnabled: false
+replicas: 1
 
 tempo:
-  structuredConfig:
-    usage_report:
-      reporting_enabled: false
-
-gateway:
-  enabled: true
-  replicas: 1
-  podDisruptionBudget:
-    enabled: false
+  reportingEnabled: false
+  multitenancyEnabled: false
+  retention: 168h
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 300m
+      memory: 768Mi
     limits:
-      cpu: 500m
-      memory: 512Mi
-
-distributor:
-  replicas: 1
-  podDisruptionBudget:
-    enabled: false
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
-
-ingester:
-  replicas: 1
-  podDisruptionBudget:
-    enabled: false
-  persistence:
+      cpu: "2"
+      memory: 2Gi
+  metricsGenerator:
     enabled: true
-    storageClass: linstor-pool1-r1
-    size: 20Gi
-  config:
-    replication_factor: 1
-  resources:
-    requests:
-      cpu: 200m
-      memory: 512Mi
-    limits:
-      cpu: "1"
-      memory: 1Gi
+    remoteWriteUrl: http://victoria-metrics.observability.svc.cluster.local:8428/api/v1/write
+    processor:
+      service_graphs: {}
+      span_metrics:
+        enable_target_info: true
+    registry:
+      collection_interval: 30s
+      external_labels:
+        cluster: homelab-talos
+    storage:
+      path: /var/tempo/metrics
+    traces_storage:
+      path: /var/tempo/generator-wal
+  overrides:
+    defaults:
+      metrics_generator:
+        processors:
+          - service-graphs
+          - span-metrics
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
 
-querier:
-  replicas: 1
-  podDisruptionBudget:
-    enabled: false
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
+securityContext:
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
 
-queryFrontend:
-  replicas: 1
-  podDisruptionBudget:
-    enabled: false
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
+serviceAccount:
+  create: true
+  automountServiceAccountToken: false
 
-compactor:
-  replicas: 1
-  podDisruptionBudget:
-    enabled: false
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
+persistence:
+  enabled: true
+  storageClassName: linstor-pool1-r1
+  accessModes:
+    - ReadWriteOnce
+  size: 20Gi
 
-metricsGenerator:
+networkPolicy:
   enabled: false
-
-memcached:
-  enabled: false
-
-traces:
-  otlp:
-    grpc:
-      enabled: true
-      port: 4317
-    http:
-      enabled: true
-      port: 4318
-
-storage:
-  trace:
-    backend: local
-    local:
-      path: /var/tempo/traces
-    wal:
-      path: /var/tempo/wal

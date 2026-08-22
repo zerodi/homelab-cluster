@@ -39,6 +39,7 @@ cluster/ -> infrastructure/ -> OpenBao init/unseal -> GitOps bootstrap
 - [Версии компонентов](chart-versions.md)
 - [Backup и restore](backup-restore.md)
 - [Garage и Velero](garage-velero.md)
+- [Observability: архитектура, настройка и эксплуатация](observability.md)
 - [Stalwart Mail Server](stalwart.md)
 - [Kyverno policies](kyverno-policies.md)
 

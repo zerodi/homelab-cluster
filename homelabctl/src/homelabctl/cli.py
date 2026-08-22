@@ -126,7 +126,10 @@ def parser() -> argparse.ArgumentParser:
     creds.add_argument("--kubeconfig", required=True)
     creds.add_argument("--contract", required=True)
     garage = ops.add_parser("garage")
-    garage.add_argument("action", choices=("status", "detect-node-id", "print-bootstrap"))
+    garage.add_argument(
+        "action",
+        choices=("status", "detect-node-id", "print-bootstrap", "bootstrap-velero"),
+    )
     garage.add_argument("--kubeconfig", required=True)
     post = ops.add_parser("post-check")
     post.add_argument("--kubeconfig", required=True)
