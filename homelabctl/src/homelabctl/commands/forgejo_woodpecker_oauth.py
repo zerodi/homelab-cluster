@@ -108,13 +108,22 @@ def parse_page(body: str) -> PageParser:
     return parser
 
 
-def csrf_token(body: str) -> str:
+def csrf_token(body: str, *, required: bool = True) -> str | None:
     for field in parse_page(body).inputs:
         if field.get("name") == "_csrf":
             value = field.get("value") or field.get("content")
             if value:
                 return value
-    raise RuntimeError("Forgejo page did not contain a CSRF token")
+    if required:
+        raise RuntimeError("Forgejo page did not contain a CSRF token")
+    return None
+
+
+def add_optional_csrf(fields: dict[str, str], body: str) -> dict[str, str]:
+    token = csrf_token(body, required=False)
+    if token:
+        fields["_csrf"] = token
+    return fields
 
 
 def oauth_application_id(body: str, expected_name: str) -> str | None:
@@ -194,14 +203,11 @@ class ForgejoSession:
 
 def authenticate(session: ForgejoSession, username: str, password: str) -> str:
     _, login_page = session.request("/user/login")
-    session.request(
-        "/user/login",
-        {
-            "_csrf": csrf_token(login_page),
-            "user_name": username,
-            "password": password,
-        },
+    fields = add_optional_csrf(
+        {"user_name": username, "password": password},
+        login_page,
     )
+    session.request("/user/login", fields)
     final_url, applications = session.request(ADMIN_APPLICATIONS_PATH)
     if "/user/login" in final_url:
         raise RuntimeError("Forgejo administrator authentication failed")
@@ -230,17 +236,19 @@ def create_or_rotate_application(
         _, detail = session.request(path)
         _, result = session.request(
             f"{path}/regenerate_secret",
-            {"_csrf": csrf_token(detail)},
+            add_optional_csrf({}, detail),
         )
     else:
         _, result = session.request(
             f"{ADMIN_APPLICATIONS_PATH}/oauth2",
-            {
-                "_csrf": csrf_token(applications_page),
-                "application_name": APPLICATION_NAME,
-                "redirect_uris": callback_url,
-                "confidential_client": "on",
-            },
+            add_optional_csrf(
+                {
+                    "application_name": APPLICATION_NAME,
+                    "redirect_uris": callback_url,
+                    "confidential_client": "on",
+                },
+                applications_page,
+            ),
         )
 
     client_id = credential_from_page(result, "client_id")
@@ -319,14 +327,14 @@ def reconcile_woodpecker(
     else:
         raise RuntimeError("ESO did not materialize the new Woodpecker credentials")
 
-    kubectl(args, "-n", namespace, "rollout", "restart", "deployment/woodpecker-server")
+    kubectl(args, "-n", namespace, "rollout", "restart", "statefulset/woodpecker-server")
     kubectl(
         args,
         "-n",
         namespace,
         "rollout",
         "status",
-        "deployment/woodpecker-server",
+        "statefulset/woodpecker-server",
         "--timeout=10m",
     )
 
@@ -344,6 +352,10 @@ def self_test() -> int:
     failures: list[str] = []
     if csrf_token(sample) != "csrf-value":
         failures.append("CSRF token parser")
+    if csrf_token("<form></form>", required=False) is not None:
+        failures.append("optional CSRF token parser")
+    if add_optional_csrf({"field": "value"}, "<form></form>") != {"field": "value"}:
+        failures.append("optional CSRF field handling")
     if oauth_application_id(sample, APPLICATION_NAME) != "42":
         failures.append("system-wide application parser")
     if credential_from_page(sample, "client_id") != "client-value":
