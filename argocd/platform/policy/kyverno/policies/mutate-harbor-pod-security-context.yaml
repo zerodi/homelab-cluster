@@ -1,0 +1,25 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: mutate-harbor-pod-security-context
+  annotations:
+    policies.kyverno.io/title: Default Harbor pod seccomp
+    policies.kyverno.io/category: Security
+    policies.kyverno.io/severity: medium
+spec:
+  background: false
+  rules:
+    - name: default-runtime-seccomp
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - harbor
+      mutate:
+        patchStrategicMerge:
+          spec:
+            securityContext:
+              seccompProfile:
+                type: RuntimeDefault

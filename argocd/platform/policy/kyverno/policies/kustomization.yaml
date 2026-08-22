@@ -6,3 +6,4 @@ resources:
   - require-basic-security-context.yaml
   - disallow-privileged-containers.yaml
   - disallow-hostpath-volumes.yaml
+  - mutate-harbor-pod-security-context.yaml
