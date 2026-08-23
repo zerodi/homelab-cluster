@@ -44,6 +44,9 @@ Loki, Tempo и Collector доступны через ClusterIP только вн
 
 - Collector gateway работает как singleton `Deployment`, а node agents — как
   непривилегированный `DaemonSet` с kubelet telemetry на каждом узле;
+- kubelet receiver использует service-account authentication, но отключает
+  проверку serving certificate hostname: Talos kubelet certificates не имеют
+  IP SAN, а receiver подключается к node IP из Downward API;
 - VictoriaMetrics и Loki работают в single-node режиме;
 - Tempo работает в monolithic режиме с LINSTOR PVC и retention `168h`;
 - host metrics и container logs не собираются: требующие hostPath presets

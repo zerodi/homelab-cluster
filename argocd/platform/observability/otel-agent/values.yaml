@@ -55,6 +55,11 @@ resources:
     memory: 512Mi
 
 alternateConfig:
+  receivers:
+    kubeletstats:
+      # Talos kubelet serving certificates do not include node IP SANs. The
+      # receiver still authenticates with its service-account bearer token.
+      insecure_skip_verify: true
   exporters:
     otlp:
       endpoint: otel-collector.observability.svc.cluster.local:4317

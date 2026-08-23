@@ -116,7 +116,7 @@ config:
             metrics_path: /metrics
             static_configs:
               - targets:
-                  - grafana.observability.svc.cluster.local:3000
+                  - grafana.observability.svc.cluster.local:80
           - job_name: hubble-metrics
             scrape_interval: 30s
             metrics_path: /metrics
@@ -207,7 +207,7 @@ config:
     httpcheck/platform:
       collection_interval: 30s
       targets:
-        - endpoint: http://grafana.observability.svc.cluster.local:3000/api/health
+        - endpoint: http://grafana.observability.svc.cluster.local:80/api/health
           method: GET
         - endpoint: http://victoria-metrics.observability.svc.cluster.local:8428/health
           method: GET
