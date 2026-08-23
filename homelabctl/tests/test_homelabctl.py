@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 
 from homelabctl.cli import duration, parser
+from homelabctl.commands.check_tfvars_example import required_variables, variable_defaults
 from homelabctl.commands.operations import (
     SECRET_CONTRACT,
     application_operation_issues,
@@ -10,6 +12,7 @@ from homelabctl.commands.operations import (
     pod_readiness_issues,
     telemetry_log_error_count,
 )
+from homelabctl.commands.validate_env_contract import render_stalwart_identity_plan
 from homelabctl.environment import materialize_contract
 from homelabctl.project import ROOT
 from homelabctl.yamlutil import deep_merge
@@ -58,6 +61,37 @@ def test_materialized_contract_has_derived_hosts() -> None:
     assert result["platform"]["velero"]["s3_url"] == (
         "http://" + result["platform"]["garage"]["s3_service"]
     )
+
+
+def test_tfvars_example_requires_only_variables_without_defaults() -> None:
+    declarations = variable_defaults(
+        'variable "required" {\n  type = string\n}\n'
+        'variable "optional" {\n  type = string\n  default = null\n}\n'
+    )
+
+    assert declarations == {"required": False, "optional": True}
+    assert required_variables("infrastructure") == set()
+    assert required_variables("cluster") == {
+        "controlplane_node_defaults",
+        "controlplane_nodes",
+        "proxmox",
+        "talos_schematic_id",
+        "worker_node_defaults",
+        "worker_nodes",
+    }
+
+
+def test_stalwart_oidc_scopes_render_as_registry_map() -> None:
+    from homelabctl.yamlutil import load
+
+    env = materialize_contract(load(ROOT / "envs/homelab.yaml"))
+    operations = [json.loads(line) for line in render_stalwart_identity_plan(env).splitlines()]
+    directory = next(item for item in operations if item["object"] == "Directory")
+
+    assert directory["value"]["authentik"]["requireScopes"] == {
+        "openid": True,
+        "email": True,
+    }
 
 
 def test_post_check_detects_incomplete_operation_and_crashloop() -> None:

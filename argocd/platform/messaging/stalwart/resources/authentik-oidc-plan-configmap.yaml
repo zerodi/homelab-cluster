@@ -8,6 +8,6 @@ data:
   plan.ndjson: |
     {"@type":"upsert","object":"Domain","matchOn":["name"],"value":{"platform-identity-domain":{"name":"lab.zerodi.ru","description":"Platform identity domain"}}}
     {"@type":"upsert","object":"Account","matchOn":["name"],"value":{"platform-administrator":{"@type":"User","name":"administrator","domainId":"#platform-identity-domain","credentials":{},"memberGroupIds":{},"roles":{"@type":"Admin"},"permissions":{"@type":"Inherit"},"quotas":{},"aliases":{},"description":"Администратор","encryptionAtRest":{"@type":"Disabled"}}}}
-    {"@type":"upsert","object":"Directory","matchOn":["description"],"value":{"authentik":{"@type":"Oidc","description":"Authentik","issuerUrl":"https://auth.lab.zerodi.ru/application/o/stalwart/","requireAudience":"stalwart-webui","requireScopes":["openid","email"],"claimUsername":"email","claimName":"name","claimGroups":"groups"}}}
+    {"@type":"upsert","object":"Directory","matchOn":["description"],"value":{"authentik":{"@type":"Oidc","description":"Authentik","issuerUrl":"https://auth.lab.zerodi.ru/application/o/stalwart/","requireAudience":"stalwart-webui","requireScopes":{"openid":true,"email":true},"claimUsername":"email","claimName":"name","claimGroups":"groups"}}}
     {"@type":"update","object":"Authentication","value":{"directoryId":"#authentik"}}
 # yamllint enable rule:line-length

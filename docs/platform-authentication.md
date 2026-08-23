@@ -416,7 +416,7 @@ PostSync Job идемпотентно применяет через `stalwart-cl
 ```text
 issuerUrl: https://auth.home.arpa/application/o/stalwart/
 requireAudience: stalwart-webui
-requireScopes: [openid, email]
+requireScopes: {openid: true, email: true}
 claimUsername: email
 claimName: name
 claimGroups: groups

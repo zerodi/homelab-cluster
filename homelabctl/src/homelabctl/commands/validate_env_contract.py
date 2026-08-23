@@ -145,7 +145,7 @@ def render_stalwart_identity_plan(env: dict[str, Any]) -> str:
                     "description": "Authentik",
                     "issuerUrl": (f"https://{env['hosts']['authentik']}/application/o/stalwart/"),
                     "requireAudience": "stalwart-webui",
-                    "requireScopes": ["openid", "email"],
+                    "requireScopes": {"openid": True, "email": True},
                     "claimUsername": "email",
                     "claimName": "name",
                     "claimGroups": "groups",
