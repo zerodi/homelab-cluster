@@ -1151,6 +1151,116 @@ alerting:
               summary: Velero reports failed or partially failed backups.
             labels:
               severity: warning
+          - uid: velero-storage-unavailable
+            title: Velero Backup Storage Unavailable
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: victoriametrics
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: victoriametrics
+                  editorMode: code
+                  expr: min(velero_backup_location_status_gauge{backup_location_name="default"}) < bool 1
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  range: false
+                  refId: A
+              - refId: C
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: C
+                  type: classic_conditions
+            noDataState: Alerting
+            execErrState: Alerting
+            for: 5m
+            annotations:
+              summary: Velero BackupStorageLocation/default is unavailable.
+            labels:
+              severity: critical
+          - uid: velero-backup-stale
+            title: Velero Backup Stale
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 10800
+                  to: 0
+                datasourceUid: victoriametrics
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: victoriametrics
+                  editorMode: code
+                  expr: time() - max(velero_backup_last_successful_timestamp{schedule="velero-platform-hourly"}) > bool 10800
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  range: false
+                  refId: A
+              - refId: C
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: C
+                  type: classic_conditions
+            noDataState: Alerting
+            execErrState: Alerting
+            for: 15m
+            annotations:
+              summary: Velero has no successful platform backup newer than three hours.
+            labels:
+              severity: critical
           - uid: kyverno-policy-violations
             title: Kyverno Policy Violations
             condition: C

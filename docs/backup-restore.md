@@ -31,17 +31,35 @@ Declarative schedules находятся в
 
 ## Проверка restore
 
-Восстанавливайте тестовую копию в отдельный namespace:
+Восстанавливайте тестовую копию в отдельный namespace. Для регулярного
+безопасного smoke-test используйте `echo` и ограничьте restore ConfigMap
+объектами: так проверяется полный путь Garage -> Velero -> Kubernetes API без
+создания дублирующих Gateway, HTTPRoute и workloads.
 
 ```bash
-velero restore create forgejo-restore-test \
-  --from-backup platform-manual \
-  --include-namespaces forgejo \
-  --namespace-mappings forgejo:forgejo-restore-test
+velero backup create echo-restore-smoke \
+  --include-namespaces echo \
+  --storage-location default \
+  --wait
 
-velero restore describe forgejo-restore-test --details
-kubectl get namespace forgejo-restore-test
+velero restore create echo-restore-smoke \
+  --from-backup echo-restore-smoke \
+  --include-namespaces echo \
+  --include-resources configmaps \
+  --namespace-mappings echo:echo-restore-smoke \
+  --wait
+
+velero restore describe echo-restore-smoke --details
+kubectl -n echo-restore-smoke get configmap homelab-root-ca
 ```
+
+Имя smoke backup/restore и целевого namespace должно быть уникальным для
+повторных запусков. Удаление test namespace и соответствующих Velero CR —
+отдельная destructive операция и выполняется только явно.
+
+Grafana alerts `Velero Backup Storage Unavailable` и `Velero Backup Stale`
+контролируют доступность `BackupStorageLocation/default` и наличие успешного
+`velero-platform-hourly` backup не старше трёх часов.
 
 Velero backup Kubernetes resources не заменяет application-consistent backup
 PostgreSQL и других stateful services.

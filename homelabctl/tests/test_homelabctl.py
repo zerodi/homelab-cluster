@@ -94,6 +94,21 @@ def test_stalwart_oidc_scopes_render_as_registry_map() -> None:
     }
 
 
+def test_velero_alerts_cover_storage_and_backup_freshness() -> None:
+    from homelabctl.yamlutil import load
+
+    values = load(ROOT / "argocd/platform/observability/grafana/values.yaml")
+    rules = values["alerting"]["rules.yaml"]["groups"][0]["rules"]
+    alerts = {rule["uid"]: rule for rule in rules}
+
+    storage = alerts["velero-storage-unavailable"]
+    stale = alerts["velero-backup-stale"]
+    assert storage["noDataState"] == "Alerting"
+    assert "velero_backup_location_status_gauge" in storage["data"][0]["model"]["expr"]
+    assert stale["noDataState"] == "Alerting"
+    assert "velero_backup_last_successful_timestamp" in stale["data"][0]["model"]["expr"]
+
+
 def test_post_check_detects_incomplete_operation_and_crashloop() -> None:
     applications = {
         "items": [
