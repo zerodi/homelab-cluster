@@ -98,6 +98,7 @@ def test_velero_alerts_cover_storage_and_backup_freshness() -> None:
     from homelabctl.yamlutil import load
 
     values = load(ROOT / "argocd/platform/observability/grafana/values.yaml")
+    assert values["deploymentStrategy"]["type"] == "Recreate"
     rules = values["alerting"]["rules.yaml"]["groups"][0]["rules"]
     alerts = {rule["uid"]: rule for rule in rules}
 

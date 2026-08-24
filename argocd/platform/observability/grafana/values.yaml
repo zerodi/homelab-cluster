@@ -6,6 +6,10 @@ annotations:
 testFramework:
   enabled: false
 
+# A single RWO PVC cannot be attached to old and new Pods during RollingUpdate.
+deploymentStrategy:
+  type: Recreate
+
 admin:
   existingSecret: grafana-admin-secret
   userKey: admin-user
