@@ -412,6 +412,8 @@ dashboard JSON, нормализуйте его и внесите в Git в `gra
 - `Hubble Drops High`;
 - `Cilium Metrics Missing`;
 - `Velero Backup Failures`;
+- `Velero Backup Storage Unavailable`;
+- `Velero Backup Stale`;
 - `Kyverno Policy Violations`;
 - `Synthetic Endpoint Down`;
 - `OTel Exporter Queue Saturation`.
@@ -419,6 +421,22 @@ dashboard JSON, нормализуйте его и внесите в Git в `gra
 Проверяйте их в Grafana через **Alerting → Alert rules**. Канал доставки и
 notification policy настраиваются отдельно после выбора реального получателя;
 секреты интеграции не должны попадать в Git или Helm values.
+
+Полный operational smoke-test запускается отдельно от read-only post-check:
+
+```bash
+task ops:observability-smoke
+```
+
+Он отправляет один synthetic OTLP span, запрашивает его через Grafana Tempo
+datasource, подтверждает рост `otelcol_exporter_sent_spans` без роста failure
+counters и очереди, проверяет provisioned dashboards/rules и отправляет
+одноразовую Grafana test notification на внутренний `echo` endpoint. Тест не
+создаёт постоянный contact point или notification policy и намеренно не
+принимает внешний URL, чтобы webhook credentials не попадали в process args.
+
+Production webhook выбирается оператором отдельно и должен передаваться через
+OpenBao/ESO; URL или token нельзя сохранять в Git.
 
 ## Retention, storage и ресурсы
 

@@ -984,6 +984,222 @@ def telemetry_log_error_count(text: str) -> int:
     return sum(text.count(signature) for signature in signatures)
 
 
+def otlp_trace_payload(trace_id: str, span_id: str, timestamp_ns: int) -> str:
+    """Render one OTLP/HTTP JSON span using the protocol's hex ID encoding."""
+    return json.dumps(
+        {
+            "resourceSpans": [
+                {
+                    "resource": {
+                        "attributes": [
+                            {
+                                "key": "service.name",
+                                "value": {"stringValue": "homelabctl-observability-smoke"},
+                            },
+                            {
+                                "key": "deployment.environment.name",
+                                "value": {"stringValue": "homelab"},
+                            },
+                        ]
+                    },
+                    "scopeSpans": [
+                        {
+                            "scope": {"name": "homelabctl", "version": "1"},
+                            "spans": [
+                                {
+                                    "traceId": trace_id,
+                                    "spanId": span_id,
+                                    "name": "stage2-trace-roundtrip",
+                                    "kind": 1,
+                                    "startTimeUnixNano": str(timestamp_ns),
+                                    "endTimeUnixNano": str(timestamp_ns + 1_000_000),
+                                    "status": {"code": 1},
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
+        },
+        separators=(",", ":"),
+    )
+
+
+def prometheus_metric_sum(text: str, metric: str, label: str) -> float:
+    """Sum matching Prometheus samples; an absent failure series means zero."""
+    total = 0.0
+    prefix = metric + "{"
+    for line in text.splitlines():
+        if not line.startswith(prefix) or label not in line:
+            continue
+        try:
+            total += float(line.rsplit(maxsplit=1)[1])
+        except (IndexError, ValueError):
+            continue
+    return total
+
+
+def observability_smoke(kubeconfig: Path) -> int:
+    """Verify OTLP -> Tempo -> Grafana and a transient webhook notification."""
+    pods = json.loads(
+        kubectl(
+            kubeconfig,
+            "-n",
+            "observability",
+            "get",
+            "pod",
+            "-l",
+            "app.kubernetes.io/name=grafana",
+            "-o",
+            "json",
+        ).stdout
+    )
+    grafana_pod = ""
+    for item in pods.get("items", []):
+        statuses = item.get("status", {}).get("containerStatuses", [])
+        if (
+            item.get("status", {}).get("phase") == "Running"
+            and statuses
+            and all(status.get("ready", False) for status in statuses)
+        ):
+            grafana_pod = item["metadata"]["name"]
+            break
+    if not grafana_pod:
+        raise CommandError("no ready Grafana Pod found")
+
+    def curl(*args: str, check: bool = True) -> Any:
+        return kubectl(
+            kubeconfig,
+            "-n",
+            "observability",
+            "exec",
+            grafana_pod,
+            "--",
+            "curl",
+            "-fsS",
+            *args,
+            check=check,
+        )
+
+    def grafana_api(*args: str, check: bool = True) -> Any:
+        return kubectl(
+            kubeconfig,
+            "-n",
+            "observability",
+            "exec",
+            grafana_pod,
+            "--",
+            "sh",
+            "-c",
+            'curl -fsS -u "$GF_SECURITY_ADMIN_USER:$GF_SECURITY_ADMIN_PASSWORD" "$@"',
+            "sh",
+            *args,
+            check=check,
+        )
+
+    metrics_url = "http://otel-collector.observability.svc.cluster.local:8888/metrics"
+    before_metrics = curl(metrics_url).stdout
+    before_sent = prometheus_metric_sum(
+        before_metrics, "otelcol_exporter_sent_spans", 'exporter="otlp/tempo"'
+    )
+    before_failed = prometheus_metric_sum(
+        before_metrics, "otelcol_exporter_send_failed_spans", 'exporter="otlp/tempo"'
+    )
+
+    trace_id = secrets.token_hex(16)
+    span_id = secrets.token_hex(8)
+    trace = otlp_trace_payload(trace_id, span_id, int(datetime.now(UTC).timestamp() * 1e9))
+    curl(
+        "-H",
+        "Content-Type: application/json",
+        "--data-binary",
+        trace,
+        "http://otel-collector.observability.svc.cluster.local:4318/v1/traces",
+    )
+
+    trace_url = f"http://127.0.0.1:3000/api/datasources/proxy/uid/tempo/api/traces/{trace_id}"
+    wait_until(
+        lambda: grafana_api(trace_url, check=False).returncode == 0,
+        60,
+        2,
+        "test trace query through Grafana and Tempo",
+    )
+    print(f"PASS OTLP trace {trace_id} is queryable through Grafana and Tempo")
+
+    after_metrics = curl(metrics_url).stdout
+    after_sent = prometheus_metric_sum(
+        after_metrics, "otelcol_exporter_sent_spans", 'exporter="otlp/tempo"'
+    )
+    after_failed = prometheus_metric_sum(
+        after_metrics, "otelcol_exporter_send_failed_spans", 'exporter="otlp/tempo"'
+    )
+    queue_size = prometheus_metric_sum(
+        after_metrics, "otelcol_exporter_queue_size", 'exporter="otlp/tempo"'
+    )
+    if after_sent <= before_sent:
+        raise CommandError("Tempo exporter sent counter did not increase")
+    if after_failed > before_failed or queue_size != 0:
+        raise CommandError("Tempo exporter failure counter increased or sending queue is not empty")
+    print("PASS Tempo exporter sent spans increased without failures or queued spans")
+
+    dashboards = json.loads(grafana_api("http://127.0.0.1:3000/api/search?type=dash-db").stdout)
+    dashboard_uids = {item.get("uid") for item in dashboards}
+    required_dashboards = {
+        "observability-overview",
+        "otel-collector",
+        "cilium-hubble",
+        "velero-kyverno",
+    }
+    missing_dashboards = required_dashboards - dashboard_uids
+    if missing_dashboards:
+        raise CommandError("missing Grafana dashboards: " + ", ".join(sorted(missing_dashboards)))
+
+    rules = json.loads(grafana_api("http://127.0.0.1:3000/api/v1/provisioning/alert-rules").stdout)
+    rule_uids = {item.get("uid") for item in rules}
+    required_rules = {
+        "observability-target-down",
+        "otel-exporter-failures",
+        "otel-exporter-queue-saturation",
+        "velero-storage-unavailable",
+        "velero-backup-stale",
+    }
+    missing_rules = required_rules - rule_uids
+    if missing_rules:
+        raise CommandError("missing Grafana alert rules: " + ", ".join(sorted(missing_rules)))
+    print("PASS Grafana dashboards and provisioned alert rules are available")
+
+    webhook_url = "http://echo.echo.svc.cluster.local/observability-webhook-smoke"
+    webhook_payload = json.dumps(
+        {
+            "integration": {
+                "type": "webhook",
+                "settings": {"url": webhook_url},
+                "secureFields": {},
+                "disableResolveMessage": False,
+            },
+            "alert": {
+                "labels": {"alertname": "ObservabilityWebhookSmoke"},
+                "annotations": {"summary": "Internal webhook delivery smoke test"},
+            },
+        },
+        separators=(",", ":"),
+    )
+    webhook_result = json.loads(
+        grafana_api(
+            "-H",
+            "Content-Type: application/json",
+            "--data-binary",
+            webhook_payload,
+            "http://127.0.0.1:3000/apis/notifications.alerting.grafana.app/"
+            "v1beta1/namespaces/default/receivers/-/test",
+        ).stdout
+    )
+    if webhook_result.get("status") != "success":
+        raise CommandError("Grafana webhook notification test failed")
+    print("PASS Grafana webhook test notification delivered to the internal echo receiver")
+    return 0
+
+
 def post_argocd_check(kubeconfig: Path) -> int:
     apps = (
         "platform",

@@ -202,6 +202,14 @@ tasks:
     cmds:
       - uv run --project homelabctl --locked homelabctl ops post-check --kubeconfig "{{.KUBECONFIG_PATH}}"
 
+  observability-smoke:
+    desc: Verify OTLP trace round-trip, Grafana provisioning, and webhook delivery
+    cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - >-
+        uv run --project homelabctl --locked homelabctl ops observability-smoke
+        --kubeconfig "{{.KUBECONFIG_PATH}}"
+
   export-root-ca:
     desc: Export the homelab root CA certificate from cert-manager to a local file
     cmds:

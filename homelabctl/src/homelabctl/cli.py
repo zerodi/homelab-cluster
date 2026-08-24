@@ -133,6 +133,8 @@ def parser() -> argparse.ArgumentParser:
     garage.add_argument("--kubeconfig", required=True)
     post = ops.add_parser("post-check")
     post.add_argument("--kubeconfig", required=True)
+    observability = ops.add_parser("observability-smoke")
+    observability.add_argument("--kubeconfig", required=True)
     return root
 
 
@@ -219,6 +221,8 @@ def dispatch(args: argparse.Namespace) -> int:
             return operations.initial_credentials(path(args.kubeconfig), path(args.contract))
         if args.command == "post-check":
             return operations.post_argocd_check(path(args.kubeconfig))
+        if args.command == "observability-smoke":
+            return operations.observability_smoke(path(args.kubeconfig))
         return operations.garage(path(args.kubeconfig), args.action)
     raise CommandError("unsupported command")
 

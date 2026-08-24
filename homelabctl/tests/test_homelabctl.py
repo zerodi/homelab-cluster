@@ -9,7 +9,9 @@ from homelabctl.commands.operations import (
     SECRET_CONTRACT,
     application_operation_issues,
     latest_completed_backup_age_hours,
+    otlp_trace_payload,
     pod_readiness_issues,
+    prometheus_metric_sum,
     telemetry_log_error_count,
 )
 from homelabctl.commands.validate_env_contract import render_stalwart_identity_plan
@@ -30,6 +32,7 @@ def test_taskfile_facing_commands_parse() -> None:
         ["bao", "port-forward", "stop"],
         ["gitops", "apply", "--kubeconfig", "out/kubeconfig"],
         ["ops", "post-check", "--kubeconfig", "out/kubeconfig"],
+        ["ops", "observability-smoke", "--kubeconfig", "out/kubeconfig"],
     )
     for argv in cases:
         parsed, unknown = parser().parse_known_args(argv)
@@ -108,6 +111,28 @@ def test_velero_alerts_cover_storage_and_backup_freshness() -> None:
     assert "velero_backup_location_status_gauge" in storage["data"][0]["model"]["expr"]
     assert stale["noDataState"] == "Alerting"
     assert "velero_backup_last_successful_timestamp" in stale["data"][0]["model"]["expr"]
+
+
+def test_observability_smoke_payload_and_metric_parser() -> None:
+    payload = json.loads(
+        otlp_trace_payload(
+            "00112233445566778899aabbccddeeff",
+            "0011223344556677",
+            1_000_000_000,
+        )
+    )
+    span = payload["resourceSpans"][0]["scopeSpans"][0]["spans"][0]
+    assert span["traceId"] == "00112233445566778899aabbccddeeff"
+    assert span["endTimeUnixNano"] == "1001000000"
+
+    metrics = (
+        'otelcol_exporter_sent_spans{exporter="otlp/tempo"} 10\n'
+        'otelcol_exporter_sent_spans{exporter="other"} 50\n'
+        'otelcol_exporter_sent_spans{exporter="otlp/tempo"} 2\n'
+    )
+    assert (
+        prometheus_metric_sum(metrics, "otelcol_exporter_sent_spans", 'exporter="otlp/tempo"') == 12
+    )
 
 
 def test_post_check_detects_incomplete_operation_and_crashloop() -> None:
