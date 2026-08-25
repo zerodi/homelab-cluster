@@ -135,6 +135,14 @@ def parser() -> argparse.ArgumentParser:
     post.add_argument("--kubeconfig", required=True)
     observability = ops.add_parser("observability-smoke")
     observability.add_argument("--kubeconfig", required=True)
+    identity = ops.add_parser("identity-smoke")
+    identity.add_argument("--kubeconfig", required=True)
+    identity.add_argument("--contract", required=True)
+    identity.add_argument("--root-ca", required=True)
+    finalize_access = ops.add_parser("argocd-access-finalize")
+    finalize_access.add_argument("--kubeconfig", required=True)
+    finalize_access.add_argument("--contract", required=True)
+    finalize_access.add_argument("--root-ca", required=True)
     return root
 
 
@@ -223,6 +231,14 @@ def dispatch(args: argparse.Namespace) -> int:
             return operations.post_argocd_check(path(args.kubeconfig))
         if args.command == "observability-smoke":
             return operations.observability_smoke(path(args.kubeconfig))
+        if args.command == "identity-smoke":
+            return operations.identity_smoke(
+                path(args.kubeconfig), path(args.contract), path(args.root_ca)
+            )
+        if args.command == "argocd-access-finalize":
+            return operations.argocd_access_finalize(
+                path(args.kubeconfig), path(args.contract), path(args.root_ca)
+            )
         return operations.garage(path(args.kubeconfig), args.action)
     raise CommandError("unsupported command")
 

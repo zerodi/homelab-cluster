@@ -139,7 +139,14 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
 kubectl -n argocd port-forward svc/argocd-server 8080:80
 ```
 
-После проверки нового пароля bootstrap Secret можно удалить. Общая модель
-пользователей, OIDC и break-glass доступа находится в
+После проверки SSO ротируйте, сохраните в OpenBao и проверьте break-glass
+credential, затем удалите bootstrap Secret атомарным operator helper:
+
+```bash
+task ops:argocd-access-finalize
+task ops:identity-smoke
+```
+
+Общая модель пользователей, OIDC и break-glass доступа находится в
 [runbook авторизации](../docs/platform-authentication.md); application-specific
 операции — в соответствующих runbook из [индекса документации](../docs/README.md).

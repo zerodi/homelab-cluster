@@ -7,13 +7,18 @@ import re
 import secrets
 import shlex
 import signal
+import ssl
 import subprocess
 import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import bcrypt
+from ruamel.yaml import YAML, YAMLError
 
 from homelabctl.environment import render_contract
 from homelabctl.project import ROOT
@@ -48,6 +53,172 @@ def contract(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise CommandError(f"environment contract must be a mapping: {path}")
     return value
+
+
+def argocd_identity_contract_issues(
+    oidc_config: str,
+    rbac_data: dict[str, str],
+    *,
+    issuer: str,
+    admin_group: str,
+) -> list[str]:
+    """Return safe, value-free diagnostics for the Argo CD identity contract."""
+    issues: list[str] = []
+    try:
+        parsed = YAML(typ="safe").load(oidc_config) or {}
+    except YAMLError:
+        parsed = {}
+        issues.append("oidc.config is not valid YAML")
+    expected_scopes = {"openid", "profile", "email", "groups"}
+    if parsed.get("issuer") != issuer:
+        issues.append("OIDC issuer does not match the environment contract")
+    if parsed.get("clientID") != "$argocd-oidc:client_id":
+        issues.append("OIDC clientID is not Secret-backed")
+    if parsed.get("clientSecret") != "$argocd-oidc:client_secret":
+        issues.append("OIDC clientSecret is not Secret-backed")
+    if set(parsed.get("requestedScopes", [])) != expected_scopes:
+        issues.append("OIDC requestedScopes do not contain the required scopes")
+    if rbac_data.get("scopes") != "[groups]":
+        issues.append("RBAC scopes are not restricted to groups")
+    if rbac_data.get("policy.default") != "role:authenticated":
+        issues.append("RBAC default role is not role:authenticated")
+    if f"g, {admin_group}, role:admin" not in rbac_data.get("policy.csv", ""):
+        issues.append("administrator group is not mapped to role:admin")
+    return issues
+
+
+def _https_json(
+    url: str,
+    root_ca: Path,
+    *,
+    method: str = "GET",
+    payload: dict[str, str] | None = None,
+    token: str | None = None,
+) -> dict[str, Any]:
+    body = json.dumps(payload).encode() if payload is not None else None
+    headers = {"Content-Type": "application/json"} if body is not None else {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request = urllib.request.Request(url, data=body, headers=headers, method=method)
+    context = ssl.create_default_context(cafile=str(root_ca))
+    try:
+        with urllib.request.urlopen(request, context=context, timeout=20) as response:
+            raw = response.read()
+    except urllib.error.HTTPError as exc:
+        raise CommandError(f"Argo CD API request failed with HTTP {exc.code}") from None
+    except urllib.error.URLError as exc:
+        raise CommandError(f"Argo CD API request failed: {exc.reason}") from None
+    return json.loads(raw or b"{}")
+
+
+def _argocd_login(base_url: str, root_ca: Path, password: str) -> str:
+    response = _https_json(
+        f"{base_url}/api/v1/session",
+        root_ca,
+        method="POST",
+        payload={"username": "admin", "password": password},
+    )
+    token = response.get("token", "")
+    if not token:
+        raise CommandError("Argo CD local admin login did not return a session token")
+    return str(token)
+
+
+def _bao_secret(path: str) -> dict[str, str] | None:
+    result = run(["bao", "kv", "get", "-format=json", path], check=False)
+    if result.returncode:
+        return None
+    payload = json.loads(result.stdout)
+    return payload.get("data", {}).get("data", {})
+
+
+def argocd_access_finalize(kubeconfig: Path, contract_path: Path, root_ca: Path) -> int:
+    """Rotate the bootstrap password, verify break-glass login, then remove its Secret."""
+    if not os.environ.get("BAO_TOKEN"):
+        raise CommandError("BAO_TOKEN is required")
+    ensure_file(root_ca, "homelab root CA")
+    env = contract(contract_path)
+    base_url = f"https://{env['hosts']['argocd']}"
+    mount = os.environ.get("BAO_KV_MOUNT", "secret")
+    bao_path = f"{mount}/platform/argocd/admin"
+
+    bootstrap = kubectl(
+        kubeconfig,
+        "-n",
+        "argocd",
+        "get",
+        "secret",
+        "argocd-initial-admin-secret",
+        "-o",
+        "json",
+        check=False,
+    )
+    bootstrap_password = ""
+    if bootstrap.returncode == 0:
+        encoded = json.loads(bootstrap.stdout).get("data", {}).get("password", "")
+        bootstrap_password = base64.b64decode(encoded).decode() if encoded else ""
+
+    stored = _bao_secret(bao_path)
+    stored_password = str((stored or {}).get("password", ""))
+    if stored_password:
+        try:
+            _argocd_login(base_url, root_ca, stored_password)
+            print("PASS Argo CD break-glass password from OpenBao")
+            if bootstrap.returncode == 0:
+                kubectl(
+                    kubeconfig,
+                    "-n",
+                    "argocd",
+                    "delete",
+                    "secret",
+                    "argocd-initial-admin-secret",
+                )
+                print("PASS Argo CD bootstrap Secret removed")
+            else:
+                print("PASS Argo CD bootstrap Secret already absent")
+            return 0
+        except CommandError:
+            if not bootstrap_password:
+                raise CommandError(
+                    "OpenBao break-glass password is invalid and bootstrap Secret is absent"
+                ) from None
+
+    if not bootstrap_password:
+        raise CommandError("Argo CD bootstrap Secret is absent and no break-glass password exists")
+    token = _argocd_login(base_url, root_ca, bootstrap_password)
+    print("PASS Argo CD bootstrap local-admin login")
+
+    password_needs_replacement = not 8 <= len(stored_password) <= 32
+    new_password = (
+        random_value(
+            32,
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._~!@#%^*-+=",
+        )
+        if password_needs_replacement
+        else stored_password
+    )
+    if password_needs_replacement:
+        bao_temp_put(bao_path, {"username": "admin", "password": new_password})
+        print("PASS Argo CD break-glass password stored in OpenBao")
+    _https_json(
+        f"{base_url}/api/v1/account/password",
+        root_ca,
+        method="PUT",
+        payload={"currentPassword": bootstrap_password, "newPassword": new_password},
+        token=token,
+    )
+    _argocd_login(base_url, root_ca, new_password)
+    print("PASS Argo CD rotated break-glass login")
+    kubectl(
+        kubeconfig,
+        "-n",
+        "argocd",
+        "delete",
+        "secret",
+        "argocd-initial-admin-secret",
+    )
+    print("PASS Argo CD bootstrap Secret removed")
+    return 0
 
 
 def render_environment(base: str, override: str, output: str) -> int:
@@ -856,6 +1027,11 @@ def initial_credentials(kubeconfig: Path, contract_path: Path) -> int:
         "jsonpath={.data.password}",
         check=False,
     ).stdout
+    argocd_password = (
+        base64.b64decode(encoded).decode()
+        if encoded
+        else field("platform/argocd/admin", "password")
+    )
     rows = (
         (
             "Authentik",
@@ -873,7 +1049,7 @@ def initial_credentials(kubeconfig: Path, contract_path: Path) -> int:
             "Argo CD",
             f"https://{env['hosts']['argocd']}",
             "admin",
-            base64.b64decode(encoded).decode() if encoded else "<bootstrap secret unavailable>",
+            argocd_password,
         ),
         (
             "Forgejo",
@@ -1037,6 +1213,293 @@ def prometheus_metric_sum(text: str, metric: str, label: str) -> float:
         except (IndexError, ValueError):
             continue
     return total
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(
+        self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str
+    ) -> None:
+        return None
+
+
+def _https_redirect(url: str, root_ca: Path) -> tuple[int, str]:
+    context = ssl.create_default_context(cafile=str(root_ca))
+    opener = urllib.request.build_opener(
+        urllib.request.HTTPSHandler(context=context),
+        _NoRedirect(),
+    )
+    try:
+        with opener.open(url, timeout=20) as response:
+            return response.status, response.headers.get("Location", "")
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.headers.get("Location", "")
+    except urllib.error.URLError as exc:
+        raise CommandError(f"HTTPS request failed: {exc.reason}") from None
+
+
+def _authentik_primary_auth_component(
+    argocd_url: str,
+    authentik_url: str,
+    username: str,
+    password: str,
+    root_ca: Path,
+) -> str:
+    """Run password authentication up to the MFA/redirect stage without exposing credentials."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        cookies = Path(temp_dir) / "cookies"
+        common = [
+            "curl",
+            "--silent",
+            "--show-error",
+            "--fail",
+            "--cacert",
+            root_ca,
+            "--cookie",
+            cookies,
+            "--cookie-jar",
+            cookies,
+        ]
+        final_url = run(
+            [
+                *common,
+                "--location",
+                "--output",
+                os.devnull,
+                "--write-out",
+                "%{url_effective}",
+                f"{argocd_url}/auth/login",
+            ]
+        ).stdout
+        query = urllib.parse.urlparse(final_url).query
+        endpoint = f"{authentik_url}/api/v3/flows/executor/default-authentication-flow/?{query}"
+        run([*common, endpoint])
+
+        def post(payload: dict[str, str]) -> dict[str, Any]:
+            result = run(
+                [
+                    *common,
+                    "--location",
+                    "--post302",
+                    "--header",
+                    "Content-Type: application/json",
+                    "--data-binary",
+                    "@-",
+                    endpoint,
+                ],
+                input_text=json.dumps(payload),
+            )
+            return json.loads(result.stdout)
+
+        identification = post({"uid_field": username})
+        if identification.get("component") != "ak-stage-password":
+            raise CommandError("Authentik identification did not reach the password stage")
+        authenticated = post({"password": password})
+        return str(authenticated.get("component", ""))
+
+
+def identity_smoke(kubeconfig: Path, contract_path: Path, root_ca: Path) -> int:
+    """Verify the live Authentik -> Argo CD OIDC, RBAC, and break-glass chain."""
+    if not os.environ.get("BAO_TOKEN"):
+        raise CommandError("BAO_TOKEN is required")
+    ensure_file(root_ca, "homelab root CA")
+    env = contract(contract_path)
+    argocd_host = env["hosts"]["argocd"]
+    authentik_host = env["hosts"]["authentik"]
+    admin_group = env["identity"]["administrator"]["group"]
+    issuer = f"https://{authentik_host}/application/o/argocd/"
+
+    configmaps = json.loads(
+        kubectl(
+            kubeconfig,
+            "-n",
+            "argocd",
+            "get",
+            "configmap",
+            "argocd-cm",
+            "argocd-rbac-cm",
+            "-o",
+            "json",
+        ).stdout
+    )
+    data = {item["metadata"]["name"]: item.get("data", {}) for item in configmaps["items"]}
+    issues = argocd_identity_contract_issues(
+        data.get("argocd-cm", {}).get("oidc.config", ""),
+        data.get("argocd-rbac-cm", {}),
+        issuer=issuer,
+        admin_group=admin_group,
+    )
+    if issues:
+        raise CommandError("; ".join(issues))
+    print("PASS Argo CD OIDC and RBAC declarative contract")
+
+    for namespace, names in (
+        ("argocd", ("argocd-oidc",)),
+        (
+            "authentik",
+            (
+                "platform-identity-blueprint",
+                "argocd-sso-blueprint",
+                "harbor-sso-blueprint",
+                "grafana-sso-blueprint",
+            ),
+        ),
+    ):
+        for name in names:
+            payload = json.loads(
+                kubectl(
+                    kubeconfig,
+                    "-n",
+                    namespace,
+                    "get",
+                    "externalsecret",
+                    name,
+                    "-o",
+                    "json",
+                ).stdout
+            )
+            ready = any(
+                condition.get("type") == "Ready" and condition.get("status") == "True"
+                for condition in payload.get("status", {}).get("conditions", [])
+            )
+            if not ready:
+                raise CommandError(f"ExternalSecret {namespace}/{name} is not Ready")
+    print("PASS identity ExternalSecrets are Ready")
+
+    callback = f"https://{argocd_host}/auth/callback"
+    shell = (
+        "from authentik.core.models import Application,Group;"
+        "from authentik.providers.oauth2.models import OAuth2Provider;"
+        "from authentik.policies.models import PolicyBinding;"
+        "from authentik.blueprints.models import BlueprintInstance;"
+        "a=Application.objects.get(slug='argocd');"
+        f"g=Group.objects.get(name={admin_group!r});"
+        "p=OAuth2Provider.objects.get(name='Argo CD');"
+        "b=list(BlueprintInstance.objects.filter(name__in=['platform-identity','argocd-sso']));"
+        "ok=len(b)==2 and all(str(x.status)=='successful' for x in b) "
+        "and a.provider_id==p.pk and str(p.client_type)=='confidential' "
+        "and PolicyBinding.objects.filter(target=a.pk,group=g,enabled=True).exists() "
+        f"and any(x.url=={callback!r} and str(x.matching_mode)=='strict' for x in p.redirect_uris);"
+        "print('IDENTITY_SMOKE_OK' if ok else 'IDENTITY_SMOKE_FAIL')"
+    )
+    model = kubectl(
+        kubeconfig,
+        "-n",
+        "authentik",
+        "exec",
+        "deployment/authentik-server",
+        "--",
+        "ak",
+        "shell",
+        "-c",
+        shell,
+        check=False,
+    )
+    if model.returncode or "IDENTITY_SMOKE_OK" not in model.stdout:
+        raise CommandError("Authentik Argo CD blueprint/provider binding is not healthy")
+    print("PASS Authentik identity and Argo CD blueprints are successful")
+
+    discovery_result = run(
+        [
+            "curl",
+            "--silent",
+            "--show-error",
+            "--fail",
+            "--cacert",
+            root_ca,
+            f"{issuer}.well-known/openid-configuration",
+        ]
+    )
+    discovery = json.loads(discovery_result.stdout)
+    if discovery.get("issuer") != issuer or not all(
+        discovery.get(key) for key in ("authorization_endpoint", "token_endpoint", "jwks_uri")
+    ):
+        raise CommandError("Authentik OIDC discovery document is incomplete")
+    status, location = _https_redirect(f"https://{argocd_host}/auth/login", root_ca)
+    redirect = urllib.parse.urlparse(location)
+    query = urllib.parse.parse_qs(redirect.query)
+    if (
+        status not in {302, 303, 307, 308}
+        or redirect.hostname != authentik_host
+        or redirect.path != "/application/o/authorize/"
+        or query.get("redirect_uri") != [callback]
+        or set(query.get("scope", [""])[0].split()) != {"openid", "profile", "email", "groups"}
+    ):
+        raise CommandError(
+            "Argo CD login does not redirect to the expected Authentik authorization flow"
+        )
+    print("PASS OIDC discovery and Argo CD authorization redirect")
+
+    platform_admin = (
+        _bao_secret(f"{os.environ.get('BAO_KV_MOUNT', 'secret')}/platform/authentik/platform-admin")
+        or {}
+    )
+    platform_admin_password = str(platform_admin.get("password", ""))
+    if not platform_admin_password:
+        raise CommandError("OpenBao platform administrator password is absent")
+    auth_component = _authentik_primary_auth_component(
+        f"https://{argocd_host}",
+        f"https://{authentik_host}",
+        env["identity"]["administrator"]["username"],
+        platform_admin_password,
+        root_ca,
+    )
+    if auth_component == "ak-stage-authenticator-validate":
+        print("PASS Authentik primary login reached the MFA challenge")
+    elif auth_component in {"xak-flow-redirect", "ak-flow-redirect"}:
+        print("PASS Authentik primary login reached the authorization redirect")
+    else:
+        raise CommandError("Authentik primary login did not reach MFA or authorization redirect")
+
+    def rbac_can(subject: str, action: str, resource: str, subresource: str = "") -> bool:
+        args = [
+            "-n",
+            "argocd",
+            "exec",
+            "deployment/argocd-server",
+            "--",
+            "argocd",
+            "admin",
+            "settings",
+            "rbac",
+            "can",
+            subject,
+            action,
+            resource,
+        ]
+        if subresource:
+            args.append(subresource)
+        args.extend(["--namespace", "argocd"])
+        return kubectl(kubeconfig, *args, check=False).returncode == 0
+
+    if not rbac_can(admin_group, "delete", "applications", "platform/echo"):
+        raise CommandError("administrator group does not receive role:admin")
+    if rbac_can("identity-smoke-user", "delete", "applications", "platform/echo"):
+        raise CommandError("non-admin subject unexpectedly receives application delete")
+    if not rbac_can("identity-smoke-user", "get", "applications", "platform/echo"):
+        raise CommandError("authenticated default role cannot read an application")
+    if rbac_can("identity-smoke-user", "get", "clusters"):
+        raise CommandError("authenticated default role unexpectedly reads cluster credentials")
+    print("PASS positive and negative Argo CD RBAC evaluation")
+
+    mount = os.environ.get("BAO_KV_MOUNT", "secret")
+    stored = _bao_secret(f"{mount}/platform/argocd/admin") or {}
+    password = str(stored.get("password", ""))
+    if not password:
+        raise CommandError("OpenBao Argo CD break-glass password is absent")
+    _argocd_login(f"https://{argocd_host}", root_ca, password)
+    initial = kubectl(
+        kubeconfig,
+        "-n",
+        "argocd",
+        "get",
+        "secret",
+        "argocd-initial-admin-secret",
+        check=False,
+    )
+    if initial.returncode == 0:
+        raise CommandError("argocd-initial-admin-secret still exists")
+    print("PASS OpenBao-backed Argo CD break-glass login; bootstrap Secret is absent")
+    return 0
 
 
 def observability_smoke(kubeconfig: Path) -> int:

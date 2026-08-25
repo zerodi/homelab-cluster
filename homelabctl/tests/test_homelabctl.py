@@ -8,6 +8,7 @@ from homelabctl.commands.check_tfvars_example import required_variables, variabl
 from homelabctl.commands.operations import (
     SECRET_CONTRACT,
     application_operation_issues,
+    argocd_identity_contract_issues,
     latest_completed_backup_age_hours,
     otlp_trace_payload,
     pod_readiness_issues,
@@ -33,6 +34,26 @@ def test_taskfile_facing_commands_parse() -> None:
         ["gitops", "apply", "--kubeconfig", "out/kubeconfig"],
         ["ops", "post-check", "--kubeconfig", "out/kubeconfig"],
         ["ops", "observability-smoke", "--kubeconfig", "out/kubeconfig"],
+        [
+            "ops",
+            "identity-smoke",
+            "--kubeconfig",
+            "out/kubeconfig",
+            "--contract",
+            "out/homelab.effective.yaml",
+            "--root-ca",
+            "out/homelab-root-ca.crt",
+        ],
+        [
+            "ops",
+            "argocd-access-finalize",
+            "--kubeconfig",
+            "out/kubeconfig",
+            "--contract",
+            "out/homelab.effective.yaml",
+            "--root-ca",
+            "out/homelab-root-ca.crt",
+        ],
     )
     for argv in cases:
         parsed, unknown = parser().parse_known_args(argv)
@@ -133,6 +154,34 @@ def test_observability_smoke_payload_and_metric_parser() -> None:
     assert (
         prometheus_metric_sum(metrics, "otelcol_exporter_sent_spans", 'exporter="otlp/tempo"') == 12
     )
+
+
+def test_argocd_identity_contract() -> None:
+    oidc = """
+name: Authentik
+issuer: https://auth.example/application/o/argocd/
+clientID: $argocd-oidc:client_id
+clientSecret: $argocd-oidc:client_secret
+requestedScopes: [openid, profile, email, groups]
+"""
+    rbac = {
+        "scopes": "[groups]",
+        "policy.default": "role:authenticated",
+        "policy.csv": "g, platform-admins, role:admin\n",
+    }
+    assert not argocd_identity_contract_issues(
+        oidc,
+        rbac,
+        issuer="https://auth.example/application/o/argocd/",
+        admin_group="platform-admins",
+    )
+    rbac["policy.csv"] = ""
+    assert argocd_identity_contract_issues(
+        oidc,
+        rbac,
+        issuer="https://auth.example/application/o/argocd/",
+        admin_group="platform-admins",
+    ) == ["administrator group is not mapped to role:admin"]
 
 
 def test_post_check_detects_incomplete_operation_and_crashloop() -> None:

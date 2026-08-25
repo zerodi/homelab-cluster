@@ -210,6 +210,30 @@ tasks:
         uv run --project homelabctl --locked homelabctl ops observability-smoke
         --kubeconfig "{{.KUBECONFIG_PATH}}"
 
+  argocd-access-finalize:
+    desc: Rotate and verify Argo CD break-glass access, then remove the bootstrap Secret
+    cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - test -n "{{.ENVIRONMENT_CONTRACT_PATH}}"
+      - test -n "${BAO_TOKEN:-}"
+      - >-
+        uv run --project homelabctl --locked homelabctl ops argocd-access-finalize
+        --kubeconfig "{{.KUBECONFIG_PATH}}"
+        --contract "{{.ENVIRONMENT_CONTRACT_PATH}}"
+        --root-ca "{{.ROOT_CA_EXPORT_PATH}}"
+
+  identity-smoke:
+    desc: Verify Authentik, Argo CD OIDC/RBAC, and OpenBao-backed break-glass access
+    cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - test -n "{{.ENVIRONMENT_CONTRACT_PATH}}"
+      - test -n "${BAO_TOKEN:-}"
+      - >-
+        uv run --project homelabctl --locked homelabctl ops identity-smoke
+        --kubeconfig "{{.KUBECONFIG_PATH}}"
+        --contract "{{.ENVIRONMENT_CONTRACT_PATH}}"
+        --root-ca "{{.ROOT_CA_EXPORT_PATH}}"
+
   export-root-ca:
     desc: Export the homelab root CA certificate from cert-manager to a local file
     cmds:

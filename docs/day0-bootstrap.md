@@ -564,6 +564,10 @@ task ops:openbao-runtime-preflight-final
   `task ops:initial-app-credentials`.
 - Модель Authentik/OIDC и break-glass доступ описаны в
   [runbook авторизации](platform-authentication.md).
+- После успешной browser-проверки Argo CD SSO выполните
+  `task ops:argocd-access-finalize`, затем `task ops:identity-smoke`: helper
+  сохраняет ротированный local-admin credential в OpenBao и удаляет начальный
+  Secret только после успешного повторного login.
 - Специфичные recovery и DNS шаги Stalwart находятся в
   [Stalwart runbook](stalwart.md).
 

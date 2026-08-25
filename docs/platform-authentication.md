@@ -339,6 +339,31 @@ Secret `argocd-oidc` должен иметь label
 После успешной проверки SSO отключите обычное использование built-in `admin`,
 но сохраните документированный break-glass способ его временного включения.
 
+После первой проверки SSO завершите lifecycle bootstrap-пароля одной
+идемпотентной командой:
+
+```bash
+task ops:openbao-port-forward-start
+export BAO_ADDR='http://127.0.0.1:8200'
+export BAO_TOKEN='...'
+task ops:argocd-access-finalize
+task ops:identity-smoke
+```
+
+`argocd-access-finalize` сначала проверяет local-admin login, сохраняет новый
+случайный пароль в `secret/platform/argocd/admin`, ротирует пароль через Argo CD
+API, повторно проверяет вход и только затем удаляет
+`argocd-initial-admin-secret`. Повторный запуск проверяет уже сохранённый
+break-glass credential и остаётся безопасным. Команда не печатает пароль или
+session token.
+
+`identity-smoke` проверяет live `oidc.config`, точный RBAC contract, Ready
+ExternalSecrets, успешные Authentik blueprint instances, discovery document,
+authorization redirect, положительный и отрицательный RBAC cases, а также
+OpenBao-backed local login. Полный browser Authorization Code flow всё равно
+проверяйте в private/incognito окне: helper намеренно не автоматизирует ввод
+пользовательского пароля или MFA.
+
 ## 5. Harbor через Authentik
 
 Harbor допускает переход с database auth на OIDC только пока в базе нет
@@ -504,6 +529,7 @@ task check:kustomize-platform
 task check:yamllint
 task ops:openbao-runtime-preflight-final
 task ops:post-argocd-check
+task ops:identity-smoke
 ```
 
 Дополнительно проверьте:
