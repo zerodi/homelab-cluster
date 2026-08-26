@@ -27,7 +27,10 @@ spec:
       name: harbor-trivy
       namespace: harbor
       jsonPointers:
-        - /data
+        # Harbor 1.19.2 always renders this Secret and has no Trivy
+        # existingSecret switch. ESO replaces only the credentialed Redis URL;
+        # keep chart-owned gitHubToken drift visible to Argo CD.
+        - /data/redisURL
   syncPolicy:
     automated:
       prune: true

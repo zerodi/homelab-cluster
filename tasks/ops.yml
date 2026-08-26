@@ -234,6 +234,18 @@ tasks:
         --contract "{{.ENVIRONMENT_CONTRACT_PATH}}"
         --root-ca "{{.ROOT_CA_EXPORT_PATH}}"
 
+  harbor-smoke:
+    desc: Verify Harbor health, registry push/pull, Trivy scan, and OIDC entry
+    cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - test -n "{{.ENVIRONMENT_CONTRACT_PATH}}"
+      - test -n "${BAO_TOKEN:-}"
+      - >-
+        uv run --project homelabctl --locked homelabctl ops harbor-smoke
+        --kubeconfig "{{.KUBECONFIG_PATH}}"
+        --contract "{{.ENVIRONMENT_CONTRACT_PATH}}"
+        --root-ca "{{.ROOT_CA_EXPORT_PATH}}"
+
   export-root-ca:
     desc: Export the homelab root CA certificate from cert-manager to a local file
     cmds:

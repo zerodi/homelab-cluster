@@ -54,6 +54,16 @@ def test_taskfile_facing_commands_parse() -> None:
             "--root-ca",
             "out/homelab-root-ca.crt",
         ],
+        [
+            "ops",
+            "harbor-smoke",
+            "--kubeconfig",
+            "out/kubeconfig",
+            "--contract",
+            "out/homelab.effective.yaml",
+            "--root-ca",
+            "out/homelab-root-ca.crt",
+        ],
     )
     for argv in cases:
         parsed, unknown = parser().parse_known_args(argv)
@@ -182,6 +192,23 @@ requestedScopes: [openid, profile, email, groups]
         issuer="https://auth.example/application/o/argocd/",
         admin_group="platform-admins",
     ) == ["administrator group is not mapped to role:admin"]
+
+
+def test_harbor_ignores_only_eso_owned_redis_url() -> None:
+    from homelabctl.yamlutil import load
+
+    application = load(ROOT / "argocd/platform/delivery/applications/harbor/app.yaml")
+    differences = application["spec"]["ignoreDifferences"]
+
+    assert differences == [
+        {
+            "group": "",
+            "kind": "Secret",
+            "name": "harbor-trivy",
+            "namespace": "harbor",
+            "jsonPointers": ["/data/redisURL"],
+        }
+    ]
 
 
 def test_post_check_detects_incomplete_operation_and_crashloop() -> None:

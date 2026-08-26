@@ -1238,7 +1238,7 @@ def _https_redirect(url: str, root_ca: Path) -> tuple[int, str]:
 
 
 def _authentik_primary_auth_component(
-    argocd_url: str,
+    login_url: str,
     authentik_url: str,
     username: str,
     password: str,
@@ -1267,7 +1267,7 @@ def _authentik_primary_auth_component(
                 os.devnull,
                 "--write-out",
                 "%{url_effective}",
-                f"{argocd_url}/auth/login",
+                login_url,
             ]
         ).stdout
         query = urllib.parse.urlparse(final_url).query
@@ -1437,7 +1437,7 @@ def identity_smoke(kubeconfig: Path, contract_path: Path, root_ca: Path) -> int:
     if not platform_admin_password:
         raise CommandError("OpenBao platform administrator password is absent")
     auth_component = _authentik_primary_auth_component(
-        f"https://{argocd_host}",
+        f"https://{argocd_host}/auth/login",
         f"https://{authentik_host}",
         env["identity"]["administrator"]["username"],
         platform_admin_password,
@@ -1499,6 +1499,210 @@ def identity_smoke(kubeconfig: Path, contract_path: Path, root_ca: Path) -> int:
     if initial.returncode == 0:
         raise CommandError("argocd-initial-admin-secret still exists")
     print("PASS OpenBao-backed Argo CD break-glass login; bootstrap Secret is absent")
+    return 0
+
+
+def _harbor_curl(
+    url: str,
+    password: str,
+    root_ca: Path,
+    *,
+    method: str = "GET",
+    check: bool = True,
+) -> Any:
+    authorization = base64.b64encode(f"admin:{password}".encode()).decode()
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as handle:
+        config = Path(handle.name)
+        os.chmod(config, 0o600)
+        handle.write("silent\nshow-error\nfail-with-body\n")
+        handle.write(f"cacert = {json.dumps(str(root_ca))}\n")
+        handle.write(f'header = "Authorization: Basic {authorization}"\n')
+    try:
+        return run(
+            ["curl", "--config", config, "--request", method, url],
+            check=check,
+        )
+    finally:
+        config.unlink(missing_ok=True)
+
+
+def harbor_smoke(kubeconfig: Path, contract_path: Path, root_ca: Path) -> int:
+    """Verify Harbor components, registry push/pull, Trivy scanning, and OIDC entry."""
+    if not os.environ.get("BAO_TOKEN"):
+        raise CommandError("BAO_TOKEN is required")
+    require("curl", "skopeo")
+    ensure_file(root_ca, "homelab root CA")
+    env = contract(contract_path)
+    harbor_host = env["hosts"]["harbor"]
+    authentik_host = env["hosts"]["authentik"]
+    harbor_url = f"https://{harbor_host}"
+    mount = os.environ.get("BAO_KV_MOUNT", "secret")
+    runtime = _bao_secret(f"{mount}/platform/harbor/runtime") or {}
+    admin_password = str(runtime.get("admin_password", ""))
+    if not admin_password:
+        raise CommandError("OpenBao Harbor admin password is absent")
+
+    health = json.loads(
+        run(
+            [
+                "curl",
+                "--silent",
+                "--show-error",
+                "--fail",
+                "--cacert",
+                root_ca,
+                f"{harbor_url}/api/v2.0/health",
+            ]
+        ).stdout
+    )
+    components = {item.get("name"): item.get("status") for item in health.get("components", [])}
+    expected_components = {
+        "core",
+        "database",
+        "jobservice",
+        "portal",
+        "redis",
+        "registry",
+        "registryctl",
+        "trivy",
+    }
+    if health.get("status") != "healthy" or any(
+        components.get(name) != "healthy" for name in expected_components
+    ):
+        raise CommandError("Harbor health API reports an unhealthy component")
+    print("PASS Harbor core, database, jobservice, portal, registry, Redis, and Trivy health")
+
+    platform_admin_password = str(
+        (_bao_secret(f"{mount}/platform/authentik/platform-admin") or {}).get("password", "")
+    )
+    if not platform_admin_password:
+        raise CommandError("OpenBao platform administrator password is absent")
+    auth_component = _authentik_primary_auth_component(
+        f"{harbor_url}/c/oidc/login",
+        f"https://{authentik_host}",
+        env["identity"]["administrator"]["username"],
+        platform_admin_password,
+        root_ca,
+    )
+    if auth_component == "ak-stage-authenticator-validate":
+        print("PASS Harbor OIDC primary login reached the MFA challenge")
+    elif auth_component in {"xak-flow-redirect", "ak-flow-redirect"}:
+        print("PASS Harbor OIDC primary login reached the authorization redirect")
+    else:
+        raise CommandError("Harbor OIDC primary login did not reach MFA or authorization redirect")
+
+    timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+    repository = f"stage4-smoke-{timestamp}"
+    tag = "pause-3.10"
+    destination = f"docker://{harbor_host}/library/{repository}:{tag}"
+    api_repository = urllib.parse.quote(repository, safe="")
+    pushed = False
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as handle:
+        authfile = Path(handle.name)
+        os.chmod(authfile, 0o600)
+        json.dump(
+            {
+                "auths": {
+                    harbor_host: {
+                        "auth": base64.b64encode(f"admin:{admin_password}".encode()).decode()
+                    }
+                }
+            },
+            handle,
+        )
+    try:
+        run(
+            [
+                "skopeo",
+                "copy",
+                "--override-os",
+                "linux",
+                "--override-arch",
+                "amd64",
+                "--dest-authfile",
+                authfile,
+                "--dest-cert-dir",
+                root_ca.parent,
+                "docker://registry.k8s.io/pause:3.10",
+                destination,
+            ]
+        )
+        pushed = True
+        print("PASS Harbor registry push")
+        run(
+            [
+                "skopeo",
+                "inspect",
+                "--override-os",
+                "linux",
+                "--override-arch",
+                "amd64",
+                "--authfile",
+                authfile,
+                "--cert-dir",
+                root_ca.parent,
+                destination,
+            ]
+        )
+        print("PASS Harbor registry pull/inspect")
+
+        artifact_url = (
+            f"{harbor_url}/api/v2.0/projects/library/repositories/"
+            f"{api_repository}/artifacts/{urllib.parse.quote(tag, safe='')}"
+        )
+        _harbor_curl(f"{artifact_url}/scan", admin_password, root_ca, method="POST")
+
+        scan_summary: dict[str, Any] = {}
+
+        def scan_complete() -> bool:
+            nonlocal scan_summary
+            artifact = json.loads(
+                _harbor_curl(
+                    f"{artifact_url}?with_scan_overview=true",
+                    admin_password,
+                    root_ca,
+                ).stdout
+            )
+            reports = list((artifact.get("scan_overview") or {}).values())
+            for report in reports:
+                status = report.get("scan_status")
+                if status == "Error":
+                    raise CommandError("Harbor Trivy scan finished with an error")
+                if status == "Success":
+                    scan_summary = report.get("summary", {})
+                    return True
+            return False
+
+        wait_until(scan_complete, 300, 5, "Harbor Trivy scan")
+        vulnerabilities = sum(
+            int(value) for value in scan_summary.values() if isinstance(value, int)
+        )
+        print(f"PASS Harbor Trivy scan completed; reported vulnerabilities={vulnerabilities}")
+    finally:
+        authfile.unlink(missing_ok=True)
+        if pushed:
+            cleanup = _harbor_curl(
+                f"{harbor_url}/api/v2.0/projects/library/repositories/{api_repository}",
+                admin_password,
+                root_ca,
+                method="DELETE",
+                check=False,
+            )
+            if cleanup.returncode == 0:
+                print("PASS Harbor smoke repository removed")
+            else:
+                print("WARN Harbor smoke repository cleanup failed")
+
+    application = json.loads(
+        kubectl(kubeconfig, "-n", "argocd", "get", "application", "harbor", "-o", "json").stdout
+    )
+    if (
+        application.get("status", {}).get("sync", {}).get("status") != "Synced"
+        or application.get("status", {}).get("health", {}).get("status") != "Healthy"
+        or application.get("status", {}).get("operationState", {}).get("phase") != "Succeeded"
+    ):
+        raise CommandError("Harbor Application is not Synced/Healthy with a successful operation")
+    print("PASS Harbor Application Synced/Healthy; latest operation Succeeded")
     return 0
 
 

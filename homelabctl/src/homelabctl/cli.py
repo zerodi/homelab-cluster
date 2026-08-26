@@ -143,6 +143,10 @@ def parser() -> argparse.ArgumentParser:
     finalize_access.add_argument("--kubeconfig", required=True)
     finalize_access.add_argument("--contract", required=True)
     finalize_access.add_argument("--root-ca", required=True)
+    harbor = ops.add_parser("harbor-smoke")
+    harbor.add_argument("--kubeconfig", required=True)
+    harbor.add_argument("--contract", required=True)
+    harbor.add_argument("--root-ca", required=True)
     return root
 
 
@@ -237,6 +241,10 @@ def dispatch(args: argparse.Namespace) -> int:
             )
         if args.command == "argocd-access-finalize":
             return operations.argocd_access_finalize(
+                path(args.kubeconfig), path(args.contract), path(args.root_ca)
+            )
+        if args.command == "harbor-smoke":
+            return operations.harbor_smoke(
                 path(args.kubeconfig), path(args.contract), path(args.root_ca)
             )
         return operations.garage(path(args.kubeconfig), args.action)

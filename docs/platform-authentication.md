@@ -401,6 +401,11 @@ Docker и Helm CLI не выполняют browser redirect. После перв
 пользователь должен получить Harbor CLI secret в своём профиле и использовать
 его вместо пароля Authentik.
 
+Для воспроизводимой проверки configuration и data path используйте
+`task ops:harbor-smoke`. Команда подтверждает OIDC primary login до MFA,
+registry push/pull и успешный Trivy report; полный callback после MFA остаётся
+browser-проверкой пользователя.
+
 ## 6. Grafana через Authentik
 
 Provider `grafana` использует redirect URI
