@@ -6,7 +6,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "25"
 spec:
-  project: platform
+  project: platform-observability-rbac
   sources:
     - repoURL: https://grafana-community.github.io/helm-charts
       chart: grafana

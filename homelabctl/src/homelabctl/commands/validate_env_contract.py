@@ -20,6 +20,11 @@ from homelabctl.runtime import atomic_write
 from homelabctl.yamlutil import load, load_all
 
 PLACEHOLDER_REPO_URL = "https://git.example.invalid/replace-me/gitops.git"
+CRITICAL_GITOPS_PREFIXES = (
+    "argocd/platform/identity/",
+    "argocd/platform/policy/",
+    "argocd/platform/storage/",
+)
 DEFAULT_BASE_DOMAIN = "home.arpa"
 
 
@@ -469,6 +474,7 @@ class Validator:
         base_domain = env["cluster"]["base_domain"]
         gitops_repo = env["gitops"]["repo_url"]
         gitops_revision = env["gitops"]["revision"]
+        critical_gitops_revision = env["gitops"]["critical_revision"]
 
         auth_url = f"https://{hosts['authentik']}"
         forgejo_url = f"https://{hosts['forgejo']}"
@@ -488,6 +494,10 @@ class Validator:
             if env["platform"]["forgejo"]["admin_email"].endswith("@home.arpa"):
                 self.error(
                     "platform.forgejo.admin_email still uses the scaffold default @home.arpa address"
+                )
+            if re.fullmatch(r"[0-9a-f]{40}", critical_gitops_revision) is None:
+                self.error(
+                    "gitops.critical_revision must be an immutable full 40-character Git SHA in strict mode"
                 )
 
         for host_key, hostname in hosts.items():
@@ -558,6 +568,18 @@ class Validator:
 
         for path in sorted(self.root.glob("argocd/**/*.[Yy][Aa][Mm][Ll]")):
             relpath = path.relative_to(self.root)
+            relpath_text = relpath.as_posix()
+            expected_revision = (
+                critical_gitops_revision
+                if relpath_text.startswith(CRITICAL_GITOPS_PREFIXES)
+                else gitops_revision
+            )
+            revision_field = (
+                "gitops.critical_revision"
+                if expected_revision == critical_gitops_revision
+                and relpath_text.startswith(CRITICAL_GITOPS_PREFIXES)
+                else "gitops.revision"
+            )
             documents = [item for item in load_all(path) if isinstance(item, dict)]
             for data in documents:
                 if data.get("kind") != "Application":
@@ -576,16 +598,16 @@ class Validator:
                             self.error(
                                 f"gitops.repo_url: {relpath} has {source.get('repoURL')!r}, expected {gitops_repo!r}"
                             )
-                    if source.get("targetRevision") != gitops_revision:
+                    if source.get("targetRevision") != expected_revision:
                         if self.write:
                             self.queue_yaml_update(
                                 path,
                                 ("spec", "source", "targetRevision"),
-                                gitops_revision,
+                                expected_revision,
                             )
                         else:
                             self.error(
-                                f"gitops.revision: {relpath} has {source.get('targetRevision')!r}, expected {gitops_revision!r}"
+                                f"{revision_field}: {relpath} has {source.get('targetRevision')!r}, expected {expected_revision!r}"
                             )
 
                 for index, item in enumerate(spec.get("sources", [])):
@@ -603,28 +625,38 @@ class Validator:
                                 self.error(
                                     f"gitops.repo_url: {relpath} has {item.get('repoURL')!r}, expected {gitops_repo!r}"
                                 )
-                        if item.get("targetRevision") != gitops_revision:
+                        if item.get("targetRevision") != expected_revision:
                             if self.write:
                                 self.queue_yaml_update(
                                     path,
                                     ("spec", "sources", index, "targetRevision"),
-                                    gitops_revision,
+                                    expected_revision,
                                 )
                             else:
                                 self.error(
-                                    f"gitops.revision: {relpath} has {item.get('targetRevision')!r}, expected {gitops_revision!r}"
+                                    f"{revision_field}: {relpath} has {item.get('targetRevision')!r}, expected {expected_revision!r}"
                                 )
 
             for data in documents:
                 if data.get("kind") == "AppProject":
                     source_repos = data.get("spec", {}).get("sourceRepos", [])
-                    if gitops_repo not in source_repos:
-                        if self.write and source_repos:
-                            self.queue_yaml_update(
-                                path,
-                                ("spec", "sourceRepos", 0),
-                                gitops_repo,
-                            )
+                    git_candidates = [
+                        repo
+                        for repo in source_repos
+                        if isinstance(repo, str)
+                        and (repo == PLACEHOLDER_REPO_URL or repo.endswith(".git"))
+                    ]
+                    if git_candidates and gitops_repo not in source_repos:
+                        if self.write:
+                            original = path.read_text(encoding="utf-8")
+                            updated = original
+                            for candidate in git_candidates:
+                                updated = updated.replace(candidate, gitops_repo)
+                            if updated != original:
+                                atomic_write(path, updated)
+                                self.changed_text_files.add(path)
+                                self.text_cache.pop(path, None)
+                                self.yaml_cache.pop(path, None)
                         else:
                             self.error(
                                 f"gitops.repo_url: {relpath} sourceRepos does not include {gitops_repo!r}"

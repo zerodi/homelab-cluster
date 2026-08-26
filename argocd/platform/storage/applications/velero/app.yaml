@@ -6,7 +6,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "10"
 spec:
-  project: platform
+  project: platform-storage-velero
   sources:
     - repoURL: https://vmware-tanzu.github.io/helm-charts
       chart: velero
@@ -16,7 +16,7 @@ spec:
         valueFiles:
           - $values/platform/storage/velero/values.yaml
     - repoURL: https://git.lab.zerodi.ru/platform/gitops.git
-      targetRevision: main
+      targetRevision: 91cd52870c84700b405303ddb80084d7a5b4165f
       ref: values
   destination:
     server: https://kubernetes.default.svc

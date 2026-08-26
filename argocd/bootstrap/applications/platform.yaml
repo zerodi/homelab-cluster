@@ -6,7 +6,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "10"
 spec:
-  project: platform
+  project: platform-orchestration
   source:
     repoURL: https://git.lab.zerodi.ru/platform/gitops.git
     targetRevision: main

@@ -14,5 +14,11 @@ spec:
     - group: external-secrets.io
       kind: ClusterSecretStore
   namespaceResourceWhitelist:
-    - group: "*"
-      kind: "*"
+    - group: ""
+      kind: Secret
+    - group: argoproj.io
+      kind: Application
+    - group: argoproj.io
+      kind: AppProject
+    - group: external-secrets.io
+      kind: ExternalSecret

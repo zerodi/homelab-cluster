@@ -106,6 +106,16 @@ def test_materialized_contract_has_derived_hosts() -> None:
     assert result["platform"]["velero"]["s3_url"] == (
         "http://" + result["platform"]["garage"]["s3_service"]
     )
+    assert result["gitops"]["critical_revision"] == result["gitops"]["revision"]
+
+
+def test_materialized_contract_preserves_optional_critical_revision() -> None:
+    from homelabctl.yamlutil import load
+
+    raw = load(ROOT / "envs/homelab.yaml")
+    raw["gitops"]["critical_revision"] = "a" * 40
+
+    assert materialize_contract(raw)["gitops"]["critical_revision"] == "a" * 40
 
 
 def test_tfvars_example_requires_only_variables_without_defaults() -> None:

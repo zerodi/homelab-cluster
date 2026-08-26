@@ -6,7 +6,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "9"
 spec:
-  project: platform
+  project: platform-delivery
   sources:
     - repoURL: registry-1.docker.io/bitnamicharts
       chart: valkey

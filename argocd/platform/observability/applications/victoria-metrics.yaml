@@ -6,7 +6,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "10"
 spec:
-  project: platform
+  project: platform-observability
   sources:
     - repoURL: https://victoriametrics.github.io/helm-charts
       chart: victoria-metrics-single

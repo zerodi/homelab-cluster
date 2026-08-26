@@ -6,6 +6,8 @@ cluster:
 
 gitops:
   repo_url: https://git.example.net/platform/gitops.git
+  # Full reviewed Forgejo commit for identity/storage/policy promotion.
+  # critical_revision: 0123456789abcdef0123456789abcdef01234567
 
 # Override only subdomains that differ from the base contract.
 service_subdomains:

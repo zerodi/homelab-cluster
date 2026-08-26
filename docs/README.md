@@ -36,6 +36,7 @@ cluster/ -> infrastructure/ -> OpenBao init/unseal -> GitOps bootstrap
 - [Homelab automation application](homelabctl.md)
 - [Единая авторизация приложений платформы](platform-authentication.md)
 - [Cutover Argo CD с test-ssh-git на Forgejo](forgejo-argocd-cutover.md)
+- [Argo CD hardening и critical promotion](argocd-hardening.md)
 - [Версии компонентов](chart-versions.md)
 - [Backup и restore](backup-restore.md)
 - [Garage и Velero](garage-velero.md)

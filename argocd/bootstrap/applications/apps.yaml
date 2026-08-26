@@ -6,7 +6,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "20"
 spec:
-  project: apps
+  project: apps-orchestration
   source:
     repoURL: https://git.lab.zerodi.ru/platform/gitops.git
     targetRevision: main

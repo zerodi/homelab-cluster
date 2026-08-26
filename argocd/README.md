@@ -96,6 +96,10 @@ force-push. По умолчанию write credential читается из boots
 Отдельные `FORGEJO_GIT_USERNAME` и `FORGEJO_GIT_PASSWORD` должны передаваться
 вместе и не сохраняются в Git config или repository URL.
 
+Изменения identity, storage и policy проходят отдельное staged promotion и
+manual sync. Порядок и rollback описаны в
+[`Argo CD hardening runbook`](../docs/argocd-hardening.md).
+
 ## Проверка результата
 
 ```bash

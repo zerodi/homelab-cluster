@@ -1,8 +1,14 @@
+resource "kubernetes_namespace_v1" "argocd" {
+  metadata {
+    name = "argocd"
+  }
+}
+
 resource "helm_release" "argocd" {
 
   name             = "argocd"
   namespace        = "argocd"
-  create_namespace = true
+  create_namespace = false
 
   repository = "https://argoproj.github.io/argo-helm"
   chart      = "argo-cd"
@@ -14,6 +20,9 @@ resource "helm_release" "argocd" {
   values = [yamlencode({
     global = {
       domain = local.effective_argocd_host
+      networkPolicy = {
+        create = false
+      }
     }
     configs = {
       cm = {
@@ -31,20 +40,25 @@ resource "helm_release" "argocd" {
         scopes           = "[groups]"
         "policy.default" = "role:authenticated"
         "policy.csv" = join("\n", [
-          "p, role:authenticated, projects, get, platform, allow",
+          "p, role:authenticated, projects, get, platform-*, allow",
           "p, role:authenticated, projects, get, apps, allow",
-          "p, role:authenticated, applications, get, platform/*, allow",
+          "p, role:authenticated, projects, get, apps-orchestration, allow",
+          "p, role:authenticated, applications, get, platform-*/*, allow",
           "p, role:authenticated, applications, get, apps/*, allow",
+          "p, role:authenticated, applications, get, apps-orchestration/*, allow",
           "g, ${local.effective_platform_admin_group}, role:admin",
           "",
         ])
       }
       params = {
-        "controller.diff.server.side" = "true"
-        "server.insecure"             = "true"
+        "controller.diff.server.side"       = "true"
+        "controller.repo.server.strict.tls" = "true"
+        "server.insecure"                   = "true"
+        "server.repo.server.strict.tls"     = "true"
       }
     }
     controller = {
+      replicas = 1
       resources = {
         requests = {
           cpu    = "100m"
@@ -79,6 +93,7 @@ resource "helm_release" "argocd" {
       }
     }
     server = {
+      replicas = 1
       resources = {
         requests = {
           cpu    = "50m"
@@ -99,6 +114,7 @@ resource "helm_release" "argocd" {
       }
     }
     repoServer = {
+      replicas = 1
       resources = {
         requests = {
           cpu    = "100m"
@@ -113,6 +129,7 @@ resource "helm_release" "argocd" {
       }
     }
     applicationSet = {
+      replicas = 1
       resources = {
         requests = {
           cpu    = "50m"
@@ -126,9 +143,50 @@ resource "helm_release" "argocd" {
     notifications = {
       enabled = false
     }
+    "redis-ha" = {
+      enabled = false
+    }
   })]
 
-  depends_on = [kubernetes_manifest.homelab_ca_clusterissuer]
+  depends_on = [kubernetes_manifest.argocd_repo_server_tls_certificate]
+}
+
+resource "kubernetes_manifest" "argocd_repo_server_tls_certificate" {
+  count = var.crd_backed_resources_enabled ? 1 : 0
+
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "Certificate"
+    metadata = {
+      name      = "argocd-repo-server"
+      namespace = "argocd"
+    }
+    spec = {
+      secretName  = "argocd-repo-server-tls"
+      duration    = "2160h"
+      renewBefore = "360h"
+      dnsNames = [
+        "argocd-repo-server",
+        "argocd-repo-server.argocd",
+        "argocd-repo-server.argocd.svc",
+        "argocd-repo-server.argocd.svc.cluster.local",
+      ]
+      privateKey = {
+        algorithm = "ECDSA"
+        size      = 256
+      }
+      usages = ["server auth"]
+      issuerRef = {
+        name = "homelab-ca"
+        kind = "ClusterIssuer"
+      }
+    }
+  }
+
+  depends_on = [
+    kubernetes_manifest.homelab_ca_clusterissuer,
+    kubernetes_namespace_v1.argocd,
+  ]
 }
 
 resource "terraform_data" "argocd_ready" {
@@ -155,5 +213,9 @@ resource "terraform_data" "argocd_ready" {
     EOT
   }
 
-  depends_on = [helm_release.argocd]
+  depends_on = [
+    helm_release.argocd,
+    kubernetes_manifest.argocd_network_policy,
+    kubernetes_manifest.argocd_repo_server_tls_certificate,
+  ]
 }

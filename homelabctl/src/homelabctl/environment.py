@@ -69,6 +69,19 @@ def materialize_contract(raw_contract: dict[str, Any]) -> dict[str, Any]:
         raise ContractError("cluster.name must not be empty")
     validate_dns_name(cluster_name, "cluster.name")
 
+    try:
+        gitops = contract["gitops"]
+        gitops_revision = str(gitops["revision"]).strip()
+    except (KeyError, TypeError) as exc:
+        raise ContractError("contract requires gitops.revision") from exc
+    if not gitops_revision:
+        raise ContractError("gitops.revision must not be empty")
+    critical_revision = str(gitops.get("critical_revision") or gitops_revision).strip()
+    if not critical_revision:
+        raise ContractError("gitops.critical_revision must not be empty when set")
+    gitops["revision"] = gitops_revision
+    gitops["critical_revision"] = critical_revision
+
     if not base_domain:
         raise ContractError("cluster.base_domain must not be empty")
     validate_dns_name(base_domain, "cluster.base_domain")

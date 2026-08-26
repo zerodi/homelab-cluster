@@ -6,10 +6,10 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "8"
 spec:
-  project: platform
+  project: platform-storage-garage
   source:
     repoURL: https://git.lab.zerodi.ru/platform/gitops.git
-    targetRevision: main
+    targetRevision: 91cd52870c84700b405303ddb80084d7a5b4165f
     path: platform/storage/garage/resources
   destination:
     server: https://kubernetes.default.svc

@@ -49,8 +49,8 @@ cp .env.example .env
 # версии OpenTofu, providers, Talos Linux, Kubernetes, charts и images меняйте в versions.yaml
 # заполните .env локальными credentials; Taskfile загружает его автоматически
 # при необходимости задайте PLATFORM_ADMIN_PASSWORD; иначе helper сгенерирует его
-# оставьте в tracked homelab.override.yaml только environment-specific
-# non-secret отличия
+# optional локальный homelab.override.yaml хранит только environment-specific
+# non-secret отличия и не коммитится
 ```
 
 `task init` инициализирует оба entrypoint:

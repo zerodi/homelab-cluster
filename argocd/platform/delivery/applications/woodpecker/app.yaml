@@ -6,7 +6,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "26"
 spec:
-  project: platform
+  project: platform-delivery
   sources:
     - repoURL: ghcr.io/woodpecker-ci/helm
       chart: woodpecker

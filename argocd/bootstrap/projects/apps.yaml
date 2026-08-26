@@ -8,16 +8,12 @@ spec:
   sourceRepos:
     - https://git.lab.zerodi.ru/platform/gitops.git
   destinations:
-    - namespace: argocd
-      server: https://kubernetes.default.svc
     - namespace: echo
       server: https://kubernetes.default.svc
   clusterResourceWhitelist:
     - group: ""
       kind: Namespace
   namespaceResourceWhitelist:
-    - group: argoproj.io
-      kind: Application
     - group: apps
       kind: Deployment
     - group: cert-manager.io
@@ -30,3 +26,19 @@ spec:
       kind: HTTPRoute
     - group: networking.k8s.io
       kind: NetworkPolicy
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: apps-orchestration
+  namespace: argocd
+spec:
+  description: Application workload definitions only
+  sourceRepos:
+    - https://git.lab.zerodi.ru/platform/gitops.git
+  destinations:
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+  namespaceResourceWhitelist:
+    - group: argoproj.io
+      kind: Application

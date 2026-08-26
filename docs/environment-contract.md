@@ -1,14 +1,16 @@
 # Environment contract
 
 [`envs/homelab.yaml`](../envs/homelab.yaml) — базовый non-secret contract.
-[`envs/homelab.override.yaml`](../envs/homelab.override.yaml) содержит
-tracked environment-specific отличия и рекурсивно накладывается поверх базы.
+Optional локальный `envs/homelab.override.yaml` содержит environment-specific
+отличия, рекурсивно накладывается поверх базы и игнорируется Git. Его шаблон —
+tracked [`envs/homelab.override.yaml.example`](../envs/homelab.override.yaml.example).
 
 В нём хранятся:
 
 - optional имя кластера (fallback `talos-pve`), общий base domain и IPv4 `/24` подсеть
 - только короткие поддомены сервисов
-- GitOps repository URL и revision
+- GitOps repository URL, mutable runtime revision и optional immutable
+  `critical_revision` для staged promotion identity/storage/policy
 - техническая identity администратора: username, display name, email localpart
   и группа; effective email формируется с `cluster.base_domain`
 - Piraeus/LINSTOR naming
@@ -55,9 +57,9 @@ helper генерирует пароль. После seed источником �
 ## Изменение contract
 
 1. Для общего значения измените `envs/homelab.yaml`.
-2. Для значения конкретного окружения измените `envs/homelab.override.yaml`,
-   оставляя в нём только отличающиеся base domain, subnet или поддомены. Example
-   используется как шаблон для нового окружения.
+2. Для значения конкретного окружения измените optional локальный
+   `envs/homelab.override.yaml`, оставляя в нём только отличия. Example
+   используется как tracked шаблон для нового окружения.
 3. Render объединяет base и override, затем материализует производные FQDN,
    URL и IP в effective contract.
 4. Consumers в `cluster/` и `infrastructure/` читают effective contract
@@ -71,12 +73,17 @@ task check:env-contract
 ```
 
 Effective contract создаётся в `out/homelab.effective.yaml` и не коммитится.
-Environment-specific override коммитится, чтобы локальная проверка и CI
-использовали один contract.
+Environment-specific override не коммитится. В CI нужные non-secret overrides
+передаются отдельным contract path; синхронизированные tracked consumers
+проверяются вместе с ним.
 
 `task sync-env-contract` изменяет tracked mirrors в `argocd/`: repository
 coordinates, сгенерированные hostnames и Gateway addresses, storage settings,
 runtime naming, Authentik blueprint и Stalwart accounts из identity contract.
+Если `gitops.critical_revision` не задан, scaffold использует
+`gitops.revision`; strict preflight реального окружения требует полный
+40-символьный Git SHA. Applications доменов `identity`, `storage` и `policy`
+читают именно этот immutable snapshot.
 После команды
 проверьте `git diff` и закоммитьте изменения вместе с environment contract.
 
@@ -95,5 +102,5 @@ task gitops:preflight
 Она отклоняет scaffold placeholders вроде `git.example.invalid` и
 `*.home.arpa`, а также проверяет обязательные OpenBao paths/keys.
 
-`homelab.override.yaml` является tracked-файлом, поэтому должен оставаться
-non-secret: runtime secrets по-прежнему живут только в OpenBao.
+Несмотря на Git ignore, `homelab.override.yaml` должен оставаться non-secret:
+runtime secrets по-прежнему живут только в OpenBao.

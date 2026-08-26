@@ -69,7 +69,7 @@ tasks:
       - task check:versions-sync
 
   render-env-contract:
-    desc: Merge homelab.yaml with the tracked environment override
+    desc: Merge homelab.yaml with the optional local environment override
     cmds:
       - uv run --project homelabctl --locked homelabctl env render
 
