@@ -54,6 +54,7 @@ Namespace isolation относится к runtime/GitOps-слою и управ�
 | OTel Collector / Agent | Kubernetes API | TCP 443/6443 | discovery и metadata |
 | OTel Agent | node host | TCP 10250 | kubelet metrics |
 | Grafana | VictoriaMetrics / Loki / Tempo | TCP 8428 / 3100 / 3200 | datasources |
+| Grafana | OTel Collector | TCP 4318 / 8888 | synthetic OTLP и exporter metrics smoke |
 | Grafana | Authentik Gateway | TCP 443 | OIDC |
 | Grafana | Echo | TCP 80 | внутренний alert webhook smoke |
 

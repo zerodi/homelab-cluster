@@ -1744,6 +1744,10 @@ def observability_smoke(kubeconfig: Path) -> int:
             "--",
             "curl",
             "-fsS",
+            "--connect-timeout",
+            "5",
+            "--max-time",
+            "20",
             *args,
             check=check,
         )
@@ -1758,7 +1762,8 @@ def observability_smoke(kubeconfig: Path) -> int:
             "--",
             "sh",
             "-c",
-            'curl -fsS -u "$GF_SECURITY_ADMIN_USER:$GF_SECURITY_ADMIN_PASSWORD" "$@"',
+            "curl -fsS --connect-timeout 5 --max-time 20 "
+            '-u "$GF_SECURITY_ADMIN_USER:$GF_SECURITY_ADMIN_PASSWORD" "$@"',
             "sh",
             *args,
             check=check,
