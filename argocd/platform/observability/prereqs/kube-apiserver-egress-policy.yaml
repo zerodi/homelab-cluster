@@ -26,6 +26,7 @@ spec:
               protocol: TCP
     - toEntities:
         - host
+        - remote-node
       toPorts:
         - ports:
             - port: "9962"

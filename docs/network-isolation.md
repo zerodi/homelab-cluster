@@ -50,7 +50,7 @@ Namespace isolation относится к runtime/GitOps-слою и управ�
 | Woodpecker workloads | Forgejo Gateway / `world` | TCP 22, 80, 443 | SCM и pipeline network |
 | Harbor / OTel Agent / operator host | OTel Collector | TCP 4318 / 4317 | telemetry ingest / smoke |
 | OTel Collector | VictoriaMetrics, Loki, Tempo, Grafana, OTel Agent | TCP 8428, 3100, 3200/4317, 3000, 8888 | export, health и metrics |
-| OTel Collector | selected platform metrics Pods | TCP 8000, 8085, 9121, 9153, 9962-9965 | Prometheus scrape |
+| OTel Collector | selected platform metrics Pods / Cilium host and remote nodes | TCP 8000, 8085, 9121, 9153, 9962-9965 | Prometheus scrape |
 | OTel Collector / Agent | Kubernetes API | TCP 443/6443 | discovery и metadata |
 | OTel Agent | node host | TCP 10250 | kubelet metrics |
 | Grafana | VictoriaMetrics / Loki / Tempo | TCP 8428 / 3100 / 3200 | datasources |
