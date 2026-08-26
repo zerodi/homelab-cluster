@@ -16,13 +16,16 @@ spec:
       restartPolicy: OnFailure
       securityContext:
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: bootstrap
-          image: bitnami/kubectl:latest@sha256:c12989b8ecaecbd9d9a49828bfdb727ef222a6747a8984701e2a3cdf9c1cb168
+          image: bitnami/kubectl@sha256:c12989b8ecaecbd9d9a49828bfdb727ef222a6747a8984701e2a3cdf9c1cb168
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            runAsNonRoot: true
             seccompProfile:
               type: RuntimeDefault
             capabilities:

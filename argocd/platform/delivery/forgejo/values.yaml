@@ -12,6 +12,8 @@ persistence:
   size: 10Gi
 podSecurityContext:
   fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
 containerSecurityContext:
   allowPrivilegeEscalation: false
   capabilities:
@@ -28,6 +30,14 @@ resources:
   limits:
     cpu: 500m
     memory: 512Mi
+initContainers:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
 deployment:
   env:
     - name: SSL_CERT_FILE
@@ -86,4 +96,6 @@ service:
     type: ClusterIP
     port: 22
 ingress:
+  enabled: false
+test:
   enabled: false

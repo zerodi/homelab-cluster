@@ -14,6 +14,7 @@ spec:
     background:
       enabled: true
   validationActions:
+    - Deny
     - Audit
   autogen:
     podControllers:
@@ -32,19 +33,15 @@ spec:
           operator: NotIn
           values:
             - argocd
-            - authentik
             - cert-manager
             - external-secrets
-            - forgejo
             - gateway
             - kube-system
             - kyverno
-            - observability
             - openbao
             - piraeus-datastore
             - reloader
             - trust-manager
-            - velero
     resourceRules:
       - apiGroups:
           - ""
@@ -58,7 +55,11 @@ spec:
   validations:
     - message: Pods must define seccompProfile and containers must use a basic restricted securityContext.
       expression: >-
-        has(object.spec.securityContext) &&
+        (object.metadata.namespace == 'velero' &&
+        has(object.metadata.labels) &&
+        'name' in object.metadata.labels &&
+        object.metadata.labels['name'] == 'node-agent') ||
+        (has(object.spec.securityContext) &&
         has(object.spec.securityContext.seccompProfile) &&
         has(object.spec.securityContext.seccompProfile.type) &&
         ['RuntimeDefault', 'Localhost'].exists(t, object.spec.securityContext.seccompProfile.type == t) &&
@@ -83,4 +84,15 @@ spec:
           has(c.securityContext.capabilities) &&
           has(c.securityContext.capabilities.drop) &&
           c.securityContext.capabilities.drop.exists(d, d == 'ALL')
-        ))
+        )) &&
+        (!has(object.spec.ephemeralContainers) ||
+        object.spec.ephemeralContainers.all(c,
+          has(c.securityContext) &&
+          has(c.securityContext.runAsNonRoot) &&
+          c.securityContext.runAsNonRoot == true &&
+          has(c.securityContext.allowPrivilegeEscalation) &&
+          c.securityContext.allowPrivilegeEscalation == false &&
+          has(c.securityContext.capabilities) &&
+          has(c.securityContext.capabilities.drop) &&
+          c.securityContext.capabilities.drop.exists(d, d == 'ALL')
+        )))

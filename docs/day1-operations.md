@@ -67,6 +67,20 @@ URL и использует API-dependent `lookup`, недоступный Argo 
 игнорирует только `/data/redisURL`. Не расширяйте исключение до всего `/data`:
 chart-owned keys должны оставаться под drift detection.
 
+## Runtime security baseline
+
+Перед публикацией chart, image или workload изменений выполните:
+
+```bash
+task check:runtime-workloads
+task check:kustomize-platform
+```
+
+Первый gate рендерит все runtime charts/manifests и блокирует mutable/missing
+image references, незакреплённые Bitnami images, отсутствующие resources и
+неполный restricted security context. После sync `task ops:post-argocd-check`
+дополнительно требует отсутствие Kyverno PolicyReport failures.
+
 ## Сертификаты и storage
 
 ```bash

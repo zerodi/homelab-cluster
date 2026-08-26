@@ -12,6 +12,7 @@ from homelabctl.commands import (
     check_infrastructure_isolation,
     check_platform_layout,
     check_release_versions,
+    check_runtime_workloads,
     check_tfvars_example,
     forgejo_woodpecker_oauth,
     gitops,
@@ -62,6 +63,7 @@ def parser() -> argparse.ArgumentParser:
         "tfvars-example",
         "documentation",
         "runtime-secrets",
+        "runtime-workloads",
         "operator-helpers",
     ):
         checks.add_parser(name)
@@ -170,6 +172,7 @@ def dispatch(args: argparse.Namespace) -> int:
             "tfvars-example": check_tfvars_example,
             "documentation": check_documentation,
             "runtime-secrets": openbao_runtime_preflight,
+            "runtime-workloads": check_runtime_workloads,
             "operator-helpers": forgejo_woodpecker_oauth,
         }
         if args.command == "yaml":

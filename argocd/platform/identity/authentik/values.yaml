@@ -18,6 +18,8 @@ global:
     fsGroup: 1000
     runAsGroup: 1000
     runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
 server:
   resources:
     requests:
@@ -30,6 +32,8 @@ server:
     fsGroup: 1000
     runAsGroup: 1000
     runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
   containerSecurityContext:
     allowPrivilegeEscalation: false
     capabilities:

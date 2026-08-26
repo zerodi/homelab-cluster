@@ -44,8 +44,8 @@ CONSUMERS = (
         "kubectl",
         "argocd/platform/delivery/forgejo/sso/job.yml",
         "bitnami/kubectl",
-        r"(?m)^(\s*image:\s*bitnami/kubectl:)[^\s]+(\s*)$",
-        r"\g<1>{version}\g<2>",
+        r"(?m)^(\s*image:\s*bitnami/kubectl)(?::|@)[^\s]+(\s*)$",
+        r"\g<1>@{version}\g<2>",
     ),
     ImageConsumer(
         "stalwart_cli",

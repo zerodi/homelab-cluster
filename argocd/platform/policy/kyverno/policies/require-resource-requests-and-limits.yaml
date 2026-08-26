@@ -14,6 +14,7 @@ spec:
     background:
       enabled: true
   validationActions:
+    - Deny
     - Audit
   autogen:
     podControllers:
@@ -32,19 +33,15 @@ spec:
           operator: NotIn
           values:
             - argocd
-            - authentik
             - cert-manager
             - external-secrets
-            - forgejo
             - gateway
             - kube-system
             - kyverno
-            - observability
             - openbao
             - piraeus-datastore
             - reloader
             - trust-manager
-            - velero
     resourceRules:
       - apiGroups:
           - ""
@@ -74,6 +71,20 @@ spec:
         )) &&
         (!has(object.spec.initContainers) ||
         object.spec.initContainers.all(c,
+          has(c.resources) &&
+          has(c.resources.requests) &&
+          has(c.resources.requests.cpu) &&
+          c.resources.requests.cpu != '' &&
+          has(c.resources.requests.memory) &&
+          c.resources.requests.memory != '' &&
+          has(c.resources.limits) &&
+          has(c.resources.limits.cpu) &&
+          c.resources.limits.cpu != '' &&
+          has(c.resources.limits.memory) &&
+          c.resources.limits.memory != ''
+        )) &&
+        (!has(object.spec.ephemeralContainers) ||
+        object.spec.ephemeralContainers.all(c,
           has(c.resources) &&
           has(c.resources.requests) &&
           has(c.resources.requests.cpu) &&

@@ -24,6 +24,8 @@ primary:
   podSecurityContext:
     enabled: true
     fsGroup: 1001
+    seccompProfile:
+      type: RuntimeDefault
   containerSecurityContext:
     enabled: true
     runAsNonRoot: true
@@ -52,3 +54,13 @@ metrics:
     limits:
       cpu: 100m
       memory: 96Mi
+  containerSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL

@@ -211,6 +211,50 @@ def test_harbor_ignores_only_eso_owned_redis_url() -> None:
     ]
 
 
+def test_runtime_workload_validator_rejects_latest_and_missing_baseline() -> None:
+    from homelabctl.commands.check_runtime_workloads import validate_documents
+
+    workload = {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "metadata": {"name": "bad", "namespace": "echo"},
+        "spec": {"containers": [{"name": "bad", "image": "nginx:latest"}]},
+    }
+
+    errors = validate_documents([workload], "test")
+
+    assert any("uses latest" in error for error in errors)
+    assert any("requests or limits missing" in error for error in errors)
+    assert any("restricted securityContext missing" in error for error in errors)
+    assert any("pod seccompProfile is missing" in error for error in errors)
+
+
+def test_runtime_policy_scope_uses_only_system_namespace_exclusions() -> None:
+    from homelabctl.yamlutil import load
+
+    expected = {
+        "argocd",
+        "cert-manager",
+        "external-secrets",
+        "gateway",
+        "kube-system",
+        "kyverno",
+        "openbao",
+        "piraeus-datastore",
+        "reloader",
+        "trust-manager",
+    }
+    policies = ROOT / "argocd/platform/policy/kyverno/policies"
+    for path in [*policies.glob("disallow-*.yaml"), *policies.glob("require-*.yaml")]:
+        policy = load(path)
+        expressions = policy["spec"]["matchConstraints"]["namespaceSelector"]["matchExpressions"]
+        assert set(expressions[0]["values"]) == expected
+
+    for name in ("require-basic-security-context", "require-resource-requests-and-limits"):
+        policy = load(policies / f"{name}.yaml")
+        assert policy["spec"]["validationActions"] == ["Deny", "Audit"]
+
+
 def test_post_check_detects_incomplete_operation_and_crashloop() -> None:
     applications = {
         "items": [

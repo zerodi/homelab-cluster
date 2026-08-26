@@ -63,20 +63,20 @@ Jobs, CronJobs, ReplicaSets и ReplicationControllers.
 | `disallow-latest-tag` | medium | `Deny`, `Audit` | Запрещён суффикс `:latest` у обычных и init containers |
 | `disallow-privileged-containers` | high | `Deny`, `Audit` | Запрещено `securityContext.privileged: true` |
 | `disallow-hostpath-volumes` | high | `Deny`, `Audit` | Запрещены volumes с `hostPath` |
-| `require-resource-requests-and-limits` | medium | `Audit` | Нужны CPU/memory requests и limits у обычных и init containers |
-| `require-basic-security-context` | medium | `Audit` | Нужны seccomp, non-root, запрет privilege escalation и drop `ALL` capabilities |
+| `require-resource-requests-and-limits` | medium | `Deny`, `Audit` | Нужны CPU/memory requests и limits у обычных, init и ephemeral containers |
+| `require-basic-security-context` | medium | `Deny`, `Audit` | Нужны seccomp, non-root, запрет privilege escalation и drop `ALL` capabilities |
 
 `Deny` отклоняет несовместимый admission request. `Audit` сохраняет результат
-для отчётности. Audit-only правила не мешают созданию workload и предназначены
-для оценки готовности перед усилением enforcement.
+для отчётности. Security-context и resource baseline переведены в enforcement
+после полного render/live аудита управляемых runtime workloads.
 
 ### Ограничения текущих выражений
 
 Policy pack является baseline, а не полной реализацией Pod Security Standards:
 
-- `disallow-latest-tag` блокирует только явный `:latest`; image без tag не
-  отклоняется этим выражением;
-- проверки контейнеров охватывают `containers` и `initContainers`, но не
+- `disallow-latest-tag` блокирует `:latest` и `:latest@sha256:...`; image без
+  tag/digest отклоняется локальным render gate, но не admission expression;
+- проверки охватывают `containers`, `initContainers` и
   `ephemeralContainers`;
 - privileged policy запрещает только явное `privileged: true`; наличие полного
   restricted security context контролируется отдельной Audit policy;
@@ -91,22 +91,29 @@ Policy pack является baseline, а не полной реализацие
 
 ## Область применения и исключения
 
-Каждая policy содержит `namespaceSelector` с исключениями для системных и
-platform namespaces:
+Каждая policy содержит `namespaceSelector` только с системными/operator
+исключениями:
 
 ```text
-argocd, authentik, cert-manager, external-secrets, forgejo, gateway,
-kube-system, kyverno, observability, openbao, piraeus-datastore, reloader,
-trust-manager, velero
+argocd, cert-manager, external-secrets, gateway, kube-system, kyverno,
+openbao, piraeus-datastore, reloader, trust-manager
 ```
 
-Namespace'ы, которых нет в этом списке, входят в область действия правил. В
-частности, текущий pack проверяет runtime workloads Harbor, Woodpecker, Garage
-и Stalwart.
+Namespace'ы, которых нет в этом списке, входят в область действия правил. Pack
+проверяет Authentik, Forgejo, Harbor, Woodpecker, Garage, Stalwart,
+Observability, Velero, Echo и новые application namespaces.
+
+Единственное workload-level исключение — `velero` Pod с label
+`name=node-agent`: filesystem backup требует root и hostPath-доступа к kubelet
+pod data. Исключение применяется только к basic security-context и hostPath
+выражениям; image и resources для node-agent продолжают проверяться. Harbor
+chart не умеет задавать pod-level seccomp, поэтому узкая mutation policy
+добавляет только `RuntimeDefault`; container security/resources проверяются
+без исключений.
 
 В Helm values дополнительно настроен controller-level список
-`resourceFiltersExcludeNamespaces`. Он похож на policy selector, но сейчас не
-содержит `reloader`. Это два разных механизма:
+`resourceFiltersExcludeNamespaces`, синхронизированный с системными
+namespace-исключениями. Это два разных механизма:
 
 - `matchConstraints.namespaceSelector` определяет admission scope конкретной
   policy;
@@ -117,6 +124,27 @@ Namespace'ы, которых нет в этом списке, входят в о
 глобальный controller filter, если требуется исключить его только из одного
 правила. Исключения должны быть узкими, иметь техническое обоснование и
 вноситься декларативно через Git.
+
+## Локальный render gate
+
+Перед публикацией runtime изменений выполните:
+
+```bash
+task check:runtime-workloads
+```
+
+Gate параллельно рендерит все 19 Helm releases и локальные Kustomize/raw
+workloads, а также отклоняет chart Application без зарегистрированного render
+spec. Для обычных, init, sidecar и ephemeral containers он проверяет:
+
+- отсутствие `latest` и image без tag/digest;
+- обязательный digest для Bitnami workload/exporter images;
+- CPU/memory requests и limits;
+- pod seccomp и restricted container security context.
+
+Версии charts берутся непосредственно из `versions.yaml`. Поэтому добавление
+нового runtime Helm Application требует регистрации его render spec в
+`check_runtime_workloads.py`; иначе общий gate не считается полным.
 
 ## Проверка состояния
 

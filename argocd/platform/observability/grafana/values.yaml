@@ -69,6 +69,30 @@ containerSecurityContext:
   seccompProfile:
     type: RuntimeDefault
 
+# fsGroup owns the persistence path; avoid the root CHOWN init container.
+initChownData:
+  enabled: false
+
+downloadDashboards:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 472
+    runAsGroup: 472
+    seccompProfile:
+      type: RuntimeDefault
+
 grafana.ini:
   server:
     root_url: https://grafana.lab.zerodi.ru/

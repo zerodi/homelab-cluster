@@ -33,19 +33,15 @@ spec:
           operator: NotIn
           values:
             - argocd
-            - authentik
             - cert-manager
             - external-secrets
-            - forgejo
             - gateway
             - kube-system
             - kyverno
-            - observability
             - openbao
             - piraeus-datastore
             - reloader
             - trust-manager
-            - velero
     resourceRules:
       - apiGroups:
           - ""
@@ -59,5 +55,9 @@ spec:
   validations:
     - message: hostPath volumes are not allowed outside excluded namespaces.
       expression: >-
+        (object.metadata.namespace == 'velero' &&
+        has(object.metadata.labels) &&
+        'name' in object.metadata.labels &&
+        object.metadata.labels['name'] == 'node-agent') ||
         !has(object.spec.volumes) ||
         object.spec.volumes.all(v, !has(v.hostPath))

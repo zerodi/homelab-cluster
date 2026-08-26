@@ -33,19 +33,15 @@ spec:
           operator: NotIn
           values:
             - argocd
-            - authentik
             - cert-manager
             - external-secrets
-            - forgejo
             - gateway
             - kube-system
             - kyverno
-            - observability
             - openbao
             - piraeus-datastore
             - reloader
             - trust-manager
-            - velero
     resourceRules:
       - apiGroups:
           - ""
@@ -67,6 +63,12 @@ spec:
         )) &&
         (!has(object.spec.initContainers) ||
         object.spec.initContainers.all(c,
+          !has(c.securityContext) ||
+          !has(c.securityContext.privileged) ||
+          c.securityContext.privileged == false
+        )) &&
+        (!has(object.spec.ephemeralContainers) ||
+        object.spec.ephemeralContainers.all(c,
           !has(c.securityContext) ||
           !has(c.securityContext.privileged) ||
           c.securityContext.privileged == false

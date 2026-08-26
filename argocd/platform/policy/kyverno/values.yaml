@@ -22,18 +22,15 @@ config:
     - system:nodes
   resourceFiltersExcludeNamespaces:
     - argocd
-    - authentik
     - cert-manager
     - external-secrets
-    - forgejo
     - gateway
     - kube-system
     - kyverno
-    - observability
     - openbao
     - piraeus-datastore
+    - reloader
     - trust-manager
-    - velero
 
 admissionController:
   replicas: 1

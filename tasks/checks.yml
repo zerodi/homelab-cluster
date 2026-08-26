@@ -160,6 +160,11 @@ tasks:
         --values argocd/platform/observability/grafana/values.yaml
         >/dev/null
 
+  runtime-workloads:
+    desc: Render runtime workloads and verify images, resources, and security contexts
+    cmds:
+      - uv run --project homelabctl --locked homelabctl check runtime-workloads
+
   validate:
     desc: Run the local validation baseline used by CI and pre-commit
     cmds:
@@ -180,3 +185,4 @@ tasks:
       - task check:kustomize-bootstrap
       - task check:kustomize-platform
       - task check:helm-observability
+      - task check:runtime-workloads
