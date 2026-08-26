@@ -17,7 +17,7 @@ from ruamel.yaml import YAML
 from homelabctl.environment import ContractError, materialize_contract, render_contract
 from homelabctl.project import ROOT
 from homelabctl.runtime import atomic_write
-from homelabctl.yamlutil import load
+from homelabctl.yamlutil import load, load_all
 
 PLACEHOLDER_REPO_URL = "https://git.example.invalid/replace-me/gitops.git"
 DEFAULT_BASE_DOMAIN = "home.arpa"
@@ -558,11 +558,10 @@ class Validator:
 
         for path in sorted(self.root.glob("argocd/**/*.[Yy][Aa][Mm][Ll]")):
             relpath = path.relative_to(self.root)
-            data = load_yaml(path)
-            if not isinstance(data, dict):
-                continue
-
-            if data.get("kind") == "Application":
+            documents = [item for item in load_all(path) if isinstance(item, dict)]
+            for data in documents:
+                if data.get("kind") != "Application":
+                    continue
                 spec = data.get("spec", {})
                 source = spec.get("source")
                 if isinstance(source, dict) and source.get("path"):
@@ -616,19 +615,20 @@ class Validator:
                                     f"gitops.revision: {relpath} has {item.get('targetRevision')!r}, expected {gitops_revision!r}"
                                 )
 
-            if data.get("kind") == "AppProject":
-                source_repos = data.get("spec", {}).get("sourceRepos", [])
-                if gitops_repo not in source_repos:
-                    if self.write and source_repos:
-                        self.queue_yaml_update(
-                            path,
-                            ("spec", "sourceRepos", 0),
-                            gitops_repo,
-                        )
-                    else:
-                        self.error(
-                            f"gitops.repo_url: {relpath} sourceRepos does not include {gitops_repo!r}"
-                        )
+            for data in documents:
+                if data.get("kind") == "AppProject":
+                    source_repos = data.get("spec", {}).get("sourceRepos", [])
+                    if gitops_repo not in source_repos:
+                        if self.write and source_repos:
+                            self.queue_yaml_update(
+                                path,
+                                ("spec", "sourceRepos", 0),
+                                gitops_repo,
+                            )
+                        else:
+                            self.error(
+                                f"gitops.repo_url: {relpath} sourceRepos does not include {gitops_repo!r}"
+                            )
 
         if not self.write and gitops_repo != PLACEHOLDER_REPO_URL:
             leftover_repo = run_allow_failure(
@@ -844,7 +844,10 @@ class Validator:
         certificate_paths = sorted(
             path.relative_to(self.root).as_posix()
             for path in self.root.glob("argocd/**/*.[Yy][Aa][Mm][Ll]")
-            if isinstance(load_yaml(path), dict) and load_yaml(path).get("kind") == "Certificate"
+            if any(
+                isinstance(document, dict) and document.get("kind") == "Certificate"
+                for document in load_all(path)
+            )
         )
         for certificate_path in certificate_paths:
             self.expect_equal(

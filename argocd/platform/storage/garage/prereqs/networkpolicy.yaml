@@ -1,0 +1,89 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: garage
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: garage
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: garage-service-flows
+  namespace: garage
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: garage
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: garage
+      ports:
+        - protocol: TCP
+          port: 3901
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: velero
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: velero
+      ports:
+        - protocol: TCP
+          port: 3900
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: garage
+      ports:
+        - protocol: TCP
+          port: 3901
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: garage-gateway
+  namespace: garage
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: garage
+  ingress:
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "3900"
+              protocol: TCP

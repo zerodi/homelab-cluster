@@ -58,10 +58,11 @@ Loki, Tempo и Collector доступны через ClusterIP только вн
 - Grafana alert rules создаются декларативно; contact point и notification
   policy настраиваются отдельно после выбора получателя;
 - Loki и Tempo не используют multitenancy/auth внутри cluster network;
-- namespace защищён baseline NetworkPolicy: OTLP и Grafana доступны другим
-  namespaces, backends остаются namespace-local, egress разрешает Kubernetes
-  API, kubelet, node-local Cilium/Hubble endpoints, internal services, DNS и
-  HTTPS;
+- namespace защищён namespace-wide default-deny: OTLP доступен только
+  объявленным producers, Grafana — Cilium Gateway, а egress ограничен
+  Kubernetes API, kubelet, точными metrics targets, backends, DNS, Authentik и
+  внутренним alert webhook; полная матрица находится в
+  [network isolation runbook](network-isolation.md);
 - текущая конфигурация оптимизирована для homelab, а не для HA или
   multi-cluster telemetry.
 

@@ -1,10 +1,20 @@
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: observability-kube-apiserver-egress
+  name: otel-collector-kube-apiserver
   namespace: observability
 spec:
-  endpointSelector: {}
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: otel-collector
+      app.kubernetes.io/name: opentelemetry-collector
+  ingress:
+    - fromEntities:
+        - host
+      toPorts:
+        - ports:
+            - port: "4318"
+              protocol: TCP
   egress:
     - toEntities:
         - kube-apiserver
@@ -16,11 +26,8 @@ spec:
               protocol: TCP
     - toEntities:
         - host
-        - remote-node
       toPorts:
         - ports:
-            - port: "10250"
-              protocol: TCP
             - port: "9962"
               protocol: TCP
             - port: "9963"
@@ -28,4 +35,55 @@ spec:
             - port: "9964"
               protocol: TCP
             - port: "9965"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: otel-agent-kubernetes
+  namespace: observability
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: otel-agent
+      app.kubernetes.io/name: opentelemetry-collector
+  egress:
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+            - port: "6443"
+              protocol: TCP
+    - toEntities:
+        - host
+      toPorts:
+        - ports:
+            - port: "10250"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: grafana-gateway-and-authentik
+  namespace: observability
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: grafana
+      app.kubernetes.io/name: grafana
+  ingress:
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
+  egress:
+    - toCIDR:
+        - 192.168.110.231/32
+      toPorts:
+        - ports:
+            - port: "443"
               protocol: TCP

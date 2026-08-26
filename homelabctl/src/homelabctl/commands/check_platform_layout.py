@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from homelabctl.project import ROOT
-from homelabctl.yamlutil import load
+from homelabctl.yamlutil import load, load_all
 
 PLATFORM = ROOT / "argocd/platform"
 DOMAINS = (
@@ -91,8 +91,10 @@ def main() -> int:
     for path in sorted(PLATFORM.rglob("*.yaml")):
         if path.name == "kustomization.yaml" or path in manifest_set:
             continue
-        document = load_yaml(path)
-        if isinstance(document, dict) and document.get("kind") == "Application":
+        if any(
+            isinstance(document, dict) and document.get("kind") == "Application"
+            for document in load_all(path)
+        ):
             issues.append(f"Application must live under a platform domain applications/: {path}")
 
     if issues:

@@ -1,0 +1,140 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: woodpecker
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: woodpecker
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: woodpecker-agent-server
+  namespace: woodpecker
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: woodpecker
+      app.kubernetes.io/name: server
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: woodpecker
+              app.kubernetes.io/name: agent
+      ports:
+        - protocol: TCP
+          port: 9000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: woodpecker-agent-egress
+  namespace: woodpecker
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: woodpecker
+      app.kubernetes.io/name: agent
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: woodpecker
+              app.kubernetes.io/name: server
+      ports:
+        - protocol: TCP
+          port: 9000
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: woodpecker-gateway-and-external
+  namespace: woodpecker
+spec:
+  endpointSelector: {}
+  egress:
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "22"
+              protocol: TCP
+            - port: "80"
+              protocol: TCP
+            - port: "443"
+              protocol: TCP
+    - toCIDR:
+        - 192.168.110.234/32
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: woodpecker-server-gateway
+  namespace: woodpecker
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: woodpecker
+      app.kubernetes.io/name: server
+  ingress:
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: woodpecker-agent-kube-apiserver
+  namespace: woodpecker
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: woodpecker
+      app.kubernetes.io/name: agent
+  egress:
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+            - port: "6443"
+              protocol: TCP

@@ -9,6 +9,9 @@ auth:
   existingSecret: forgejo-valkey-auth
   existingSecretPasswordKey: valkey-password
 
+networkPolicy:
+  enabled: false
+
 primary:
   resources:
     requests:

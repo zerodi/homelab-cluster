@@ -14,7 +14,7 @@ from typing import Any
 
 from homelabctl.commands.operations import SECRET_CONTRACT
 from homelabctl.project import ROOT
-from homelabctl.yamlutil import load
+from homelabctl.yamlutil import load, load_all
 
 EXPECTED_CONTRACT: dict[str, dict[str, Any]] = {
     "platform/cert-manager/cloudflare": {
@@ -181,18 +181,18 @@ def validate_internal_shape_contract() -> list[str]:
 def collect_manifest_contract(root: Path) -> dict[str, set[str]]:
     manifest_contract: dict[str, set[str]] = defaultdict(set)
     for path in sorted((root / "argocd").glob("**/*.[Yy][Aa][Mm][Ll]")):
-        data = load_yaml(path)
-        if not isinstance(data, dict) or data.get("kind") != "ExternalSecret":
-            continue
-        spec = data.get("spec", {})
-        if spec.get("secretStoreRef", {}).get("name") != "openbao":
-            continue
-        for item in spec.get("data", []):
-            remote_ref = item.get("remoteRef", {})
-            key = remote_ref.get("key")
-            prop = remote_ref.get("property")
-            if key and prop:
-                manifest_contract[key].add(prop)
+        for data in load_all(path):
+            if not isinstance(data, dict) or data.get("kind") != "ExternalSecret":
+                continue
+            spec = data.get("spec", {})
+            if spec.get("secretStoreRef", {}).get("name") != "openbao":
+                continue
+            for item in spec.get("data", []):
+                remote_ref = item.get("remoteRef", {})
+                key = remote_ref.get("key")
+                prop = remote_ref.get("property")
+                if key and prop:
+                    manifest_contract[key].add(prop)
     return manifest_contract
 
 

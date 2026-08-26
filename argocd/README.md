@@ -103,6 +103,10 @@ task ops:post-argocd-check
 kubectl -n argocd get applications
 ```
 
+Runtime namespaces используют default-deny и явные service flows. Матрица,
+Cilium-specific identities и порядок connectivity-проверки описаны в
+[network isolation runbook](../docs/network-isolation.md).
+
 Проверка должна подтверждать `Synced` и `Healthy` для root и дочерних
 Applications, успешное завершение Argo CD operations/hooks, readiness runtime
 Pods, свежий Velero Backup и отсутствие недавних OpenTelemetry scrape/export

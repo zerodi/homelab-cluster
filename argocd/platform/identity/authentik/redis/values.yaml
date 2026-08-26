@@ -6,6 +6,8 @@ auth:
   enabled: true
   existingSecret: authentik-redis-auth
   existingSecretPasswordKey: password
+networkPolicy:
+  enabled: false
 master:
   resources:
     requests:

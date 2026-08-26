@@ -13,6 +13,10 @@ def load(path: Path, *, round_trip: bool = False) -> Any:
     return yaml.load(path)
 
 
+def load_all(path: Path) -> list[Any]:
+    return list(YAML(typ="safe").load_all(path))
+
+
 def loads(value: str) -> Any:
     return YAML(typ="safe").load(value)
 

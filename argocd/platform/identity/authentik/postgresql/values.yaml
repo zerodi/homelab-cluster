@@ -9,6 +9,8 @@ auth:
   secretKeys:
     userPasswordKey: password
 primary:
+  networkPolicy:
+    enabled: false
   resources:
     requests:
       cpu: 100m

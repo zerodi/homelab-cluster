@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from homelabctl.project import ROOT as PROJECT_ROOT
-from homelabctl.yamlutil import load
+from homelabctl.yamlutil import load, load_all
 
 VERSIONS_FILE = "versions.yaml"
 RENOVATE_ANNOTATION = re.compile(
@@ -188,8 +188,9 @@ def discover_argo_consumers(root: Path) -> set[tuple[str, str]]:
     paths = sorted(root.glob("argocd/**/*.yaml"))
     paths.extend(sorted(root.glob("argocd/**/*.yml")))
     for path in paths:
-        for source in chart_sources(load_yaml(path)):
-            discovered.add((str(path.relative_to(root)), str(source["chart"])))
+        for document in load_all(path):
+            for source in chart_sources(document):
+                discovered.add((str(path.relative_to(root)), str(source["chart"])))
     return discovered
 
 

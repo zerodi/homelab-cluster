@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 from homelabctl.cli import duration, parser
 from homelabctl.commands.check_tfvars_example import required_variables, variable_defaults
@@ -18,7 +19,7 @@ from homelabctl.commands.operations import (
 from homelabctl.commands.validate_env_contract import render_stalwart_identity_plan
 from homelabctl.environment import materialize_contract
 from homelabctl.project import ROOT
-from homelabctl.yamlutil import deep_merge
+from homelabctl.yamlutil import deep_merge, load_all
 
 
 def test_duration() -> None:
@@ -76,6 +77,16 @@ def test_deep_merge_does_not_mutate_base() -> None:
     merged = deep_merge(base, {"cluster": {"name": "b"}})
     assert merged == {"cluster": {"name": "b", "cidr": "one"}, "keep": True}
     assert base["cluster"]["name"] == "a"
+
+
+def test_load_all_supports_multi_document_manifests(tmp_path: Path) -> None:
+    manifest = tmp_path / "resources.yaml"
+    manifest.write_text("kind: ConfigMap\n---\nkind: NetworkPolicy\n", encoding="utf-8")
+
+    assert [document["kind"] for document in load_all(manifest)] == [
+        "ConfigMap",
+        "NetworkPolicy",
+    ]
 
 
 def test_runtime_secret_contract_contains_platform_admin() -> None:
