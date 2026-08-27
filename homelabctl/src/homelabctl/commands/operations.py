@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import re
@@ -1096,6 +1097,42 @@ def application_operation_issues(payload: dict[str, Any], expected: set[str]) ->
     return issues
 
 
+def application_revision_issues(
+    payload: dict[str, Any],
+    *,
+    root: str,
+    expected_revision: str,
+    critical_apps: set[str],
+    critical_revision: str,
+) -> list[str]:
+    """Validate resolved root and staged critical Git revisions."""
+    applications = {item.get("metadata", {}).get("name"): item for item in payload.get("items", [])}
+    issues: list[str] = []
+    root_app = applications.get(root, {})
+    root_revision = str(root_app.get("status", {}).get("sync", {}).get("revision") or "")
+    if root_revision != expected_revision:
+        issues.append(f"{root}: resolved revision does not match the expected snapshot")
+    for name in sorted(critical_apps):
+        application = applications.get(name)
+        if not application:
+            issues.append(f"{name}: Application is missing")
+            continue
+        spec = application.get("spec", {})
+        sources = list(spec.get("sources") or [])
+        if spec.get("source"):
+            sources.append(spec["source"])
+        desired = {str(source.get("targetRevision") or "") for source in sources}
+        sync = application.get("status", {}).get("sync", {})
+        resolved = {str(value) for value in sync.get("revisions", [])}
+        if sync.get("revision"):
+            resolved.add(str(sync["revision"]))
+        if critical_revision not in desired:
+            issues.append(f"{name}: desired critical revision does not match the contract")
+        if critical_revision not in resolved:
+            issues.append(f"{name}: critical revision is not live")
+    return issues
+
+
 def pod_readiness_issues(payload: dict[str, Any], namespaces: set[str]) -> list[str]:
     issues: list[str] = []
     terminal_waiting_reasons = {
@@ -1118,7 +1155,12 @@ def pod_readiness_issues(payload: dict[str, Any], namespaces: set[str]) -> list[
         if phase != "Running":
             issues.append(f"{namespace}/{name}: phase={phase}")
             continue
-        statuses = item.get("status", {}).get("containerStatuses", [])
+        pod_status = item.get("status", {})
+        statuses = [
+            *pod_status.get("initContainerStatuses", []),
+            *pod_status.get("containerStatuses", []),
+            *pod_status.get("ephemeralContainerStatuses", []),
+        ]
         for status in statuses:
             container = status.get("name", "unknown")
             waiting = status.get("state", {}).get("waiting", {}).get("reason", "")
@@ -1146,6 +1188,70 @@ def latest_completed_backup_age_hours(
     name, timestamp = max(completed, key=lambda entry: entry[1])
     current = now or datetime.now(UTC)
     return name, max(0.0, (current - timestamp).total_seconds() / 3600)
+
+
+def latest_completed_restore_age_hours(
+    payload: dict[str, Any],
+    *,
+    now: datetime | None = None,
+) -> tuple[str, float] | None:
+    """Return the newest successful, explicitly labelled restore smoke test."""
+    completed: list[tuple[str, datetime]] = []
+    for item in payload.get("items", []):
+        labels = item.get("metadata", {}).get("labels", {})
+        status = item.get("status", {})
+        if (
+            labels.get("homelab.dev/restore-smoke") != "true"
+            or labels.get("homelab.dev/restore-verified") != "true"
+            or status.get("phase") != "Completed"
+            or not status.get("completionTimestamp")
+        ):
+            continue
+        timestamp = datetime.fromisoformat(status["completionTimestamp"])
+        completed.append((item.get("metadata", {}).get("name", "unknown"), timestamp))
+    if not completed:
+        return None
+    name, timestamp = max(completed, key=lambda entry: entry[1])
+    current = now or datetime.now(UTC)
+    return name, max(0.0, (current - timestamp).total_seconds() / 3600)
+
+
+def kyverno_policy_report_issues(
+    payload: dict[str, Any], allowed: set[str]
+) -> tuple[list[str], set[str]]:
+    """Return value-free Kyverno violations and the allowlist entries they used."""
+    issues: list[str] = []
+    used: set[str] = set()
+    for report in payload.get("items", []):
+        report_namespace = str(report.get("metadata", {}).get("namespace") or "cluster")
+        for result in report.get("results", []):
+            outcome = str(result.get("result") or "").lower()
+            if outcome not in {"fail", "error", "warn"}:
+                continue
+            policy = str(result.get("policy") or "unknown")
+            rule = str(result.get("rule") or "-")
+            report_scope = report.get("scope") or {}
+            resources = result.get("resources") or ([report_scope] if report_scope else [{}])
+            for resource in resources:
+                namespace = str(resource.get("namespace") or report_namespace)
+                kind = str(resource.get("kind") or "unknown")
+                name = str(resource.get("name") or "unknown")
+                key = f"{namespace}/{policy}/{rule}/{kind}/{name}"
+                if key in allowed:
+                    used.add(key)
+                else:
+                    issues.append(f"{outcome}: {key}")
+    return issues, used
+
+
+def load_kyverno_allowlist(path: Path) -> set[str]:
+    payload = load(path)
+    entries = payload.get("exceptions", []) if isinstance(payload, dict) else None
+    if not isinstance(entries, list) or any(not isinstance(entry, str) for entry in entries):
+        raise CommandError(f"invalid Kyverno audit allowlist: {path}")
+    if len(entries) != len(set(entries)):
+        raise CommandError(f"duplicate Kyverno audit allowlist entry: {path}")
+    return set(entries)
 
 
 def telemetry_log_error_count(text: str) -> int:
@@ -1872,7 +1978,116 @@ def observability_smoke(kubeconfig: Path) -> int:
     return 0
 
 
-def post_argocd_check(kubeconfig: Path) -> int:
+def backup_restore_smoke(kubeconfig: Path) -> int:
+    """Exercise Garage -> Velero -> Kubernetes restore without reading secret values."""
+    source_namespace = "echo"
+    source_name = "homelab-root-ca"
+    suffix = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+    backup_name = f"echo-restore-smoke-{suffix}"
+    restore_name = backup_name
+    target_namespace = backup_name
+
+    source = json.loads(
+        kubectl(
+            kubeconfig,
+            "-n",
+            source_namespace,
+            "get",
+            "configmap",
+            source_name,
+            "-o",
+            "json",
+        ).stdout
+    )
+
+    def content_digest(configmap: dict[str, Any]) -> str:
+        content = {
+            "data": configmap.get("data", {}),
+            "binaryData": configmap.get("binaryData", {}),
+        }
+        encoded = json.dumps(content, sort_keys=True, separators=(",", ":")).encode()
+        return hashlib.sha256(encoded).hexdigest()
+
+    def apply(document: dict[str, Any]) -> None:
+        run(
+            ["kubectl", "--kubeconfig", kubeconfig, "apply", "-f", "-"],
+            input_text=json.dumps(document),
+        )
+
+    labels = {"homelab.dev/restore-smoke": "true"}
+    apply(
+        {
+            "apiVersion": "velero.io/v1",
+            "kind": "Backup",
+            "metadata": {"name": backup_name, "namespace": "velero", "labels": labels},
+            "spec": {
+                "includedNamespaces": [source_namespace],
+                "includedResources": ["configmaps"],
+                "snapshotVolumes": False,
+                "storageLocation": "default",
+                "ttl": "168h0m0s",
+            },
+        }
+    )
+
+    def completed(kind: str, name: str) -> bool:
+        payload = json.loads(
+            kubectl(kubeconfig, "-n", "velero", "get", kind, name, "-o", "json").stdout
+        )
+        phase = str(payload.get("status", {}).get("phase") or "")
+        if phase in {"Failed", "PartiallyFailed", "FailedValidation"}:
+            raise CommandError(f"Velero {kind}/{name} finished with phase {phase}")
+        return phase == "Completed"
+
+    wait_until(lambda: completed("backup", backup_name), 600, 5, f"Backup/{backup_name}")
+    print(f"PASS Velero Backup/{backup_name} completed")
+    apply(
+        {
+            "apiVersion": "velero.io/v1",
+            "kind": "Restore",
+            "metadata": {"name": restore_name, "namespace": "velero", "labels": labels},
+            "spec": {
+                "backupName": backup_name,
+                "includedNamespaces": [source_namespace],
+                "includedResources": ["configmaps"],
+                "namespaceMapping": {source_namespace: target_namespace},
+            },
+        }
+    )
+    wait_until(lambda: completed("restore", restore_name), 600, 5, f"Restore/{restore_name}")
+    restored = json.loads(
+        kubectl(
+            kubeconfig,
+            "-n",
+            target_namespace,
+            "get",
+            "configmap",
+            source_name,
+            "-o",
+            "json",
+        ).stdout
+    )
+    if content_digest(source) != content_digest(restored):
+        raise CommandError("restored ConfigMap content does not match its source")
+    kubectl(
+        kubeconfig,
+        "-n",
+        "velero",
+        "label",
+        "restore",
+        restore_name,
+        "homelab.dev/restore-verified=true",
+        "--overwrite",
+    )
+    print(
+        f"PASS Velero Restore/{restore_name} verified in namespace {target_namespace}; "
+        "cleanup remains an explicit operator action"
+    )
+    return 0
+
+
+def post_argocd_check(kubeconfig: Path, contract_path: Path) -> int:
+    env = contract(contract_path)
     apps = (
         "platform",
         "apps",
@@ -1974,10 +2189,12 @@ def post_argocd_check(kubeconfig: Path) -> int:
         "json",
         check=False,
     )
+    applications_payload: dict[str, Any] = {"items": []}
     operation_issues: list[str] = []
     if applications_result.returncode == 0:
+        applications_payload = json.loads(applications_result.stdout)
         operation_issues = application_operation_issues(
-            json.loads(applications_result.stdout),
+            applications_payload,
             {root, *apps},
         )
     else:
@@ -2025,6 +2242,23 @@ def post_argocd_check(kubeconfig: Path) -> int:
             "--timeout=240s",
         )
 
+    tempo_pvc_phase = kubectl(
+        kubeconfig,
+        "-n",
+        env["platform"]["observability"]["namespace"],
+        "get",
+        "pvc",
+        "storage-tempo-0",
+        "-o",
+        "jsonpath={.status.phase}",
+        check=False,
+    ).stdout.strip()
+    if tempo_pvc_phase == "Bound":
+        print("PASS Tempo PVC storage-tempo-0 Bound")
+    else:
+        print("FAIL Tempo PVC storage-tempo-0 is not Bound")
+        failures.append("Tempo PVC Bound")
+
     bsl_phase = kubectl(
         kubeconfig,
         "-n",
@@ -2053,6 +2287,30 @@ def post_argocd_check(kubeconfig: Path) -> int:
         print(f"FAIL velero has no completed Backup newer than {max_backup_age_hours:g}h")
         failures.append("velero fresh completed Backup")
 
+    restores_result = kubectl(
+        kubeconfig,
+        "-n",
+        "velero",
+        "get",
+        "restore",
+        "-l",
+        "homelab.dev/restore-smoke=true,homelab.dev/restore-verified=true",
+        "-o",
+        "json",
+        check=False,
+    )
+    latest_restore: tuple[str, float] | None = None
+    if restores_result.returncode == 0:
+        latest_restore = latest_completed_restore_age_hours(json.loads(restores_result.stdout))
+    max_restore_age_hours = float(os.environ.get("POST_CHECK_MAX_RESTORE_AGE_HOURS", "168"))
+    if latest_restore and latest_restore[1] <= max_restore_age_hours:
+        print(
+            f"PASS velero latest verified Restore {latest_restore[0]} age={latest_restore[1]:.2f}h"
+        )
+    else:
+        print(f"FAIL velero has no verified Restore newer than {max_restore_age_hours:g}h")
+        failures.append("velero fresh verified Restore")
+
     garage_status = kubectl(
         kubeconfig, "-n", "garage", "exec", "garage-0", "--", "/garage", "status", check=False
     )
@@ -2062,51 +2320,104 @@ def post_argocd_check(kubeconfig: Path) -> int:
         print("FAIL Garage layout assigned")
         failures.append("Garage layout")
 
-    oidc_config = kubectl(
+    garage_bucket = str(env["platform"]["velero"]["bucket"])
+    garage_buckets = kubectl(
+        kubeconfig,
+        "-n",
+        env["platform"]["garage"]["namespace"],
+        "exec",
+        "garage-0",
+        "--",
+        "/garage",
+        "bucket",
+        "list",
+        check=False,
+    )
+    if garage_buckets.returncode == 0 and re.search(
+        rf"(?m)(?:^|\s){re.escape(garage_bucket)}(?:\s|$)", garage_buckets.stdout
+    ):
+        print(f"PASS Garage bucket {garage_bucket} exists")
+    else:
+        print(f"FAIL Garage bucket {garage_bucket} is not ready")
+        failures.append("Garage bucket")
+
+    identity_configmaps = kubectl(
         kubeconfig,
         "-n",
         "argocd",
         "get",
         "configmap",
         "argocd-cm",
+        "argocd-rbac-cm",
         "-o",
-        "jsonpath={.data.oidc\\.config}",
+        "json",
         check=False,
-    ).stdout.strip()
-    if oidc_config:
-        print("PASS Argo CD OIDC configured")
+    )
+    identity_issues: list[str] = []
+    if identity_configmaps.returncode == 0:
+        identity_data = {
+            item.get("metadata", {}).get("name"): item.get("data", {})
+            for item in json.loads(identity_configmaps.stdout).get("items", [])
+        }
+        identity_issues = argocd_identity_contract_issues(
+            identity_data.get("argocd-cm", {}).get("oidc.config", ""),
+            identity_data.get("argocd-rbac-cm", {}),
+            issuer=f"https://{env['hosts']['authentik']}/application/o/argocd/",
+            admin_group=env["identity"]["administrator"]["group"],
+        )
     else:
-        print("FAIL Argo CD OIDC configured")
-        failures.append("Argo CD OIDC")
+        identity_issues.append("unable to read Argo CD identity ConfigMaps")
+    if identity_issues:
+        for issue in identity_issues:
+            print(f"FAIL Argo CD identity contract: {issue}")
+        failures.append("Argo CD OIDC/RBAC contract")
+    else:
+        print("PASS Argo CD OIDC/RBAC contract")
 
-    rbac_policy = kubectl(
+    initial_admin = kubectl(
         kubeconfig,
         "-n",
         "argocd",
         "get",
-        "configmap",
-        "argocd-rbac-cm",
+        "secret",
+        "argocd-initial-admin-secret",
+        "--ignore-not-found",
         "-o",
-        "jsonpath={.data.policy\\.csv}",
+        "name",
         check=False,
-    ).stdout.strip()
-    if rbac_policy:
-        print("PASS Argo CD RBAC policy configured")
+    )
+    if initial_admin.returncode == 0 and not initial_admin.stdout.strip():
+        print("PASS Argo CD bootstrap admin Secret is absent")
     else:
-        print("FAIL Argo CD RBAC policy configured")
-        failures.append("Argo CD RBAC")
+        print("FAIL Argo CD bootstrap admin Secret still exists or cannot be checked")
+        failures.append("Argo CD bootstrap Secret lifecycle")
 
-    policy_reports = kubectl(kubeconfig, "get", "policyreport", "-A", "-o", "json", check=False)
-    policy_failures = 0
+    policy_reports = kubectl(
+        kubeconfig,
+        "get",
+        "policyreport,clusterpolicyreport",
+        "-A",
+        "-o",
+        "json",
+        check=False,
+    )
+    policy_issues: list[str] = []
+    used_policy_exceptions: set[str] = set()
     if policy_reports.returncode == 0:
-        policy_failures = sum(
-            int(item.get("summary", {}).get("fail", 0))
-            for item in json.loads(policy_reports.stdout).get("items", [])
+        policy_issues, used_policy_exceptions = kyverno_policy_report_issues(
+            json.loads(policy_reports.stdout),
+            load_kyverno_allowlist(ROOT / "argocd/audit/kyverno-policy-allowlist.yaml"),
         )
-    if policy_failures == 0:
-        print("PASS Kyverno PolicyReports have no failures")
     else:
-        print(f"FAIL Kyverno PolicyReports have {policy_failures} failures")
+        policy_issues.append("unable to list PolicyReports")
+    if not policy_issues:
+        suffix = (
+            f"; accepted exceptions={len(used_policy_exceptions)}" if used_policy_exceptions else ""
+        )
+        print(f"PASS Kyverno PolicyReports have no unexplained violations{suffix}")
+    else:
+        for issue in policy_issues:
+            print(f"FAIL Kyverno PolicyReport {issue}")
         failures.append("Kyverno PolicyReports")
 
     collector_logs = kubectl(
@@ -2148,24 +2459,41 @@ def post_argocd_check(kubeconfig: Path) -> int:
         print(f"FAIL OpenTelemetry has {telemetry_errors} recent scrape/export errors")
         failures.append("OpenTelemetry recent errors")
 
+    try:
+        observability_smoke(kubeconfig)
+    except CommandError as exc:
+        print(f"FAIL observability synthetic round-trip: {exc}")
+        failures.append("Tempo synthetic trace and OTel exporter counters")
+
     expected_revision = os.environ.get("EXPECTED_GITOPS_REVISION", "").strip()
-    if expected_revision:
-        live_revision = kubectl(
-            kubeconfig,
-            "-n",
-            "argocd",
-            "get",
-            "application",
-            root,
-            "-o",
-            "jsonpath={.status.sync.revision}",
-            check=False,
-        ).stdout.strip()
-        if live_revision == expected_revision:
-            print(f"PASS GitOps revision {expected_revision}")
-        else:
-            print("FAIL GitOps revision does not match EXPECTED_GITOPS_REVISION")
-            failures.append("GitOps revision")
+    if not expected_revision:
+        expected_revision = run(["git", "rev-parse", "HEAD"], cwd=ROOT).stdout.strip()
+    critical_apps = {
+        "authentik-prereqs",
+        "authentik-postgresql",
+        "authentik-redis",
+        "authentik",
+        "garage-prereqs",
+        "garage",
+        "velero-prereqs",
+        "velero",
+        "kyverno-prereqs",
+        "kyverno",
+        "kyverno-policies",
+    }
+    revision_issues = application_revision_issues(
+        applications_payload,
+        root=root,
+        expected_revision=expected_revision,
+        critical_apps=critical_apps,
+        critical_revision=env["gitops"]["critical_revision"],
+    )
+    if revision_issues:
+        for issue in revision_issues:
+            print(f"FAIL GitOps revision: {issue}")
+        failures.append("GitOps expected revisions")
+    else:
+        print(f"PASS GitOps root snapshot {expected_revision} and critical revisions")
     if failures:
         raise CommandError("post-Argo CD checks failed: " + ", ".join(failures))
     print("PASS post-deploy checks completed")

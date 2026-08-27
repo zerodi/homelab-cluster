@@ -32,9 +32,17 @@ Declarative schedules находятся в
 ## Проверка restore
 
 Восстанавливайте тестовую копию в отдельный namespace. Для регулярного
-безопасного smoke-test используйте `echo` и ограничьте restore ConfigMap
-объектами: так проверяется полный путь Garage -> Velero -> Kubernetes API без
-создания дублирующих Gateway, HTTPRoute и workloads.
+безопасного smoke-test используйте operator helper: он ограничивает backup и
+restore ConfigMap-объектами `echo`, сравнивает SHA-256 исходного и
+восстановленного содержимого и только после этого помечает Restore как
+проверенный. Secret values helper не читает.
+
+```bash
+task ops:backup-restore-smoke
+```
+
+Ниже приведён эквивалентный ручной сценарий без метки verified, поэтому его
+результат сам по себе не удовлетворяет строгому post-check:
 
 ```bash
 velero backup create echo-restore-smoke \
@@ -53,13 +61,18 @@ velero restore describe echo-restore-smoke --details
 kubectl -n echo-restore-smoke get configmap homelab-root-ca
 ```
 
-Имя smoke backup/restore и целевого namespace должно быть уникальным для
-повторных запусков. Удаление test namespace и соответствующих Velero CR —
-отдельная destructive операция и выполняется только явно.
+Имя smoke backup/restore и целевого namespace уникально для каждого запуска.
+Удаление test namespace и соответствующих Velero CR — отдельная destructive
+операция и выполняется только явно.
 
 Grafana alerts `Velero Backup Storage Unavailable` и `Velero Backup Stale`
 контролируют доступность `BackupStorageLocation/default` и наличие успешного
 `velero-platform-hourly` backup не старше трёх часов.
+
+`task ops:post-argocd-check` дополнительно требует verified Restore не старше
+семи суток. Порог меняется через `POST_CHECK_MAX_RESTORE_AGE_HOURS`; это
+позволяет запускать helper периодически из внешнего scheduler без выдачи
+кластерному CronJob прав на создание Backup/Restore и namespace.
 
 Velero backup Kubernetes resources не заменяет application-consistent backup
 PostgreSQL и других stateful services.

@@ -135,6 +135,9 @@ def parser() -> argparse.ArgumentParser:
     garage.add_argument("--kubeconfig", required=True)
     post = ops.add_parser("post-check")
     post.add_argument("--kubeconfig", required=True)
+    post.add_argument("--contract", required=True)
+    backup_restore = ops.add_parser("backup-restore-smoke")
+    backup_restore.add_argument("--kubeconfig", required=True)
     observability = ops.add_parser("observability-smoke")
     observability.add_argument("--kubeconfig", required=True)
     identity = ops.add_parser("identity-smoke")
@@ -235,7 +238,9 @@ def dispatch(args: argparse.Namespace) -> int:
         if args.command == "credentials":
             return operations.initial_credentials(path(args.kubeconfig), path(args.contract))
         if args.command == "post-check":
-            return operations.post_argocd_check(path(args.kubeconfig))
+            return operations.post_argocd_check(path(args.kubeconfig), path(args.contract))
+        if args.command == "backup-restore-smoke":
+            return operations.backup_restore_smoke(path(args.kubeconfig))
         if args.command == "observability-smoke":
             return operations.observability_smoke(path(args.kubeconfig))
         if args.command == "identity-smoke":

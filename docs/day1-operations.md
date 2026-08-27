@@ -12,9 +12,23 @@ kubectl -n argocd get applications
 ```
 
 `ops:post-argocd-check` также отклоняет незавершённые/ошибочные Argo CD hooks,
-неготовые runtime Pods, ошибки OpenTelemetry scrape/export за последние две
-минуты и устаревший Velero Backup. Допустимый возраст Backup по умолчанию —
-три часа; для другого расписания задайте `POST_CHECK_MAX_BACKUP_AGE_HOURS`.
+неготовые runtime Pods, ошибки OpenTelemetry, неуспешный synthetic trace,
+устаревшие Velero Backup/verified Restore, отсутствующий Garage bucket,
+нарушения Kyverno вне точного allowlist, некорректный OIDC/RBAC или оставшийся
+bootstrap admin Secret. Допустимый возраст Backup по умолчанию — три часа,
+Restore — семь суток; пороги задаются `POST_CHECK_MAX_BACKUP_AGE_HOURS` и
+`POST_CHECK_MAX_RESTORE_AGE_HOURS`.
+
+Перед первым строгим gate и затем периодически выполните явный restore
+checkpoint:
+
+```bash
+task ops:backup-restore-smoke
+```
+
+По умолчанию ожидаемый root snapshot равен локальному `git rev-parse HEAD`.
+Для проверки другого опубликованного commit задайте
+`EXPECTED_GITOPS_REVISION`.
 
 ## OpenBao и External Secrets
 
@@ -76,10 +90,13 @@ task check:runtime-workloads
 task check:kustomize-platform
 ```
 
-Первый gate рендерит все runtime charts/manifests и блокирует mutable/missing
+Первый gate рендерит все runtime charts с dependencies и остальные управляемые
+manifests и блокирует mutable/missing
 image references, незакреплённые Bitnami images, отсутствующие resources и
 неполный restricted security context. После sync `task ops:post-argocd-check`
-дополнительно требует отсутствие Kyverno PolicyReport failures.
+дополнительно требует отсутствие необъяснённых Kyverno PolicyReport
+fail/error/warn. Принятые точные исключения хранятся в
+`argocd/audit/kyverno-policy-allowlist.yaml`; wildcard не поддерживается.
 
 ## Сертификаты и storage
 

@@ -235,10 +235,12 @@ task ops:post-argocd-check
 ```
 
 Она проверяет не только `Synced/Healthy`, но и незавершённые/ошибочные Argo CD
-operations и hooks, readiness всех runtime Pods, свежесть последнего успешного
-Velero Backup и ошибки scrape/export в логах OpenTelemetry за последние две
-минуты. По умолчанию Backup должен быть не старше трёх часов; порог можно
-явно изменить через `POST_CHECK_MAX_BACKUP_AGE_HOURS`.
+operations и hooks, readiness всех runtime Pods, свежесть успешных Velero
+Backup/verified Restore, ошибки scrape/export в логах OpenTelemetry и полный
+synthetic OTLP -> Tempo -> Grafana round-trip с exporter counters. По умолчанию
+Backup должен быть не старше трёх часов, Restore — семи суток; пороги можно
+изменить через `POST_CHECK_MAX_BACKUP_AGE_HOURS` и
+`POST_CHECK_MAX_RESTORE_AGE_HOURS`.
 
 ## Доступ к Grafana
 

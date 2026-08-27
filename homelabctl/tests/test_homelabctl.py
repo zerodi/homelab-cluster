@@ -9,8 +9,11 @@ from homelabctl.commands.check_tfvars_example import required_variables, variabl
 from homelabctl.commands.operations import (
     SECRET_CONTRACT,
     application_operation_issues,
+    application_revision_issues,
     argocd_identity_contract_issues,
+    kyverno_policy_report_issues,
     latest_completed_backup_age_hours,
+    latest_completed_restore_age_hours,
     otlp_trace_payload,
     pod_readiness_issues,
     prometheus_metric_sum,
@@ -33,7 +36,15 @@ def test_taskfile_facing_commands_parse() -> None:
         ["cluster", "reconcile-lb-pool"],
         ["bao", "port-forward", "stop"],
         ["gitops", "apply", "--kubeconfig", "out/kubeconfig"],
-        ["ops", "post-check", "--kubeconfig", "out/kubeconfig"],
+        [
+            "ops",
+            "post-check",
+            "--kubeconfig",
+            "out/kubeconfig",
+            "--contract",
+            "out/homelab.effective.yaml",
+        ],
+        ["ops", "backup-restore-smoke", "--kubeconfig", "out/kubeconfig"],
         ["ops", "observability-smoke", "--kubeconfig", "out/kubeconfig"],
         [
             "ops",
@@ -335,3 +346,115 @@ def test_post_check_requires_fresh_backup_and_clean_telemetry() -> None:
 
     assert latest == ("hourly", 1.0)
     assert telemetry_log_error_count("Failed to scrape Prometheus endpoint\nDropping data") == 2
+
+
+def test_post_check_requires_verified_restore_smoke() -> None:
+    restores = {
+        "items": [
+            {
+                "metadata": {
+                    "name": "echo-restore-smoke",
+                    "labels": {
+                        "homelab.dev/restore-smoke": "true",
+                        "homelab.dev/restore-verified": "true",
+                    },
+                },
+                "status": {
+                    "phase": "Completed",
+                    "completionTimestamp": "2026-08-22T16:15:00Z",
+                },
+            },
+            {
+                "metadata": {
+                    "name": "unverified",
+                    "labels": {"homelab.dev/restore-smoke": "true"},
+                },
+                "status": {
+                    "phase": "Completed",
+                    "completionTimestamp": "2026-08-22T17:00:00Z",
+                },
+            },
+        ]
+    }
+
+    assert latest_completed_restore_age_hours(
+        restores,
+        now=datetime(2026, 8, 22, 17, 15, tzinfo=UTC),
+    ) == ("echo-restore-smoke", 1.0)
+
+
+def test_post_check_applies_exact_kyverno_allowlist() -> None:
+    reports = {
+        "items": [
+            {
+                "metadata": {"namespace": "echo"},
+                "results": [
+                    {
+                        "policy": "require-resources",
+                        "rule": "resources",
+                        "result": "fail",
+                        "resources": [{"kind": "Pod", "name": "echo"}],
+                    },
+                    {
+                        "policy": "disallow-latest",
+                        "rule": "images",
+                        "result": "error",
+                        "resources": [{"kind": "Pod", "name": "bad"}],
+                    },
+                ],
+            }
+        ]
+    }
+    allowed = {"echo/require-resources/resources/Pod/echo"}
+
+    issues, used = kyverno_policy_report_issues(reports, allowed)
+
+    assert used == allowed
+    assert issues == ["error: echo/disallow-latest/images/Pod/bad"]
+
+    scoped_issues, _ = kyverno_policy_report_issues(
+        {
+            "items": [
+                {
+                    "metadata": {"namespace": "echo"},
+                    "scope": {"kind": "Pod", "name": "live-echo"},
+                    "results": [{"policy": "disallow-latest", "result": "fail"}],
+                }
+            ]
+        },
+        set(),
+    )
+    assert scoped_issues == ["fail: echo/disallow-latest/-/Pod/live-echo"]
+
+
+def test_post_check_validates_root_and_critical_revisions() -> None:
+    revision = "a" * 40
+    critical = "b" * 40
+    applications = {
+        "items": [
+            {
+                "metadata": {"name": "root"},
+                "status": {"sync": {"revision": revision}},
+            },
+            {
+                "metadata": {"name": "velero"},
+                "spec": {"sources": [{"targetRevision": critical}]},
+                "status": {"sync": {"revisions": [critical]}},
+            },
+        ]
+    }
+
+    assert not application_revision_issues(
+        applications,
+        root="root",
+        expected_revision=revision,
+        critical_apps={"velero"},
+        critical_revision=critical,
+    )
+    assert application_revision_issues(
+        applications,
+        root="root",
+        expected_revision="c" * 40,
+        critical_apps={"velero"},
+        critical_revision=critical,
+    ) == ["root: resolved revision does not match the expected snapshot"]

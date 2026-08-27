@@ -1,0 +1,5 @@
+# Exact, reviewed Kyverno PolicyReport exceptions accepted by the live audit.
+# Format: <namespace>/<policy>/<rule>/<kind>/<name>
+# Keep this list empty unless an exception has an owner and rationale in the
+# Argo CD audit. Wildcards are intentionally unsupported.
+exceptions: []

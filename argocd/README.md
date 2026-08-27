@@ -112,10 +112,17 @@ Cilium-specific identities и порядок connectivity-проверки оп�
 [network isolation runbook](../docs/network-isolation.md).
 
 Проверка должна подтверждать `Synced` и `Healthy` для root и дочерних
-Applications, успешное завершение Argo CD operations/hooks, readiness runtime
-Pods, свежий Velero Backup и отсутствие недавних OpenTelemetry scrape/export
-ошибок. Она также проверяет ClusterSecretStore/ExternalSecrets и основные
-workloads. Day-1 команды собраны в
+Applications, ожидаемые root/critical revisions, успешное завершение Argo CD
+operations/hooks, readiness runtime Pods, свежие Velero Backup и verified
+Restore, Garage layout/bucket, Tempo PVC и synthetic trace, OTel counters,
+Kyverno reports, полный Argo CD OIDC/RBAC contract и удаление bootstrap admin
+Secret. Restore smoke запускается отдельным явным checkpoint:
+
+```bash
+task ops:backup-restore-smoke
+```
+
+Day-1 команды собраны в
 [operations runbook](../docs/day1-operations.md).
 
 ## Первичный доступ к Argo CD

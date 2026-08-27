@@ -200,7 +200,20 @@ tasks:
   post-argocd-check:
     desc: Run post-bootstrap Argo CD and runtime smoke checks
     cmds:
-      - uv run --project homelabctl --locked homelabctl ops post-check --kubeconfig "{{.KUBECONFIG_PATH}}"
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - test -n "{{.ENVIRONMENT_CONTRACT_PATH}}"
+      - >-
+        uv run --project homelabctl --locked homelabctl ops post-check
+        --kubeconfig "{{.KUBECONFIG_PATH}}"
+        --contract "{{.ENVIRONMENT_CONTRACT_PATH}}"
+
+  backup-restore-smoke:
+    desc: Create and verify a labelled Velero ConfigMap backup/restore smoke cycle
+    cmds:
+      - test -n "{{.KUBECONFIG_PATH}}"
+      - >-
+        uv run --project homelabctl --locked homelabctl ops backup-restore-smoke
+        --kubeconfig "{{.KUBECONFIG_PATH}}"
 
   observability-smoke:
     desc: Verify OTLP trace round-trip, Grafana provisioning, and webhook delivery
