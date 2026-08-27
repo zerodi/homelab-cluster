@@ -52,6 +52,38 @@ def main() -> int:
             "platform/kustomization.yaml must include only the ordered domain application indexes"
         )
 
+    observability_api_policies = load_all(
+        PLATFORM / "observability/prereqs/kube-apiserver-egress-policy.yaml"
+    )
+    loki_api_policy = next(
+        (
+            document
+            for document in observability_api_policies
+            if isinstance(document, dict)
+            and document.get("kind") == "CiliumNetworkPolicy"
+            and document.get("metadata", {}).get("name") == "loki-kube-apiserver"
+        ),
+        {},
+    )
+    loki_spec = loki_api_policy.get("spec", {})
+    if loki_spec.get("endpointSelector", {}).get("matchLabels") != {
+        "app.kubernetes.io/instance": "loki",
+        "app.kubernetes.io/name": "loki",
+    } or loki_spec.get("egress") != [
+        {
+            "toEntities": ["kube-apiserver"],
+            "toPorts": [
+                {
+                    "ports": [
+                        {"port": "443", "protocol": "TCP"},
+                        {"port": "6443", "protocol": "TCP"},
+                    ]
+                }
+            ],
+        }
+    ]:
+        issues.append("Loki sidecar must have narrow egress to the Kubernetes API")
+
     listed_paths: list[Path] = []
     manifests: list[Path] = []
     for applications in APPLICATION_DIRS:
