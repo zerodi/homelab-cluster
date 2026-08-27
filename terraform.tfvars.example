@@ -7,6 +7,7 @@ proxmox = {
   vm_datastore    = "local-lvm"
   image_datastore = "local"
   ssh_username    = "terraform"
+  # vlan_id       = 110 # optional; omit for an untagged bridge port
 }
 
 # Sensitive input: never commit a real value here. Use either:

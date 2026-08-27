@@ -6,6 +6,9 @@ Root Application может создавать только repository Secrets, 
 Applications, ExternalSecrets и один ClusterSecretStore в `argocd`.
 `platform-orchestration` и `apps-orchestration` создают только дочерние
 Applications. Runtime AppProjects разделены по domain и destination namespace.
+Встроенный AppProject `default` управляется декларативно как deny-all fallback:
+у него отсутствуют разрешённые sources и destinations, а namespaced resources
+явно запрещены. Каждое Application обязано использовать отдельный project.
 
 Cluster-scoped permissions вынесены в отдельные projects:
 

@@ -14,7 +14,7 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -1171,6 +1171,115 @@ def pod_readiness_issues(payload: dict[str, Any], namespaces: set[str]) -> list[
     return issues
 
 
+def recent_pod_restart_issues(
+    payload: dict[str, Any],
+    *,
+    namespaces: set[str],
+    window_minutes: float,
+    now: datetime | None = None,
+) -> list[str]:
+    """Return unexpected container terminations inside the stability window."""
+    current = now or datetime.now(UTC)
+    threshold = current - timedelta(minutes=window_minutes)
+    issues: list[str] = []
+    for item in payload.get("items", []):
+        metadata = item.get("metadata", {})
+        namespace = str(metadata.get("namespace") or "")
+        if namespace not in namespaces:
+            continue
+        pod = str(metadata.get("name") or "unknown")
+        statuses = [
+            *item.get("status", {}).get("initContainerStatuses", []),
+            *item.get("status", {}).get("containerStatuses", []),
+        ]
+        for status in statuses:
+            terminated = status.get("lastState", {}).get("terminated", {})
+            finished_at = terminated.get("finishedAt")
+            reason = str(terminated.get("reason") or "Unknown")
+            if not finished_at or reason == "Completed":
+                continue
+            timestamp = datetime.fromisoformat(str(finished_at))
+            if timestamp >= threshold:
+                issues.append(
+                    f"{namespace}/{pod}/{status.get('name', 'unknown')}: "
+                    f"reason={reason}, finishedAt={finished_at}"
+                )
+    return issues
+
+
+def recent_warning_event_issues(
+    payload: dict[str, Any],
+    *,
+    namespaces: set[str],
+    window_minutes: float,
+    now: datetime | None = None,
+) -> list[str]:
+    """Return recent warning events that indicate workload or control-plane instability."""
+    serious_reasons = {
+        "BackOff",
+        "Failed",
+        "FailedAttachVolume",
+        "FailedCreatePodSandBox",
+        "FailedMount",
+        "FailedScheduling",
+        "NodeNotReady",
+        "Unhealthy",
+    }
+    current = now or datetime.now(UTC)
+    threshold = current - timedelta(minutes=window_minutes)
+    issues: list[str] = []
+    for item in payload.get("items", []):
+        metadata = item.get("metadata", {})
+        namespace = str(metadata.get("namespace") or "default")
+        reason = str(item.get("reason") or "")
+        if namespace not in namespaces or reason not in serious_reasons:
+            continue
+        timestamp_text = (
+            item.get("series", {}).get("lastObservedTime")
+            or item.get("eventTime")
+            or item.get("lastTimestamp")
+            or metadata.get("creationTimestamp")
+        )
+        if not timestamp_text or datetime.fromisoformat(str(timestamp_text)) < threshold:
+            continue
+        involved = item.get("regarding") or item.get("involvedObject") or {}
+        issues.append(
+            f"{namespace}/{involved.get('kind', 'Object')}/{involved.get('name', 'unknown')}: "
+            f"reason={reason}, observedAt={timestamp_text}"
+        )
+    return issues
+
+
+def etcd_stability_issue_count(
+    text: str,
+    *,
+    window_minutes: float | None = None,
+    now: datetime | None = None,
+) -> int:
+    """Count value-free etcd log signatures associated with API instability."""
+    signatures = (
+        "etcdserver: request timed out",
+        "leader failed to send out heartbeat on time",
+        "slow fdatasync",
+    )
+    if window_minutes is None:
+        return sum(text.count(signature) for signature in signatures)
+    threshold = (now or datetime.now(UTC)) - timedelta(minutes=window_minutes)
+    issues = 0
+    for line in text.splitlines():
+        if not any(signature in line for signature in signatures):
+            continue
+        try:
+            payload = json.loads(line[line.index("{") :])
+            timestamp = datetime.fromisoformat(str(payload["ts"]))
+        except (ValueError, KeyError, json.JSONDecodeError):
+            issues += 1
+            continue
+        if timestamp >= threshold:
+            issues += 1
+    return issues
+
+
 def latest_completed_backup_age_hours(
     payload: dict[str, Any],
     *,
@@ -2127,6 +2236,8 @@ def post_argocd_check(kubeconfig: Path, contract_path: Path) -> int:
     namespaces = (
         "argocd",
         "authentik",
+        "cert-manager",
+        "external-secrets",
         "forgejo",
         "gateway",
         "garage",
@@ -2134,6 +2245,8 @@ def post_argocd_check(kubeconfig: Path, contract_path: Path) -> int:
         "stalwart",
         "kube-system",
         "observability",
+        "openbao",
+        "piraeus-datastore",
         "velero",
         "woodpecker",
         "kyverno",
@@ -2218,6 +2331,95 @@ def post_argocd_check(kubeconfig: Path, contract_path: Path) -> int:
         failures.append("runtime Pods ready")
     else:
         print("PASS runtime Pods ready")
+
+    stability_window_minutes = float(os.environ.get("POST_CHECK_STABILITY_WINDOW_MINUTES", "15"))
+    pod_restart_issues: list[str] = []
+    if pods_result.returncode == 0:
+        pod_restart_issues = recent_pod_restart_issues(
+            json.loads(pods_result.stdout),
+            namespaces=set(namespaces),
+            window_minutes=stability_window_minutes,
+        )
+    if pod_restart_issues:
+        for issue in pod_restart_issues:
+            print(f"FAIL recent container restart {issue}")
+        failures.append("recent unexpected container restarts")
+    else:
+        print(f"PASS no unexpected container restarts in the last {stability_window_minutes:g}m")
+
+    warning_events = kubectl(
+        kubeconfig,
+        "get",
+        "event",
+        "-A",
+        "--field-selector=type=Warning",
+        "-o",
+        "json",
+        check=False,
+    )
+    warning_issues: list[str] = []
+    if warning_events.returncode == 0:
+        warning_issues = recent_warning_event_issues(
+            json.loads(warning_events.stdout),
+            namespaces=set(namespaces),
+            window_minutes=stability_window_minutes,
+        )
+    else:
+        warning_issues.append("unable to list Warning events")
+    if warning_issues:
+        for issue in warning_issues:
+            print(f"FAIL recent Warning event {issue}")
+        failures.append("recent serious Warning events")
+    else:
+        print(f"PASS no serious Warning events in the last {stability_window_minutes:g}m")
+
+    talosconfig = kubeconfig.with_name("talosconfig")
+    talos_info = run(
+        [
+            "talosctl",
+            "--talosconfig",
+            talosconfig,
+            "config",
+            "info",
+            "--output",
+            "json",
+        ],
+        check=False,
+    )
+    etcd_logs = None
+    if talosconfig.is_file() and talos_info.returncode == 0:
+        endpoints = json.loads(talos_info.stdout).get("endpoints", [])
+        if endpoints:
+            etcd_logs = run(
+                [
+                    "talosctl",
+                    "--talosconfig",
+                    talosconfig,
+                    "--nodes",
+                    ",".join(endpoints),
+                    "logs",
+                    "etcd",
+                    "--tail",
+                    "5000",
+                ],
+                check=False,
+            )
+    etcd_issues = (
+        etcd_stability_issue_count(
+            etcd_logs.stdout,
+            window_minutes=stability_window_minutes,
+        )
+        if etcd_logs is not None and etcd_logs.returncode == 0
+        else -1
+    )
+    if etcd_issues == 0:
+        print(f"PASS etcd has no stability warnings in the last {stability_window_minutes:g}m")
+    elif etcd_issues < 0:
+        print("FAIL unable to inspect recent etcd logs")
+        failures.append("etcd stability logs available")
+    else:
+        print(f"FAIL etcd has {etcd_issues} recent timeout/latency warnings")
+        failures.append("etcd recent stability")
 
     for namespace, kind, name in resources:
         check(f"{namespace}/{kind}/{name}", "-n", namespace, "get", kind, name)

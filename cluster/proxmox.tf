@@ -37,6 +37,7 @@ resource "proxmox_virtual_environment_vm" "node" {
     bridge      = "vmbr0"
     model       = "virtio"
     mac_address = each.value.mac_address
+    vlan_id     = var.proxmox.vlan_id
   }
 
   efi_disk {
@@ -48,7 +49,8 @@ resource "proxmox_virtual_environment_vm" "node" {
   disk {
     datastore_id = var.proxmox.vm_datastore
     interface    = "scsi0"
-    cache        = "writethrough"
+    cache        = "none"
+    iothread     = true
     size         = each.value.disk_gb
     file_format  = "raw"
     discard      = "on"
@@ -65,7 +67,8 @@ resource "proxmox_virtual_environment_vm" "node" {
       size         = each.value.additional_disk_gb
       discard      = "on"
       file_format  = "raw"
-      cache        = "writethrough"
+      cache        = "none"
+      iothread     = true
       ssd          = true
       backup       = false
     }

@@ -15,8 +15,11 @@ kubectl -n argocd get applications
 неготовые runtime Pods, ошибки OpenTelemetry, неуспешный synthetic trace,
 устаревшие Velero Backup/verified Restore, отсутствующий Garage bucket,
 нарушения Kyverno вне точного allowlist, некорректный OIDC/RBAC или оставшийся
-bootstrap admin Secret. Допустимый возраст Backup по умолчанию — три часа,
-Restore — семь суток; пороги задаются `POST_CHECK_MAX_BACKUP_AGE_HOURS` и
+bootstrap admin Secret. Проверка стабильности отклоняет недавние неожиданные
+container restarts и сообщения etcd о таймаутах/медленном диске. Её окно по
+умолчанию — 15 минут и задаётся `POST_CHECK_STABILITY_WINDOW_MINUTES`.
+Допустимый возраст Backup по умолчанию — три часа, Restore — семь суток;
+пороги задаются `POST_CHECK_MAX_BACKUP_AGE_HOURS` и
 `POST_CHECK_MAX_RESTORE_AGE_HOURS`.
 
 Перед первым строгим gate и затем периодически выполните явный restore

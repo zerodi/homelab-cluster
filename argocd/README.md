@@ -115,8 +115,11 @@ Cilium-specific identities и порядок connectivity-проверки оп�
 Applications, ожидаемые root/critical revisions, успешное завершение Argo CD
 operations/hooks, readiness runtime Pods, свежие Velero Backup и verified
 Restore, Garage layout/bucket, Tempo PVC и synthetic trace, OTel counters,
-Kyverno reports, полный Argo CD OIDC/RBAC contract и удаление bootstrap admin
-Secret. Restore smoke запускается отдельным явным checkpoint:
+Kyverno reports, отсутствие недавних неожиданных container restarts и etcd
+latency warnings, полный Argo CD OIDC/RBAC contract и удаление bootstrap admin
+Secret. Окно stability gate по умолчанию равно 15 минутам и настраивается через
+`POST_CHECK_STABILITY_WINDOW_MINUTES`. Restore smoke запускается отдельным явным
+checkpoint:
 
 ```bash
 task ops:backup-restore-smoke

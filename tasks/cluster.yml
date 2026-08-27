@@ -14,14 +14,14 @@ tasks:
     aliases:
       - plan
     cmds:
-      - tofu -chdir=cluster plan -var-file=../terraform.tfvars
+      - tofu -chdir=cluster plan -var-file=../terraform.tfvars {{.CLI_ARGS}}
 
   apply:
     desc: Apply the cluster OpenTofu entrypoint
     aliases:
       - apply
     cmds:
-      - tofu -chdir=cluster apply -var-file=../terraform.tfvars
+      - tofu -chdir=cluster apply -var-file=../terraform.tfvars {{.CLI_ARGS}}
       - uv run --project homelabctl --locked homelabctl cluster reconcile-lb-pool
 
   destroy:

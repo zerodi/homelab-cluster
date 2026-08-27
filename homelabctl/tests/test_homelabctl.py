@@ -11,12 +11,15 @@ from homelabctl.commands.operations import (
     application_operation_issues,
     application_revision_issues,
     argocd_identity_contract_issues,
+    etcd_stability_issue_count,
     kyverno_policy_report_issues,
     latest_completed_backup_age_hours,
     latest_completed_restore_age_hours,
     otlp_trace_payload,
     pod_readiness_issues,
     prometheus_metric_sum,
+    recent_pod_restart_issues,
+    recent_warning_event_issues,
     telemetry_log_error_count,
 )
 from homelabctl.commands.validate_env_contract import render_stalwart_identity_plan
@@ -346,6 +349,78 @@ def test_post_check_requires_fresh_backup_and_clean_telemetry() -> None:
 
     assert latest == ("hourly", 1.0)
     assert telemetry_log_error_count("Failed to scrape Prometheus endpoint\nDropping data") == 2
+
+
+def test_post_check_detects_recent_runtime_instability() -> None:
+    now = datetime(2026, 8, 27, 10, 15, tzinfo=UTC)
+    pods = {
+        "items": [
+            {
+                "metadata": {"namespace": "kube-system", "name": "scheduler"},
+                "status": {
+                    "containerStatuses": [
+                        {
+                            "name": "kube-scheduler",
+                            "lastState": {
+                                "terminated": {
+                                    "reason": "Error",
+                                    "finishedAt": "2026-08-27T10:09:00Z",
+                                }
+                            },
+                        }
+                    ]
+                },
+            },
+            {
+                "metadata": {"namespace": "kube-system", "name": "completed-init"},
+                "status": {
+                    "initContainerStatuses": [
+                        {
+                            "name": "setup",
+                            "lastState": {
+                                "terminated": {
+                                    "reason": "Completed",
+                                    "finishedAt": "2026-08-27T10:14:00Z",
+                                }
+                            },
+                        }
+                    ]
+                },
+            },
+        ]
+    }
+    assert recent_pod_restart_issues(
+        pods, namespaces={"kube-system"}, window_minutes=15, now=now
+    ) == [("kube-system/scheduler/kube-scheduler: reason=Error, finishedAt=2026-08-27T10:09:00Z")]
+
+    events = {
+        "items": [
+            {
+                "metadata": {
+                    "namespace": "kube-system",
+                    "creationTimestamp": "2026-08-27T10:08:00Z",
+                },
+                "reason": "Unhealthy",
+                "involvedObject": {"kind": "Pod", "name": "controller"},
+            }
+        ]
+    }
+    assert recent_warning_event_issues(
+        events, namespaces={"kube-system"}, window_minutes=15, now=now
+    ) == ["kube-system/Pod/controller: reason=Unhealthy, observedAt=2026-08-27T10:08:00Z"]
+    assert (
+        etcd_stability_issue_count(
+            "etcdserver: request timed out\nleader failed to send out heartbeat on time"
+        )
+        == 2
+    )
+    recent_log = '192.0.2.1: {"ts":"2026-08-27T10:08:00Z","msg":"etcdserver: request timed out"}'
+    old_log = (
+        '192.0.2.1: {"ts":"2026-08-27T09:00:00Z",'
+        '"msg":"leader failed to send out heartbeat on time"}'
+    )
+    timestamped_logs = f"{recent_log}\n{old_log}"
+    assert etcd_stability_issue_count(timestamped_logs, window_minutes=15, now=now) == 1
 
 
 def test_post_check_requires_verified_restore_smoke() -> None:

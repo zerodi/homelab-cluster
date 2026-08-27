@@ -111,6 +111,13 @@ LoadBalancer pool `.230-.250`. Имена, VM ID и MAC-адреса узлов 
 nodes и до 99 workers. Для etcd quorum рекомендуется нечётное количество
 control plane nodes.
 
+Talos OS и LINSTOR data disks используют QEMU `cache=none` и отдельный IO
+thread. Это сохраняет guest flush semantics, исключает двойной host page cache
+поверх ZFS и уменьшает head-of-line blocking между VM I/O. Не возвращайте
+`writethrough` без повторного измерения etcd heartbeat и ZFS queue latency.
+Optional `proxmox.vlan_id` явно сохраняет VLAN tag VM network devices; при
+отсутствии значения bridge port остаётся untagged.
+
 ### 2. Bootstrap кластера
 
 ```bash

@@ -11,6 +11,7 @@ variable "proxmox" {
     vm_datastore    = string
     image_datastore = string
     ssh_username    = string
+    vlan_id         = optional(number)
   })
 }
 

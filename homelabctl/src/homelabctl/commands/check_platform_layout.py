@@ -11,6 +11,7 @@ from homelabctl.project import ROOT
 from homelabctl.yamlutil import load, load_all
 
 PLATFORM = ROOT / "argocd/platform"
+BOOTSTRAP = ROOT / "argocd/bootstrap"
 DOMAINS = (
     "core",
     "identity",
@@ -29,6 +30,21 @@ def load_yaml(path: Path) -> Any:
 
 def main() -> int:
     issues: list[str] = []
+    bootstrap_index = load_yaml(BOOTSTRAP / "kustomization.yaml")
+    if "projects/default.yaml" not in bootstrap_index.get("resources", []):
+        issues.append("bootstrap must manage the default AppProject")
+    default_project = load_yaml(BOOTSTRAP / "projects/default.yaml")
+    default_spec = default_project.get("spec", {})
+    if (
+        default_project.get("kind") != "AppProject"
+        or default_project.get("metadata", {}).get("name") != "default"
+        or default_spec.get("sourceRepos") != []
+        or default_spec.get("destinations") != []
+        or default_spec.get("clusterResourceWhitelist") != []
+        or default_spec.get("namespaceResourceBlacklist") != [{"group": "*", "kind": "*"}]
+    ):
+        issues.append("default AppProject must be an explicit deny-all fallback")
+
     root_index = load_yaml(PLATFORM / "kustomization.yaml")
     expected_root_resources = [f"{domain}/applications" for domain in DOMAINS]
     if root_index.get("resources") != expected_root_resources:
