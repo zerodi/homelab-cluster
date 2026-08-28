@@ -355,6 +355,12 @@ def cutover(kubeconfig: Path, contract_path: Path, timeout: int) -> int:
             kubeconfig,
             "apply",
             "-f",
+            str(ROOT / "argocd/bootstrap/projects/bootstrap.yaml"),
+        )
+        kubectl(
+            kubeconfig,
+            "apply",
+            "-f",
             str(ROOT / "argocd/bootstrap/argocd-repo-server-forgejo-networkpolicy.yaml"),
         )
         kubectl(
