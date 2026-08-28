@@ -2,6 +2,12 @@ resource "kubernetes_namespace_v1" "argocd" {
   metadata {
     name = "argocd"
   }
+
+  lifecycle {
+    # Namespace labels are managed independently (including the trust-manager
+    # selector) and may also be extended by cluster controllers.
+    ignore_changes = [metadata[0].labels]
+  }
 }
 
 resource "helm_release" "argocd" {

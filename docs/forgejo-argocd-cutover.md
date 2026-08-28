@@ -209,6 +209,7 @@ Token не вставляйте в repository URL и не сохраняйте �
 repository:
 
 ```bash
+kubectl apply -f argocd/bootstrap/argocd-repo-server-forgejo-networkpolicy.yaml
 kubectl apply -f argocd/bootstrap/forgejo-gitops-repository.yaml
 kubectl -n argocd wait \
   --for=condition=Ready \

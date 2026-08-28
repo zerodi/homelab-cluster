@@ -16,6 +16,8 @@ spec:
   namespaceResourceWhitelist:
     - group: ""
       kind: Secret
+    - group: cilium.io
+      kind: CiliumNetworkPolicy
     - group: argoproj.io
       kind: Application
     - group: argoproj.io

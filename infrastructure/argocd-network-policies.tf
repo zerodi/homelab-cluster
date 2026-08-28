@@ -141,3 +141,33 @@ resource "kubernetes_manifest" "argocd_network_policy" {
 
   depends_on = [helm_release.argocd]
 }
+
+resource "kubernetes_manifest" "argocd_server_kube_apiserver_policy" {
+  manifest = {
+    apiVersion = "cilium.io/v2"
+    kind       = "CiliumNetworkPolicy"
+    metadata = {
+      name      = "argocd-server-kube-apiserver"
+      namespace = "argocd"
+    }
+    spec = {
+      endpointSelector = {
+        matchLabels = {
+          "app.kubernetes.io/instance" = "argocd"
+          "app.kubernetes.io/name"     = "argocd-server"
+        }
+      }
+      egress = [{
+        toEntities = ["kube-apiserver"]
+        toPorts = [{
+          ports = [
+            { port = "443", protocol = "TCP" },
+            { port = "6443", protocol = "TCP" },
+          ]
+        }]
+      }]
+    }
+  }
+
+  depends_on = [helm_release.argocd]
+}
