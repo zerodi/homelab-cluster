@@ -26,6 +26,10 @@ spec:
   destinations:
     - namespace: gateway
       server: https://kubernetes.default.svc
+    - namespace: cert-manager
+      server: https://kubernetes.default.svc
+    - namespace: kube-system
+      server: https://kubernetes.default.svc
   clusterResourceWhitelist:
     - {group: "", kind: Namespace}
     - {group: gateway.networking.k8s.io, kind: GatewayClass}

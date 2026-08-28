@@ -45,6 +45,26 @@ def main() -> int:
     ):
         issues.append("default AppProject must be an explicit deny-all fallback")
 
+    platform_projects = {
+        document.get("metadata", {}).get("name"): document
+        for document in load_all(BOOTSTRAP / "projects/platform.yaml")
+        if isinstance(document, dict) and document.get("kind") == "AppProject"
+    }
+    gateway_destinations = {
+        (destination.get("namespace"), destination.get("server"))
+        for destination in platform_projects.get("platform-core-gateway", {})
+        .get("spec", {})
+        .get("destinations", [])
+    }
+    required_gateway_destinations = {
+        (namespace, "https://kubernetes.default.svc")
+        for namespace in ("gateway", "cert-manager", "kube-system")
+    }
+    if not required_gateway_destinations.issubset(gateway_destinations):
+        issues.append(
+            "platform-core-gateway must permit its gateway, cert-manager, and kube-system payload"
+        )
+
     root_index = load_yaml(PLATFORM / "kustomization.yaml")
     expected_root_resources = [f"{domain}/applications" for domain in DOMAINS]
     if root_index.get("resources") != expected_root_resources:
