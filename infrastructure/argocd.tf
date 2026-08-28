@@ -223,5 +223,7 @@ resource "terraform_data" "argocd_ready" {
     helm_release.argocd,
     kubernetes_manifest.argocd_network_policy,
     kubernetes_manifest.argocd_repo_server_tls_certificate,
+    kubernetes_manifest.argocd_server_ingress_policy,
+    kubernetes_manifest.argocd_server_kube_apiserver_policy,
   ]
 }

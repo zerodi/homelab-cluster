@@ -39,6 +39,7 @@ APPROVED_RESOURCES = {
     ("kubernetes_manifest", "homelab_root_ca"),
     ("kubernetes_manifest", "homelab_trust_bundle"),
     ("kubernetes_manifest", "argocd_network_policy"),
+    ("kubernetes_manifest", "argocd_server_ingress_policy"),
     ("kubernetes_manifest", "argocd_server_kube_apiserver_policy"),
     ("kubernetes_manifest", "argocd_repo_server_tls_certificate"),
     ("kubernetes_manifest", "linstor_cluster"),
