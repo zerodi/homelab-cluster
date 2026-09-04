@@ -71,7 +71,8 @@ task gitops:apply-bootstrap
 
 ```bash
 task ops:openbao-port-forward-start
-export BAO_ADDR='http://127.0.0.1:8200'
+export BAO_ADDR='https://127.0.0.1:8200'
+export BAO_CACERT="$PWD/out/homelab-root-ca.crt"
 export BAO_TOKEN='...'
 task gitops:forgejo-cutover
 ```
