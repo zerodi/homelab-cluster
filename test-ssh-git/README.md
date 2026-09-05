@@ -61,6 +61,10 @@ cd test-ssh-git
 - `templates/argocd-repository-secret.yaml`
 - `templates/root-application-ssh.yaml`
 
+Каталоги `keys/` и `templates/` создаются с mode `0700`; приватные ключи и
+`argocd-repository-secret.yaml` — с mode `0600`. Эти generated-файлы остаются
+локальными и проверяются через `task check:local-security`.
+
 ## Запуск сервера
 
 ```bash

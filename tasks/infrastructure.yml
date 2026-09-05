@@ -7,12 +7,16 @@ tasks:
   init:
     desc: Initialize the infrastructure OpenTofu entrypoint
     cmds:
-      - tofu -chdir=infrastructure init {{.CLI_ARGS}}
+      - |
+        umask 077
+        tofu -chdir=infrastructure init {{.CLI_ARGS}}
 
   plan:
     desc: Plan the first infrastructure bootstrap stage without CRD-backed manifests
     cmds:
+      - task ops:secure-local-files
       - |
+        umask 077
         tofu -chdir=infrastructure plan \
           -var=crd_backed_resources_enabled=false \
           -target=helm_release.cert_manager \
@@ -80,7 +84,9 @@ tasks:
   apply:
     desc: Apply infrastructure in stages, including CRD readiness and LINSTOR storage bootstrap
     cmds:
+      - task ops:secure-local-files
       - |
+        umask 077
         tofu -chdir=infrastructure apply \
           -var=crd_backed_resources_enabled=false \
           -target=helm_release.cert_manager \
@@ -91,12 +97,14 @@ tasks:
           -target=helm_release.piraeus_operator
       - task infra:wait-crds
       - |
+        umask 077
         tofu -chdir=infrastructure apply \
           -target=kubernetes_manifest.selfsigned_clusterissuer \
           -target=kubernetes_manifest.homelab_root_ca \
           -target=kubernetes_manifest.homelab_ca_clusterissuer \
           -target=kubernetes_cluster_role_binding_v1.external_secrets_openbao_auth_delegator
       - |
+        umask 077
         tofu -chdir=infrastructure apply \
           -target=helm_release.piraeus_operator \
           -target=terraform_data.piraeus_operator_ready \
@@ -104,7 +112,10 @@ tasks:
           -target=kubernetes_manifest.linstor_cluster \
           -target=terraform_data.linstor_cluster_ready
       - task infra:bootstrap-piraeus-storage
-      - tofu -chdir=infrastructure apply
+      - |
+        umask 077
+        tofu -chdir=infrastructure apply
+      - task ops:secure-local-files
 
   destroy:
     desc: Run staged infrastructure destroy with CRD-backed cleanup
@@ -140,3 +151,5 @@ tasks:
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl get clusterissuer
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl get linstorcluster -A
       - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl -n openbao get pods
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl -n openbao wait --for=condition=Ready certificate/openbao-tls --timeout=5m
+      - KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl -n openbao get ciliumnetworkpolicy/openbao-restricted-ingress

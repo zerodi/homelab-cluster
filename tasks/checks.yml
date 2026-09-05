@@ -67,6 +67,11 @@ tasks:
     cmds:
       - uv run --project homelabctl --locked homelabctl check runtime-secrets --contract-only
 
+  local-security:
+    desc: Verify permissions of existing local secret and state files without reading them
+    cmds:
+      - uv run --project homelabctl --locked homelabctl check local-security
+
   tofu-fmt:
     desc: Run tofu fmt -check recursively
     cmds:
@@ -105,9 +110,9 @@ tasks:
     cmds:
       - |
         if command -v kustomize >/dev/null 2>&1; then
-          kustomize build argocd/bootstrap
+          kustomize build argocd/bootstrap >/dev/null
         else
-          kubectl kustomize argocd/bootstrap
+          kubectl kustomize argocd/bootstrap >/dev/null
         fi
 
   kustomize-platform:
@@ -115,9 +120,9 @@ tasks:
     cmds:
       - |
         if command -v kustomize >/dev/null 2>&1; then
-          kustomize build argocd/platform
+          kustomize build argocd/platform >/dev/null
         else
-          kubectl kustomize argocd/platform
+          kubectl kustomize argocd/platform >/dev/null
         fi
 
   helm-observability:
@@ -176,6 +181,7 @@ tasks:
       - task check:documentation
       - task check:env-contract
       - task check:runtime-secret-contract
+      - task check:local-security
       - task check:tofu-fmt
       - task check:tofu-validate-cluster
       - task check:tofu-validate-infrastructure

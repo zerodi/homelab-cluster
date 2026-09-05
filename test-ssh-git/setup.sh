@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$ROOT_DIR/.." && pwd)"
@@ -58,6 +59,7 @@ if [ -z "$SOURCE_REPO_URL" ]; then
 fi
 
 mkdir -p "$KEY_DIR" "$TEMPLATE_DIR" "$ROOT_DIR/repo-data"
+chmod 700 "$KEY_DIR" "$TEMPLATE_DIR"
 
 if [ ! -f "$CLIENT_KEY" ]; then
   ssh-keygen -t ed25519 -N '' -f "$CLIENT_KEY" -C 'argocd-test-client' >/dev/null
@@ -127,6 +129,7 @@ stringData:
 $(sed 's/^/    /' "$CLIENT_KEY")
   insecure: "false"
 TEMPLATE
+chmod 600 "$TEMPLATE_DIR/argocd-repository-secret.yaml"
 
 cat > "$TEMPLATE_DIR/root-application-ssh.yaml" <<TEMPLATE
 apiVersion: argoproj.io/v1alpha1
@@ -150,6 +153,7 @@ spec:
     syncOptions:
       - CreateNamespace=true
 TEMPLATE
+chmod 644 "$TEMPLATE_DIR/root-application-ssh.yaml"
 
 cat <<INFO
 Test SSH Git server prepared.

@@ -11,6 +11,11 @@ vars:
   GARAGE_NODE_ID: '{{default "" .GARAGE_NODE_ID}}'
 
 tasks:
+  secure-local-files:
+    desc: Restrict existing local secret and state files to the current user
+    cmds:
+      - uv run --project homelabctl --locked homelabctl check local-security --fix
+
   day0-guide:
     desc: Print the manual OpenBao day-0 bootstrap checklist
     cmds:
@@ -18,12 +23,12 @@ tasks:
         printf '%s\n' \
           'Day-0 bootstrap OpenBao:' \
           '  1. Откройте port-forward: task ops:openbao-port-forward-start.' \
-          '  2. Инициализируйте и разлочьте OpenBao.' \
-          '  3. Экспортируйте BAO_TOKEN и запустите task ops:openbao-day0.' \
-          '  4. Экспортируйте CLOUDFLARE_API_TOKEN для DNS-01.' \
-          '  5. Задайте PLATFORM_ADMIN_PASSWORD в root .env.' \
-          '  6. Создайте только отсутствующие paths: task ops:seed-runtime-secrets.' \
-          '  7. При необходимости просмотрите команды: task ops:generate-runtime-secret-puts.' \
+          '  2. Экспортируйте CA: task ops:export-root-ca; задайте BAO_ADDR=https://127.0.0.1:8200 и BAO_CACERT.' \
+          '  3. Инициализируйте и разлочьте OpenBao.' \
+          '  4. Экспортируйте BAO_TOKEN и запустите task ops:openbao-day0.' \
+          '  5. Экспортируйте CLOUDFLARE_API_TOKEN для DNS-01.' \
+          '  6. Задайте PLATFORM_ADMIN_PASSWORD в root .env.' \
+          '  7. Создайте только отсутствующие paths: task ops:seed-runtime-secrets.' \
           '  8. Runtime secrets:' \
           '     - secret/platform/cert-manager/cloudflare' \
           '     - secret/platform/authentik/runtime' \
@@ -117,11 +122,6 @@ tasks:
     desc: Print the day-1 operations runbook location
     cmds:
       - "printf '%s\\n' 'Day-1 operations runbook: docs/day1-operations.md'"
-
-  generate-runtime-secret-puts:
-    desc: Print complete bao kv put commands for runtime secrets
-    cmds:
-      - uv run --project homelabctl --locked homelabctl secrets print
 
   authentik-admin-password:
     desc: Print the Authentik akadmin bootstrap password from OpenBao
@@ -267,4 +267,5 @@ tasks:
       - |
         KUBECONFIG="{{.KUBECONFIG_PATH}}" kubectl -n cert-manager get secret homelab-root-ca \
           -o go-template='{{`{{ index .data "tls.crt" }}`}}' | base64 -d > "{{.ROOT_CA_EXPORT_PATH}}"
+      - chmod 0600 "{{.ROOT_CA_EXPORT_PATH}}"
       - "printf '%s\\n' 'Exported homelab root CA to {{.ROOT_CA_EXPORT_PATH}}'"

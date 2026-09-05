@@ -1,7 +1,7 @@
 __pycache__/
 .terraform/
-.terraform.lock.hcl
 terraform.tfvars
+/secrets.sops.tfvars
 *.auto.tfvars
 *.auto.tfvars.json
 *.tfstate

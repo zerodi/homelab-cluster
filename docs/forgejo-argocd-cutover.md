@@ -10,15 +10,16 @@
 
 - дождитесь `Synced/Healthy` для `Application/forgejo`;
 - закоммитьте все изменения в `argocd/`;
-- экспортируйте `BAO_ADDR` и административный `BAO_TOKEN`.
+- экспортируйте `BAO_ADDR`, `BAO_CACERT` и административный `BAO_TOKEN`.
 
 ```bash
-export BAO_ADDR='http://127.0.0.1:8200'
+export BAO_ADDR='https://127.0.0.1:8200'
+export BAO_CACERT="$PWD/out/homelab-root-ca.crt"
 export BAO_TOKEN='...'
 task gitops:forgejo-cutover
 ```
 
-Если локальный `BAO_ADDR=http://127.0.0.1:8200` недоступен, task сам поднимает
+Если локальный `BAO_ADDR=https://127.0.0.1:8200` недоступен, task сам поднимает
 временный port-forward к `service/openbao` и останавливает его при завершении.
 Уже работающий port-forward переиспользуется и не останавливается.
 

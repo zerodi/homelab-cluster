@@ -45,6 +45,7 @@ platform-layer с нуля.
 task init
 cp terraform.tfvars.example terraform.tfvars
 cp .env.example .env
+task ops:secure-local-files
 # заполните terraform.tfvars только несекретными значениями
 # версии OpenTofu, providers, Talos Linux, Kubernetes, charts и images меняйте в versions.yaml
 # заполните .env локальными credentials; Taskfile загружает его автоматически
@@ -52,6 +53,12 @@ cp .env.example .env
 # optional локальный homelab.override.yaml хранит только environment-specific
 # non-secret отличия и не коммитится
 ```
+
+Проект рассчитан на private operator workstation и сохраняет state локально.
+`task ops:secure-local-files` не читает содержимое, устанавливает `0600` для
+существующих `.env`, tfvars, state и bootstrap config-файлов. OpenTofu-команды
+запускаются с `umask 077`; перенос state в общий каталог или cloud sync без
+отдельного шифрования не поддерживается.
 
 `task init` инициализирует оба entrypoint:
 
@@ -213,6 +220,7 @@ task ops:openbao-day0
 ```bash
 task ops:openbao-port-forward-start
 task ops:openbao-port-forward-status
+task ops:export-root-ca
 ```
 
 Он слушает только `127.0.0.1:8200`. PID и лог сохраняются в
@@ -221,11 +229,13 @@ task ops:openbao-port-forward-status
 В другом терминале:
 
 ```bash
-export BAO_ADDR='http://127.0.0.1:8200'
+export BAO_ADDR='https://127.0.0.1:8200'
+export BAO_CACERT="$PWD/out/homelab-root-ca.crt"
 ```
 
 ```fish
-set -x BAO_ADDR 'http://127.0.0.1:8200'
+set -x BAO_ADDR 'https://127.0.0.1:8200'
+set -x BAO_CACERT "$PWD/out/homelab-root-ca.crt"
 ```
 
 Проверьте статус:
@@ -486,14 +496,11 @@ export VELERO_S3_SECRET_ACCESS_KEY='...'
 task ops:seed-runtime-secrets
 ```
 
-Просмотреть полный набор команд без записи:
+Проверить полный набор ожидаемых paths и keys без вывода значений:
 
 ```bash
-task ops:generate-runtime-secret-puts
+task ops:openbao-runtime-preflight
 ```
-
-Helper печатает `bao kv put secret/platform/...` команды со всеми обязательными
-keys и без `REPLACE_WITH_*`. Не сохраняйте вывод в repo.
 
 После появления реальных внешних ресурсов обязательно замените:
 
@@ -534,7 +541,8 @@ task gitops:test-ssh-bootstrap
 основной сценарий выполняется одной командой:
 
 ```bash
-export BAO_ADDR='http://127.0.0.1:8200'
+export BAO_ADDR='https://127.0.0.1:8200'
+export BAO_CACERT="$PWD/out/homelab-root-ca.crt"
 export BAO_TOKEN='...'
 task gitops:forgejo-cutover
 ```
@@ -553,7 +561,8 @@ task gitops:apply-bootstrap
 OAuth credentials одной операторской командой:
 
 ```bash
-export BAO_ADDR='http://127.0.0.1:8200'
+export BAO_ADDR='https://127.0.0.1:8200'
+export BAO_CACERT="$PWD/out/homelab-root-ca.crt"
 export BAO_TOKEN='...'
 task ops:forgejo-woodpecker-oauth
 task ops:openbao-runtime-preflight-final

@@ -37,6 +37,23 @@ task ops:backup-restore-smoke
 
 OpenBao остаётся source of truth для runtime secrets, ESO — каналом доставки.
 
+### Однократный переход существующего OpenBao на TLS
+
+Для уже работающего HTTP-инстанса применяйте переход поэтапно. Helm chart
+использует `StatefulSet` strategy `OnDelete`, поэтому изменение listener не
+перезапускает pod неожиданно:
+
+1. Выполните `task infra:apply`, дождитесь `Certificate/openbao-tls`.
+2. Выполните `task ops:export-root-ca`.
+3. Удалите только `pod/openbao-0`, дождитесь его повторного создания и
+   разлочьте OpenBao через `https://127.0.0.1:8200` с `BAO_CACERT`.
+4. Опубликуйте обновлённый `argocd/bootstrap/openbao-cluster-secret-store.yaml`
+   и дождитесь `ClusterSecretStore/openbao Ready=True`.
+
+Существующий PVC и OpenBao data не заменяются. На коротком переходном окне ESO
+может сообщать transport errors, но уже материализованные Kubernetes Secrets
+не удаляются.
+
 ```bash
 bao status
 task ops:openbao-runtime-preflight
@@ -66,7 +83,8 @@ Forgejo. Helper не печатает credentials и сохраняет суще
 
 ```bash
 task ops:openbao-port-forward-start
-export BAO_ADDR='http://127.0.0.1:8200'
+export BAO_ADDR='https://127.0.0.1:8200'
+export BAO_CACERT="$PWD/out/homelab-root-ca.crt"
 export BAO_TOKEN='...'
 task ops:harbor-smoke
 task ops:openbao-port-forward-stop

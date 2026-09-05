@@ -207,8 +207,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--bao-addr",
-        default=os.environ.get("BAO_ADDR", "http://127.0.0.1:8200"),
-        help="OpenBao address. Defaults to BAO_ADDR or http://127.0.0.1:8200.",
+        default=os.environ.get("BAO_ADDR", "https://127.0.0.1:8200"),
+        help="OpenBao address. Defaults to BAO_ADDR or https://127.0.0.1:8200.",
     )
     parser.add_argument(
         "--require-final",

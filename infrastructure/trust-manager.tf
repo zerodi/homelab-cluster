@@ -47,6 +47,23 @@ resource "kubernetes_labels" "trusted_namespace_argocd" {
   depends_on = [helm_release.argocd]
 }
 
+resource "kubernetes_labels" "trusted_namespace_external_secrets" {
+  api_version = "v1"
+  kind        = "Namespace"
+
+  metadata {
+    name = "external-secrets"
+  }
+
+  labels = {
+    "trust.home.arpa/enabled" = "true"
+  }
+
+  force = true
+
+  depends_on = [kubernetes_manifest.external_secrets_namespace]
+}
+
 resource "kubernetes_manifest" "homelab_trust_bundle" {
   count = var.crd_backed_resources_enabled ? 1 : 0
 
@@ -86,5 +103,6 @@ resource "kubernetes_manifest" "homelab_trust_bundle" {
     kubernetes_manifest.homelab_root_ca,
     kubernetes_labels.trusted_namespace_cert_manager,
     kubernetes_labels.trusted_namespace_argocd,
+    kubernetes_labels.trusted_namespace_external_secrets,
   ]
 }

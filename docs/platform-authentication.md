@@ -259,7 +259,8 @@ Woodpecker -> Forgejo OAuth2 -> Authentik OIDC
 После готовности Forgejo, OpenBao и Woodpecker prereqs выполните:
 
 ```bash
-export BAO_ADDR='http://127.0.0.1:8200'
+export BAO_ADDR='https://127.0.0.1:8200'
+export BAO_CACERT="$PWD/out/homelab-root-ca.crt"
 export BAO_TOKEN='...'
 task ops:forgejo-woodpecker-oauth
 ```
@@ -344,7 +345,8 @@ Secret `argocd-oidc` должен иметь label
 
 ```bash
 task ops:openbao-port-forward-start
-export BAO_ADDR='http://127.0.0.1:8200'
+export BAO_ADDR='https://127.0.0.1:8200'
+export BAO_CACERT="$PWD/out/homelab-root-ca.crt"
 export BAO_TOKEN='...'
 task ops:argocd-access-finalize
 task ops:identity-smoke

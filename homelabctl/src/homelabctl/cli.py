@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from homelabctl.commands import (
     check_documentation,
     check_image_versions,
     check_infrastructure_isolation,
+    check_local_security,
     check_platform_layout,
     check_release_versions,
     check_runtime_workloads,
@@ -59,6 +61,7 @@ def parser() -> argparse.ArgumentParser:
         "image-versions",
         "cluster-isolation",
         "infrastructure-isolation",
+        "local-security",
         "platform-layout",
         "tfvars-example",
         "documentation",
@@ -82,13 +85,13 @@ def parser() -> argparse.ArgumentParser:
     destroy.add_argument("args", nargs=argparse.REMAINDER)
 
     secrets = domains.add_parser("secrets").add_subparsers(dest="command", required=True)
-    for name in ("print", "seed", "list-paths", "list-contract"):
+    for name in ("seed", "list-paths", "list-contract"):
         secrets.add_parser(name)
 
     bao = domains.add_parser("bao").add_subparsers(dest="command", required=True)
     day0 = bao.add_parser("configure-day0")
     day0.add_argument("--kubeconfig", required=True)
-    day0.add_argument("--bao-addr", default="http://127.0.0.1:8200")
+    day0.add_argument("--bao-addr", default=os.environ.get("BAO_ADDR", "https://127.0.0.1:8200"))
     day0.add_argument("--eso-namespace", default="external-secrets")
     day0.add_argument("--eso-service-account", default="external-secrets")
     day0.add_argument("--policy-name", default="external-secrets")
@@ -171,6 +174,7 @@ def dispatch(args: argparse.Namespace) -> int:
             "image-versions": check_image_versions,
             "cluster-isolation": check_cluster_isolation,
             "infrastructure-isolation": check_infrastructure_isolation,
+            "local-security": check_local_security,
             "platform-layout": check_platform_layout,
             "tfvars-example": check_tfvars_example,
             "documentation": check_documentation,

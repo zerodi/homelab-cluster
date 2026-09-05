@@ -6,7 +6,7 @@ variable "proxmox" {
   description = "Non-secret Proxmox connection, node, and datastore settings."
   type = object({
     endpoint        = string
-    insecure        = optional(bool, true)
+    insecure        = optional(bool, false)
     node_name       = string
     vm_datastore    = string
     image_datastore = string

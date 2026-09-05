@@ -6,7 +6,6 @@ import json
 import os
 import re
 import secrets
-import shlex
 import signal
 import ssl
 import subprocess
@@ -655,17 +654,6 @@ def secrets_command(mode: str) -> int:
         return 0
     values = generated_secrets()
     mount = os.environ.get("BAO_KV_MOUNT", "secret").strip("/")
-    if mode == "print":
-        print(
-            "# WARNING: sensitive bootstrap credentials; do not save this output in Git or CI logs."
-        )
-        for path, data in values.items():
-            arguments = " ".join(
-                shlex.quote(f"{key}={str(value).lower() if isinstance(value, bool) else value}")
-                for key, value in data.items()
-            )
-            print(f"bao kv put {shlex.quote(f'{mount}/{path}')} {arguments}")
-        return 0
     require("bao")
     if not os.environ.get("BAO_TOKEN"):
         raise CommandError("BAO_TOKEN is required")
@@ -786,7 +774,7 @@ def port_forward(action: str, kubeconfig: Path | None) -> int:
     existing = pid()
     if action == "status":
         if existing and alive(existing) and expected(existing):
-            print(f"OpenBao port-forward is running: pid={existing} addr=http://{address}:{local}")
+            print(f"OpenBao port-forward is running: pid={existing} addr=https://{address}:{local}")
             return 0
         pid_file.unlink(missing_ok=True)
         print("OpenBao port-forward is not running.")
@@ -846,7 +834,7 @@ def port_forward(action: str, kubeconfig: Path | None) -> int:
     if proc.poll() is not None:
         pid_file.unlink(missing_ok=True)
         raise CommandError(log_file.read_text(errors="ignore"))
-    print(f"OpenBao port-forward started: pid={proc.pid} addr=http://{address}:{local}")
+    print(f"OpenBao port-forward started: pid={proc.pid} addr=https://{address}:{local}")
     return 0
 
 

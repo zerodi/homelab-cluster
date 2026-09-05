@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from homelabctl.cli import duration, parser
+from homelabctl.commands.check_local_security import insecure_permissions, sensitive_local_files
 from homelabctl.commands.check_tfvars_example import required_variables, variable_defaults
 from homelabctl.commands.operations import (
     SECRET_CONTRACT,
@@ -31,6 +32,22 @@ from homelabctl.yamlutil import deep_merge, load_all
 def test_duration() -> None:
     assert duration("10m") == 600
     assert duration("45s") == 45
+
+
+def test_local_security_finds_only_existing_sensitive_files(tmp_path: Path) -> None:
+    state = tmp_path / "cluster/terraform.tfstate"
+    state.parent.mkdir()
+    state.write_text("sensitive", encoding="utf-8")
+    state.chmod(0o644)
+    repository_secret = tmp_path / "test-ssh-git/templates/argocd-repository-secret.yaml"
+    repository_secret.parent.mkdir(parents=True)
+    repository_secret.write_text("private key", encoding="utf-8")
+    repository_secret.chmod(0o644)
+
+    paths = sensitive_local_files(tmp_path)
+
+    assert paths == [state, repository_secret]
+    assert insecure_permissions(paths) == [(state, 0o644), (repository_secret, 0o644)]
 
 
 def test_taskfile_facing_commands_parse() -> None:

@@ -50,8 +50,10 @@ tasks:
   init:
     desc: Initialize cluster and infrastructure entrypoints
     cmds:
+      - task ops:secure-local-files
       - task cluster:init
       - task infra:init
+      - task ops:secure-local-files
 
   fmt:
     desc: Run OpenTofu formatting recursively

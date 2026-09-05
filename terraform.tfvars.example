@@ -2,7 +2,9 @@
 
 proxmox = {
   endpoint        = "https://pve.example.com:8006"
-  insecure        = true
+  # Keep certificate verification enabled. Trust the Proxmox CA on this
+  # workstation; set insecure=true only as an explicit temporary exception.
+  insecure        = false
   node_name       = "pve01"
   vm_datastore    = "local-lvm"
   image_datastore = "local"

@@ -26,6 +26,7 @@ Taskfile является публичным интерфейсом автома
 task init
 cp terraform.tfvars.example terraform.tfvars
 cp .env.example .env
+task ops:secure-local-files
 task cluster:apply
 task cluster:health
 task infra:apply

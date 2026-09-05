@@ -7,27 +7,40 @@ tasks:
   init:
     desc: Initialize the cluster OpenTofu entrypoint
     cmds:
-      - tofu -chdir=cluster init {{.CLI_ARGS}}
+      - |
+        umask 077
+        tofu -chdir=cluster init {{.CLI_ARGS}}
 
   plan:
     desc: Plan the cluster OpenTofu entrypoint
     aliases:
       - plan
     cmds:
-      - tofu -chdir=cluster plan -var-file=../terraform.tfvars {{.CLI_ARGS}}
+      - task ops:secure-local-files
+      - |
+        umask 077
+        tofu -chdir=cluster plan -var-file=../terraform.tfvars {{.CLI_ARGS}}
 
   apply:
     desc: Apply the cluster OpenTofu entrypoint
     aliases:
       - apply
     cmds:
-      - tofu -chdir=cluster apply -var-file=../terraform.tfvars {{.CLI_ARGS}}
+      - task ops:secure-local-files
+      - |
+        umask 077
+        tofu -chdir=cluster apply -var-file=../terraform.tfvars {{.CLI_ARGS}}
       - uv run --project homelabctl --locked homelabctl cluster reconcile-lb-pool
+      - task ops:secure-local-files
 
   destroy:
     desc: Destroy the cluster entrypoint without refresh
     cmds:
-      - tofu -chdir=cluster destroy -var-file=../terraform.tfvars -refresh=false
+      - task ops:secure-local-files
+      - |
+        umask 077
+        tofu -chdir=cluster destroy -var-file=../terraform.tfvars -refresh=false
+      - task ops:secure-local-files
 
   health:
     desc: Run local cluster health checks using talosctl and kubectl
