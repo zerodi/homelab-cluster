@@ -24,6 +24,7 @@ from homelabctl.environment import render_contract
 from homelabctl.project import ROOT
 from homelabctl.runtime import (
     CommandError,
+    git_subtree_revision,
     json_output,
     log,
     require,
@@ -2657,7 +2658,7 @@ def post_argocd_check(kubeconfig: Path, contract_path: Path) -> int:
 
     expected_revision = os.environ.get("EXPECTED_GITOPS_REVISION", "").strip()
     if not expected_revision:
-        expected_revision = run(["git", "rev-parse", "HEAD"], cwd=ROOT).stdout.strip()
+        expected_revision = git_subtree_revision(ROOT, "argocd")
     critical_apps = {
         "authentik-prereqs",
         "authentik-postgresql",

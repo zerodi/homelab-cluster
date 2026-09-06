@@ -26,12 +26,26 @@ from homelabctl.commands.operations import (
 from homelabctl.commands.validate_env_contract import render_stalwart_identity_plan
 from homelabctl.environment import materialize_contract
 from homelabctl.project import ROOT
+from homelabctl.runtime import Result, git_subtree_revision
 from homelabctl.yamlutil import deep_merge, load_all
 
 
 def test_duration() -> None:
     assert duration("10m") == 600
     assert duration("45s") == 45
+
+
+def test_git_subtree_revision_uses_requested_snapshot(monkeypatch, tmp_path: Path) -> None:
+    calls: list[tuple[list[str], Path | None]] = []
+
+    def fake_run(argv, *, cwd=None, **_kwargs):
+        calls.append((list(argv), cwd))
+        return Result("a" * 40 + "\n", "", 0)
+
+    monkeypatch.setattr("homelabctl.runtime.run", fake_run)
+
+    assert git_subtree_revision(tmp_path, "argocd", "main") == "a" * 40
+    assert calls == [(["git", "subtree", "split", "--prefix=argocd", "main"], tmp_path)]
 
 
 def test_local_security_finds_only_existing_sensitive_files(tmp_path: Path) -> None:

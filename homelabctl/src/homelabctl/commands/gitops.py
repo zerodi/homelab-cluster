@@ -16,7 +16,7 @@ from homelabctl.commands.operations import (
     wait_argocd,
 )
 from homelabctl.project import ROOT
-from homelabctl.runtime import CommandError, require, run, wait_until
+from homelabctl.runtime import CommandError, git_subtree_revision, require, run, wait_until
 
 
 def require_clean_argocd() -> None:
@@ -73,8 +73,8 @@ def forgejo_connection(kubeconfig: Path, env: dict[str, Any]) -> tuple[str, str,
 
 def push_subtree(
     repo_url: str, revision: str, host: str, ip: str, user: str, password: str, ca: Path
-) -> None:
-    commit = run(["git", "subtree", "split", "--prefix=argocd", "HEAD"], cwd=ROOT).stdout.strip()
+) -> str:
+    commit = git_subtree_revision(ROOT, "argocd")
     askpass = shutil.which("homelabctl-forgejo-askpass")
     if not askpass:
         raise CommandError("homelabctl-forgejo-askpass entrypoint is unavailable")
@@ -101,6 +101,8 @@ def push_subtree(
         env=env,
         capture=False,
     )
+    print(f"Published GitOps revision: {commit}")
+    return commit
 
 
 def push(kubeconfig: Path, contract_path: Path) -> int:

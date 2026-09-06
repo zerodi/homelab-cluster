@@ -58,6 +58,17 @@ def require(*commands: str) -> None:
         raise CommandError("required command(s) missing: " + ", ".join(missing))
 
 
+def git_subtree_revision(root: Path, prefix: str, revision: str = "HEAD") -> str:
+    """Return the commit produced for a repository subtree snapshot."""
+    commit = run(
+        ["git", "subtree", "split", f"--prefix={prefix}", revision],
+        cwd=root,
+    ).stdout.strip()
+    if len(commit) < 40 or any(character not in "0123456789abcdef" for character in commit):
+        raise CommandError("git subtree split did not return a commit SHA")
+    return commit
+
+
 def log(component: str, message: str) -> None:
     print(f"[{component}] {message}")
 

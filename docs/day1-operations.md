@@ -29,9 +29,10 @@ checkpoint:
 task ops:backup-restore-smoke
 ```
 
-По умолчанию ожидаемый root snapshot равен локальному `git rev-parse HEAD`.
-Для проверки другого опубликованного commit задайте
-`EXPECTED_GITOPS_REVISION`.
+По умолчанию ожидаемый root snapshot вычисляется тем же
+`git subtree split --prefix=argocd HEAD`, который использует `task gitops:push`.
+Task публикации печатает полученный Forgejo SHA. Для проверки другого
+опубликованного commit задайте `EXPECTED_GITOPS_REVISION`.
 
 ## OpenBao и External Secrets
 
