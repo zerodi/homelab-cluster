@@ -44,6 +44,3 @@ cluster/ -> infrastructure/ -> OpenBao init/unseal -> GitOps bootstrap
 - [Runtime network isolation](network-isolation.md)
 - [Stalwart Mail Server](stalwart.md)
 - [Kyverno policies](kyverno-policies.md)
-
-Аналитические документы, audit snapshots и планы развития в документацию не
-включены.
